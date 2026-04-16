@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,9 +14,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+const { width } = Dimensions.get("window");
+const isSmall = width < 360;
 const isWeb = Platform.OS === "web";
-const PURPLE = "#7C3AED";
+const PURPLE = "#6C47FF";
 const PURPLE_LIGHT = "#EDE9FE";
+
+// Responsive sizes
+const TAB_ICON_SIZE = isSmall ? 20 : 22;
+const TAB_LABEL_SIZE = isSmall ? 9 : 11;
+const ICON_WRAP = isSmall ? 36 : 40;
+const FAB_SIZE = isSmall ? 52 : 58;
+const FAB_ICON = isSmall ? 23 : 26;
 
 const shadow = (color: string, blur: number, y: number, opacity: number) =>
   isWeb
@@ -31,9 +41,9 @@ const shadow = (color: string, blur: number, y: number, opacity: number) =>
 type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
 const FAB_ACTIONS = [
-  { icon: "camera" as FeatherIconName, label: "Scan Rx", route: "/scan", color: "#7C3AED" },
+  { icon: "camera" as FeatherIconName, label: "Scan Rx", route: "/scan", color: PURPLE },
   { icon: "book-open" as FeatherIconName, label: "Journal", route: "/journal", color: "#A78BFA" },
-  { icon: "heart" as FeatherIconName, label: "Emergency", route: "/emergency-card", color: "#EF4444" },
+  { icon: "heart" as FeatherIconName, label: "Card", route: "/emergency-card", color: "#EF4444" },
 ];
 
 interface FloatingTabBarProps {
@@ -88,10 +98,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
     const label = options.tabBarLabel ?? options.title ?? route.name;
     const isFocused = state.index === actualIndex;
     const tabScale = useRef(new Animated.Value(1)).current;
+    const dotOpacity = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
 
     const onPress = () => {
       Animated.sequence([
-        Animated.spring(tabScale, { toValue: 0.85, useNativeDriver: true, friction: 8 }),
+        Animated.spring(tabScale, { toValue: 0.82, useNativeDriver: true, friction: 8 }),
         Animated.spring(tabScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
       ]).start();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -107,20 +118,33 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
         onPress={onPress}
         style={styles.tabItem}
         activeOpacity={1}
+        hitSlop={{ top: 6, bottom: 6 }}
       >
         <Animated.View style={{ transform: [{ scale: tabScale }], alignItems: "center" }}>
           <View style={[
             styles.tabIconWrap,
+            { width: ICON_WRAP, height: ICON_WRAP, borderRadius: ICON_WRAP / 2 },
             isFocused && { backgroundColor: PURPLE_LIGHT },
           ]}>
-            {options.tabBarIcon?.({ color: isFocused ? PURPLE : "#9CA3AF", size: 22 })}
+            {options.tabBarIcon?.({ color: isFocused ? PURPLE : "#9CA3AF", size: TAB_ICON_SIZE })}
           </View>
-          <Text style={[
-            styles.tabLabel,
-            { color: isFocused ? PURPLE : "#9CA3AF", fontFamily: isFocused ? "Inter_700Bold" : "Inter_500Medium" },
-          ]}>
+          <Text
+            style={[
+              styles.tabLabel,
+              {
+                color: isFocused ? PURPLE : "#9CA3AF",
+                fontFamily: isFocused ? "Inter_700Bold" : "Inter_500Medium",
+                fontSize: TAB_LABEL_SIZE,
+              },
+            ]}
+            numberOfLines={1}
+          >
             {label}
           </Text>
+          {/* Active dot indicator */}
+          {isFocused && (
+            <View style={styles.activeDot} />
+          )}
         </Animated.View>
       </TouchableOpacity>
     );
@@ -137,36 +161,43 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
         </Pressable>
       )}
 
-      {/* FAB sub-actions */}
+      {/* FAB sub-actions — fan upward */}
       {FAB_ACTIONS.map((action, i) => {
-        const angle = -90 + (i - 1) * 52;
+        const angle = -90 + (i - 1) * 55; // wider spread
         const rad = (angle * Math.PI) / 180;
-        const dist = 92;
+        const dist = isSmall ? 82 : 95;
         const tx = fabAnim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(rad) * dist] });
         const ty = fabAnim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(rad) * dist] });
-        const sc = fabAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.75, 1] });
-        const op = fabAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0, 1] });
+        const sc = fabAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.7, 1] });
+        const op = fabAnim.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 0, 1] });
 
         return (
           <Animated.View
             key={action.label}
-            style={[styles.fabAction, { bottom: bottomPad + 54, transform: [{ translateX: tx }, { translateY: ty }, { scale: sc }], opacity: op }]}
+            style={[
+              styles.fabAction,
+              {
+                bottom: bottomPad + FAB_SIZE / 2 + 8,
+                transform: [{ translateX: tx }, { translateY: ty }, { scale: sc }],
+                opacity: op,
+              },
+            ]}
           >
             <TouchableOpacity
               onPress={() => handleFabAction(action.route)}
-              style={[styles.fabActionBtn, { backgroundColor: action.color }, shadow("#000", 10, 5, 0.2)]}
+              style={[styles.fabActionBtn, { backgroundColor: action.color, width: isSmall ? 44 : 50, height: isSmall ? 44 : 50, borderRadius: isSmall ? 22 : 25 }, shadow("#000", 10, 5, 0.18)]}
               activeOpacity={0.85}
             >
-              <Feather name={action.icon} size={18} color="#fff" />
+              <Feather name={action.icon} size={isSmall ? 16 : 18} color="#fff" />
             </TouchableOpacity>
-            <Text style={styles.fabActionLabel}>{action.label}</Text>
+            <Text style={styles.fabActionLabel} numberOfLines={1}>{action.label}</Text>
           </Animated.View>
         );
       })}
 
-      {/* Main tab bar */}
+      {/* Main tab bar pill */}
       <View style={[styles.container, { paddingBottom: bottomPad }]}>
-        <View style={[styles.pill, shadow("#7C3AED", 28, 10, 0.14)]}>
+        <View style={[styles.pill, shadow("#6C47FF", 24, 8, 0.12)]}>
           <View style={styles.tabGroup}>
             {leftRoutes.map((item: any) => renderTab(item))}
           </View>
@@ -176,10 +207,14 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
             <TouchableOpacity
               onPress={toggleFab}
               activeOpacity={0.9}
-              style={[styles.fab, shadow(PURPLE, 14, 6, 0.5)]}
+              style={[
+                styles.fab,
+                { width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2 },
+                shadow(PURPLE, 16, 6, 0.45),
+              ]}
             >
               <Animated.View style={{ transform: [{ rotate: fabRotation }] }}>
-                <Feather name="plus" size={26} color="#fff" />
+                <Feather name="plus" size={FAB_ICON} color="#fff" />
               </Animated.View>
             </TouchableOpacity>
           </View>
@@ -196,53 +231,61 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
 const styles = StyleSheet.create({
   container: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    alignItems: "center", paddingHorizontal: 16,
+    alignItems: "center", paddingHorizontal: isSmall ? 10 : 16,
   },
   pill: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 44,
-    paddingHorizontal: 8, paddingVertical: 8,
-    width: "100%", maxWidth: 420,
+    borderRadius: 50,
+    paddingHorizontal: 6, paddingVertical: isSmall ? 6 : 8,
+    width: "100%", maxWidth: 430,
   },
   tabGroup: { flex: 1, flexDirection: "row" },
   tabItem: {
     flex: 1, alignItems: "center", justifyContent: "center",
-    paddingVertical: 8, gap: 4,
+    paddingVertical: isSmall ? 6 : 8, gap: 3,
   },
   tabIconWrap: {
-    width: 40, height: 40, borderRadius: 20,
     alignItems: "center", justifyContent: "center",
   },
-  tabLabel: { fontSize: 11 },
-  fabWrap: { alignItems: "center", justifyContent: "center", marginHorizontal: 6 },
+  tabLabel: {
+    textAlign: "center",
+    includeFontPadding: false,
+  },
+  activeDot: {
+    width: 4, height: 4, borderRadius: 2,
+    backgroundColor: PURPLE,
+    marginTop: 2,
+  },
+  fabWrap: { alignItems: "center", justifyContent: "center", marginHorizontal: isSmall ? 4 : 6 },
   fab: {
-    width: 58, height: 58, borderRadius: 29,
     backgroundColor: PURPLE,
     alignItems: "center", justifyContent: "center",
-    marginTop: -22,
+    marginTop: isSmall ? -18 : -22,
   },
   fabAction: {
     position: "absolute",
     alignSelf: "center",
     alignItems: "center",
     left: "50%",
-    marginLeft: -24,
+    marginLeft: isSmall ? -22 : -25,
   },
   fabActionBtn: {
-    width: 50, height: 50, borderRadius: 25,
     alignItems: "center", justifyContent: "center",
   },
   fabActionLabel: {
-    marginTop: 5, fontSize: 10,
+    marginTop: 5,
+    fontSize: isSmall ? 9 : 10,
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
     textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+    maxWidth: isSmall ? 44 : 52,
+    textAlign: "center",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(14,10,35,0.4)",
+    backgroundColor: "rgba(14,10,35,0.38)",
   },
 });
