@@ -412,7 +412,7 @@ export default function OnboardingScreen() {
           entering={FadeIn.duration(300)}
           style={styles.mascotWrap}
         >
-          <MascotBuddy size={isSmall ? 58 : 66} message={slide.mascotMessage} />
+          <MascotBuddy size={isSmall ? 58 : 66} message={slide.mascotMessage} trigger={current} />
         </Animated.View>
 
         {/* Slide text */}
@@ -551,10 +551,10 @@ const styles = StyleSheet.create({
     gap: isSmall ? 14 : 18,
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05, shadowRadius: 16, elevation: 12,
-    flex: 1,
+    flex: 0, // Don't flex, keep height predictable
   },
   mascotWrap: { marginTop: -8 },
-  textWrap: { gap: 7 },
+  textWrap: { gap: 7, minHeight: isSmall ? 110 : 130 },
   cardTitle: {
     fontSize: isSmall ? 24 : 28,
     fontFamily: "Inter_700Bold",

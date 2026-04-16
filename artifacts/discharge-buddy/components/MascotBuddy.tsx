@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import * as Haptics from "expo-haptics";
 import { View, Text, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
@@ -106,9 +107,10 @@ function BearSvg({ size = 90 }: { size?: number }) {
 interface MascotBuddyProps {
   message?: string;
   size?: number;
+  trigger?: number;
 }
 
-export function MascotBuddy({ message, size = 90 }: MascotBuddyProps) {
+export function MascotBuddy({ message, size = 90, trigger }: MascotBuddyProps) {
   const float = useSharedValue(0);
   const scale = useSharedValue(0);
   const pawWave = useSharedValue(0);
@@ -146,6 +148,25 @@ export function MascotBuddy({ message, size = 90 }: MascotBuddyProps) {
       bubbleScale.value = withSpring(1, { damping: 12 });
     }, 700);
   }, []);
+
+  useEffect(() => {
+    if (trigger === undefined) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Fun Duolingo-style Pop
+    scale.value = withSequence(
+      withTiming(0.9, { duration: 100 }),
+      withSpring(1.08, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 12, stiffness: 150 })
+    );
+
+    // Dynamic paw wave reset to emphasize reaction
+    pawWave.value = withSequence(
+      withTiming(-18, { duration: 150, easing: Easing.out(Easing.back(1.5)) }),
+      withTiming(12, { duration: 150, easing: Easing.out(Easing.quad) }),
+      withTiming(0, { duration: 200, easing: Easing.bounce })
+    );
+  }, [trigger]);
 
   const bearStyle = useAnimatedStyle(() => ({
     transform: [
