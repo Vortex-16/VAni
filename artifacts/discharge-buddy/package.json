@@ -2,7 +2,7 @@
   "name": "@workspace/discharge-buddy",
   "version": "0.0.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.js",
   "scripts": {
     "dev": "expo start --web --port ${PORT:-8081} -c",
     "build": "node scripts/build.js",
