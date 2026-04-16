@@ -59,14 +59,18 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const bottomPad = Platform.OS === "web" ? 16 : Math.max(insets.bottom, 8);
 
+  const fabOpenRef = useRef(fabOpen);
+  fabOpenRef.current = fabOpen;
+
   const toggleFab = () => {
-    const toValue = fabOpen ? 0 : 1;
+    const willOpen = !fabOpenRef.current;
+    const toValue = willOpen ? 1 : 0;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Animated.parallel([
       Animated.spring(fabAnim, { toValue, useNativeDriver: !isWeb, tension: 130, friction: 8 }),
       Animated.timing(overlayAnim, { toValue, duration: 200, useNativeDriver: !isWeb }),
     ]).start();
-    setFabOpen(!fabOpen);
+    setFabOpen(willOpen);
   };
 
   const closeFab = () => {
@@ -152,14 +156,13 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
 
   return (
     <>
-      {fabOpen && (
-        <Pressable onPress={closeFab} style={StyleSheet.absoluteFill}>
-          <Animated.View
-            style={[styles.overlay, { opacity: overlayAnim }]}
-            pointerEvents={fabOpen ? "auto" : "none"}
-          />
-        </Pressable>
-      )}
+      {/* Permanent Background Overlay to prevent animation abort */}
+      <Animated.View
+        style={[styles.overlay, { opacity: overlayAnim }]}
+        pointerEvents={fabOpen ? "auto" : "none"}
+      >
+        <Pressable onPress={closeFab} style={StyleSheet.absoluteFill} />
+      </Animated.View>
 
       {/* FAB sub-actions — fan upward */}
       {FAB_ACTIONS.map((action, i) => {
@@ -196,34 +199,35 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
       })}
 
       {/* Main tab bar pill */}
-      <View style={[styles.container, { paddingBottom: bottomPad }]}>
+      <View style={[styles.container, { paddingBottom: bottomPad }]} pointerEvents="box-none">
         <View style={[styles.pill, shadow("#6C47FF", 24, 8, 0.12)]}>
           <View style={styles.tabGroup}>
             {leftRoutes.map((item: any) => renderTab(item))}
           </View>
 
-          {/* Center FAB */}
-          <View style={styles.fabWrap}>
-            <TouchableOpacity
-              onPress={toggleFab}
-              activeOpacity={0.9}
-              style={[
-                styles.fab,
-                { width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2 },
-                shadow(PURPLE, 16, 6, 0.45),
-              ]}
-            >
-              <Animated.View style={{ transform: [{ rotate: fabRotation }] }}>
-                <Feather name="plus" size={FAB_ICON} color="#fff" />
-              </Animated.View>
-            </TouchableOpacity>
-          </View>
+          {/* Center Spacer for FAB */}
+          <View style={styles.fabSpacer} pointerEvents="none" />
 
           <View style={styles.tabGroup}>
             {rightRoutes.map((item: any) => renderTab(item))}
           </View>
         </View>
       </View>
+
+      {/* Center FAB rendered totally independently from container to fix Android touch bounds clipping completely */}
+      <TouchableOpacity
+        onPress={toggleFab}
+        activeOpacity={0.9}
+        style={[
+          styles.fab,
+          { width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2, bottom: bottomPad + (isSmall ? 18 : 22) },
+          shadow(PURPLE, 16, 6, 0.45),
+        ]}
+      >
+        <Animated.View style={{ transform: [{ rotate: fabRotation }] }}>
+          <Feather name="plus" size={FAB_ICON} color="#fff" />
+        </Animated.View>
+      </TouchableOpacity>
     </>
   );
 }
@@ -257,11 +261,15 @@ const styles = StyleSheet.create({
     backgroundColor: PURPLE,
     marginTop: 2,
   },
-  fabWrap: { alignItems: "center", justifyContent: "center", marginHorizontal: isSmall ? 4 : 6 },
+  fabSpacer: { 
+    width: FAB_SIZE + (isSmall ? 8 : 12),
+  },
   fab: {
+    position: "absolute",
+    alignSelf: "center",
     backgroundColor: PURPLE,
     alignItems: "center", justifyContent: "center",
-    marginTop: isSmall ? -18 : -22,
+    zIndex: 10,
   },
   fabAction: {
     position: "absolute",

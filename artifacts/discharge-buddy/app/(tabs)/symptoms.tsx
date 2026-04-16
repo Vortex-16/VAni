@@ -224,9 +224,11 @@ export default function SymptomsScreen() {
       >
         <View style={styles.decor} />
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.headerEmoji}>🩺</Text>
-            <Text style={styles.headerTitle}>Symptoms</Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <Text style={{ fontSize: 26 }}>🩺</Text>
+              <Text style={styles.headerTitle}>Symptoms</Text>
+            </View>
             <Text style={styles.headerSub}>{symptomLogs.length} logs · Track your recovery</Text>
           </View>
           {!showForm ? (

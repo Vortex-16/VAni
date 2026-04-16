@@ -155,9 +155,11 @@ export default function MedicinesScreen() {
         <View style={styles.decor1} />
         <View style={styles.decor2} />
         <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerEmoji}>💊</Text>
-            <Text style={styles.headerTitle}>My Medicines</Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <Text style={{ fontSize: 26 }}>💊</Text>
+              <Text style={styles.headerTitle}>My Medicines</Text>
+            </View>
             <Text style={styles.headerSub}>{takenCount} of {totalCount} taken today</Text>
           </View>
           <TouchableOpacity

@@ -405,7 +405,7 @@ export default function OnboardingScreen() {
       />
 
       {/* Bottom content card */}
-      <View style={[styles.card, { paddingBottom: Math.max(bottomInset + 20, 36) }]}>
+      <View style={[styles.card, { paddingBottom: Math.max(bottomInset + 44, 48) }]}>
         {/* Mascot with animated entrance per slide */}
         <Animated.View
           key={`mascot-${current}`}
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     backgroundColor: WHITE,
     borderTopLeftRadius: 36, borderTopRightRadius: 36,
     paddingHorizontal: 24, paddingTop: 22,
-    gap: 18,
+    gap: isSmall ? 14 : 18,
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05, shadowRadius: 16, elevation: 12,
     flex: 1,
