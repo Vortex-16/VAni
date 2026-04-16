@@ -86,8 +86,8 @@ export default function ScheduleScreen() {
       d1.getFullYear() === d2.getFullYear();
 
     if (isSameDay(selectedDate, today)) {
-      todayDoses.forEach(dose => {
-        const med = medicines.find(m => m.id === dose.medicineId);
+      todayDoses?.forEach(dose => {
+        const med = medicines?.find(m => m.id === dose.medicineId);
         items.push({
           time: dose.scheduledTime,
           title: dose.medicineName,
@@ -98,8 +98,8 @@ export default function ScheduleScreen() {
         });
       });
     } else {
-      medicines.forEach(med => {
-        med.schedule.forEach(s => {
+      medicines?.forEach(med => {
+        med.times?.forEach(s => {
           items.push({
             time: s,
             title: med.name,
