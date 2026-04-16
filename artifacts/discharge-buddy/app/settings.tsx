@@ -22,7 +22,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { setRole, setUser } = useApp();
+  const { setRole, setUser, hapticsEnabled, setHapticsEnabled } = useApp();
   const [notifications, setNotifications] = useState(true);
   const [appNotifs, setAppNotifs] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -117,6 +117,15 @@ export default function SettingsScreen() {
               onValueChange={setDarkMode}
               trackColor={{ false: "#e2e8f0", true: "#8b5cf640" }}
               thumbColor={darkMode ? "#8b5cf6" : "#cbd5e1"}
+            />
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Haptic Feedback</Text>
+            <Switch
+              value={hapticsEnabled}
+              onValueChange={setHapticsEnabled}
+              trackColor={{ false: "#e2e8f0", true: "#8b5cf640" }}
+              thumbColor={hapticsEnabled ? "#8b5cf6" : "#cbd5e1"}
             />
           </View>
           <TouchableOpacity style={styles.row}>

@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useApp } from "@/context/AppContext";
 
 const { width } = Dimensions.get("window");
 const isSmall = width < 360;
@@ -54,6 +55,7 @@ interface FloatingTabBarProps {
 
 export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { hapticsEnabled } = useApp();
   const [fabOpen, setFabOpen] = useState(false);
   const fabAnim = useRef(new Animated.Value(0)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -65,7 +67,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
   const toggleFab = () => {
     const willOpen = !fabOpenRef.current;
     const toValue = willOpen ? 1 : 0;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Animated.parallel([
       Animated.spring(fabAnim, { toValue, useNativeDriver: !isWeb, tension: 130, friction: 8 }),
       Animated.timing(overlayAnim, { toValue, duration: 200, useNativeDriver: !isWeb }),
@@ -83,7 +85,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
 
   const handleFabAction = (route: string) => {
     closeFab();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTimeout(() => router.push(route as any), 100);
   };
 
@@ -109,7 +111,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
         Animated.spring(tabScale, { toValue: 0.82, useNativeDriver: true, friction: 8 }),
         Animated.spring(tabScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
       ]).start();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
       if (!isFocused && !event.defaultPrevented) {
         navigation.navigate(route.name);

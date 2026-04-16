@@ -156,6 +156,7 @@ interface AppContextType {
   language: Language;
   linkedPatients: Patient[];
   isProcessingPrescription: boolean;
+  hapticsEnabled: boolean;
   // Gamification
   streak: number;
   xp: number;
@@ -175,6 +176,7 @@ interface AppContextType {
   addFollowUp: (followUp: FollowUp) => void;
   completeFollowUp: (id: string) => void;
   setOnboarded: (val: boolean) => void;
+  setHapticsEnabled: (val: boolean) => void;
   triggerEmergency: () => void;
   setLanguage: (lang: Language) => void;
   addPrescription: (imageUri: string) => Promise<void>;
@@ -319,6 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [followUps, setFollowUps] = useState<FollowUp[]>(DEMO_FOLLOW_UPS);
   const [isOnboarded, setIsOnboardedState] = useState(false);
   const [language, setLanguageState] = useState<Language>("en");
+  const [hapticsEnabled, setHapticsEnabledState] = useState(true);
   const [isProcessingPrescription, setIsProcessingPrescription] = useState(false);
   const [streak, setStreak] = useState(7);
   const [xp, setXP] = useState(340);
@@ -349,7 +352,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const data = JSON.parse(raw);
         if (data.role) setRoleState(data.role);
         if (data.user) setUserState(data.user);
-        if (data.isOnboarded) setIsOnboardedState(data.isOnboarded);
+        if (data.isOnboarded !== undefined) setIsOnboardedState(data.isOnboarded);
+        if (data.hapticsEnabled !== undefined) setHapticsEnabledState(data.hapticsEnabled);
         if (data.language) setLanguageState(data.language);
         if (data.medicines) setMedicines(data.medicines);
         if (data.symptomLogs) setSymptomLogs(data.symptomLogs);
@@ -401,6 +405,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setRole = (r: UserRole) => { setRoleState(r); saveData({ role: r }); };
   const setUser = (u: AppUser) => { setUserState(u); saveData({ user: u }); };
   const setOnboarded = (val: boolean) => { setIsOnboardedState(val); saveData({ isOnboarded: val }); };
+  const setHapticsEnabled = (val: boolean) => { setHapticsEnabledState(val); saveData({ hapticsEnabled: val }); };
   const setLanguage = (lang: Language) => { setLanguageState(lang); saveData({ language: lang }); };
 
   const addMedicine = (medicine: Medicine) => {
@@ -476,10 +481,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       value={{
         user, role, patient: DEMO_PATIENT, medicines, todayDoses, symptomLogs, followUps,
         isOnboarded, language, linkedPatients: [DEMO_PATIENT], isProcessingPrescription,
+        hapticsEnabled,
         streak, xp, achievements, doseHistory, lastXPGain, journalEntries,
         drugInteractions: checkInteractions(medicines),
         setRole, setUser, addMedicine, updateDoseStatus, addSymptomLog, addFollowUp,
-        completeFollowUp, setOnboarded, triggerEmergency, setLanguage, addPrescription,
+        completeFollowUp, setOnboarded, setHapticsEnabled, triggerEmergency, setLanguage, addPrescription,
         addJournalEntry, awardXP, unlockAchievement,
       }}
     >
