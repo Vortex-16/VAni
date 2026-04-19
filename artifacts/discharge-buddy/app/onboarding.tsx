@@ -139,8 +139,8 @@ function Slide1Visual() {
   return (
     <View style={vs.container}>
       {/* Pulsing rings */}
-      <Animated.View style={[vs.pulseRing, { borderColor: "#A78BFA" }, r2]} />
-      <Animated.View style={[vs.pulseRing, { borderColor: "#C4B5FD" }, r1]} />
+      <Animated.View style={[vs.pulseRing, { borderColor: "#A78BFA" }, r2Style]} />
+      <Animated.View style={[vs.pulseRing, { borderColor: "#C4B5FD" }, r1Style]} />
 
       {/* Orbiting ring */}
       <Animated.View style={[vs.orbitRing, orbitStyle]}>
@@ -174,10 +174,6 @@ function Slide1Visual() {
     </View>
   );
 }
-
-// Workaround: need to use r1Style / r2Style via Animated.View not shared value
-const r1 = StyleSheet.create({}).r1 || {};
-const r2 = StyleSheet.create({}).r2 || {};
 
 
 // ─── Slide 2 Visual: Bell + Schedule ─────────────────────────────────────────

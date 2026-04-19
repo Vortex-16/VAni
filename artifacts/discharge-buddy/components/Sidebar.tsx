@@ -5,6 +5,7 @@ import React from "react";
 import {
   Animated,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -74,30 +75,34 @@ export function Sidebar() {
           { width: SIDEBAR_WIDTH, transform: [{ translateX }] },
         ]}
       >
-        {/* Profile header — wave-style */}
-        <View style={[styles.profileHeader, { paddingTop: topInset + 20 }]}>
-          <TouchableOpacity onPress={close} style={styles.closeBtn}>
-            <Feather name="x" size={20} color={WHITE} />
-          </TouchableOpacity>
+        {/* Profile header */}
+        <View style={[styles.profileHeader, { paddingTop: topInset + 10 }]}>
+          <View style={styles.headerTopRow}>
+            <AnimPressable onPress={close} style={styles.closeBtn}>
+              <Feather name="x" size={24} color={WHITE} />
+            </AnimPressable>
+            <View style={{ flex: 1 }} />
+          </View>
 
           <AnimPressable onPress={() => handleNav("/profile")} style={styles.avatarContainer}>
             <View style={styles.avatarLarge}>
-              <Feather name={role === "caregiver" ? "users" : "user"} size={36} color={TEAL} />
+              <Feather name={role === "caregiver" ? "users" : "user"} size={32} color={TEAL} />
             </View>
             <View style={styles.editBadge}>
-              <Feather name="edit-2" size={11} color={WHITE} />
+              <Feather name="edit-2" size={10} color={WHITE} />
             </View>
           </AnimPressable>
 
-          <Text style={styles.profileName}>{user?.name ?? "User"}</Text>
+          <Text style={styles.profileName} numberOfLines={1}>{user?.name ?? "User"}</Text>
           <Text style={styles.profileRole}>{role === "caregiver" ? "Caregiver" : "Patient"}</Text>
         </View>
 
-        {/* Wave divider */}
-        <View style={styles.waveBottom} />
-
-        {/* Menu items */}
-        <View style={styles.menuList}>
+        {/* Scrollable menu area */}
+        <ScrollView 
+          style={styles.menuScroll} 
+          contentContainerStyle={styles.menuScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {MENU_ITEMS.map((item, i) => (
             <AnimPressable
               key={i}
@@ -107,13 +112,13 @@ export function Sidebar() {
               <View style={styles.menuIconWrapper}>
                 <Feather name={item.icon} size={18} color={TEAL} />
               </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Feather name="chevron-right" size={16} color="#94a3b8" />
+              <Text style={styles.menuLabel} numberOfLines={1}>{item.label}</Text>
+              <Feather name="chevron-right" size={14} color="#94a3b8" />
             </AnimPressable>
           ))}
-        </View>
+        </ScrollView>
 
-        {/* Logout button */}
+        {/* Logout button at fixed bottom */}
         <View style={[styles.logoutArea, { paddingBottom: bottomInset + 16 }]}>
           <AnimPressable style={styles.logoutBtn} onPress={handleLogout}>
             <Feather name="log-out" size={18} color={WHITE} />
@@ -132,51 +137,60 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: WHITE,
+    borderTopRightRadius: 32,
+    borderBottomRightRadius: 32,
     shadowColor: "#000",
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
+    shadowOffset: { width: 10, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 30,
     elevation: 20,
+    overflow: "hidden",
   },
 
   profileHeader: {
     backgroundColor: TEAL_DARK,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 36,
+    paddingHorizontal: 20,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerTopRow: {
+    flexDirection: "row",
     alignItems: "center",
+    marginBottom: 4,
   },
   closeBtn: {
-    alignSelf: "flex-end",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
   avatarContainer: {
+    alignSelf: "center",
     position: "relative",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   avatarLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: WHITE,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.4)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   editBadge: {
     position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: TEAL,
     alignItems: "center",
     justifyContent: "center",
@@ -185,42 +199,40 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: WHITE,
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
-    marginBottom: 4,
+    textAlign: "center",
+    marginBottom: 2,
   },
   profileRole: {
-    color: "rgba(255,255,255,0.65)",
+    color: "rgba(255,255,255,0.75)",
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
 
-  waveBottom: {
-    height: 28,
-    backgroundColor: TEAL_DARK,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    marginBottom: 4,
-  },
-
-  menuList: {
+  menuScroll: {
     flex: 1,
+  },
+  menuScrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 14,
-    marginBottom: 2,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    gap: 16,
+    marginBottom: 6,
+    backgroundColor: "#f8fafc",
   },
   menuIconWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: "#f0f9ff",
     alignItems: "center",
     justifyContent: "center",
@@ -228,15 +240,16 @@ const styles = StyleSheet.create({
   menuLabel: {
     flex: 1,
     fontSize: 15,
-    fontFamily: "Inter_500Medium",
-    color: "#1e293b",
+    fontFamily: "Inter_600SemiBold",
+    color: "#334155",
   },
 
   logoutArea: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: "#f1f5f9",
+    backgroundColor: WHITE,
   },
   logoutBtn: {
     flexDirection: "row",
@@ -244,12 +257,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     backgroundColor: TEAL_DARK,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 16,
+    borderRadius: 16,
   },
   logoutText: {
     color: WHITE,
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
   },
 });

@@ -1,6 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Language } from "@/constants/translations";
+import { MockProvider } from "./MockProvider";
+import { ApiProvider } from "./ApiProvider";
+import type { IDataProvider } from "./types";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
+import { router } from "expo-router";
 
 export type UserRole = "patient" | "caregiver" | null;
 // Language type imported from translations.ts
@@ -172,7 +177,7 @@ interface AppContextType {
   setRole: (role: UserRole) => void;
   setUser: (user: AppUser) => void;
   addMedicine: (medicine: Medicine) => void;
-  updateDoseStatus: (doseId: string, status: DoseLog["status"]) => void;
+  updateDoseStatus: (doseId: string, status: DoseLog["status"], snoozeMinutes?: number) => void;
   addSymptomLog: (log: SymptomLog) => void;
   addFollowUp: (followUp: FollowUp) => void;
   completeFollowUp: (id: string) => void;
@@ -184,171 +189,61 @@ interface AppContextType {
   addJournalEntry: (entry: JournalEntry) => void;
   awardXP: (amount: number) => void;
   unlockAchievement: (id: string) => void;
+  login: (user: AppUser, token: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
 const STORAGE_KEY = "discharge_buddy_data_v2";
 
-const DEMO_MEDICINES: Medicine[] = [
-  {
-    id: "m1",
-    name: "Metformin",
-    dosage: "500mg",
-    frequency: "Twice daily",
-    times: ["08:00", "20:00"],
-    instructions: "Take with meals to reduce GI side effects. Monitor blood glucose regularly.",
-    simplifiedInstructions: "Take this pill with breakfast and dinner. It helps control your blood sugar.",
-    startDate: new Date().toISOString(),
-    color: "#0891b2",
-    totalPills: 60,
-  },
-  {
-    id: "m2",
-    name: "Lisinopril",
-    dosage: "10mg",
-    frequency: "Once daily",
-    times: ["08:00"],
-    instructions: "Take in the morning. Monitor blood pressure. Avoid NSAIDs.",
-    simplifiedInstructions: "Take this pill every morning. It lowers your blood pressure. Avoid ibuprofen.",
-    startDate: new Date().toISOString(),
-    color: "#10b981",
-    totalPills: 30,
-  },
-  {
-    id: "m3",
-    name: "Aspirin",
-    dosage: "81mg",
-    frequency: "Once daily",
-    times: ["20:00"],
-    instructions: "Low-dose aspirin for cardiovascular protection. Take at night.",
-    simplifiedInstructions: "Take this small pill at bedtime. It protects your heart.",
-    startDate: new Date().toISOString(),
-    color: "#f59e0b",
-    totalPills: 30,
-  },
-  {
-    id: "m4",
-    name: "Atorvastatin",
-    dosage: "20mg",
-    frequency: "Once daily",
-    times: ["21:00"],
-    instructions: "Take at bedtime for best efficacy. Avoid grapefruit juice.",
-    simplifiedInstructions: "Take this pill before sleep. It reduces cholesterol. Avoid grapefruit.",
-    startDate: new Date().toISOString(),
-    color: "#8b5cf6",
-    totalPills: 30,
-  },
-];
-
-function generateTodayDoses(medicines: Medicine[]): DoseLog[] {
-  const today = new Date().toISOString().split("T")[0];
-  const doses: DoseLog[] = [];
-  for (const med of medicines) {
-    for (const time of med.times) {
-      const [hour] = time.split(":").map(Number);
-      const now = new Date();
-      const status: DoseLog["status"] =
-        hour < now.getHours() - 1 ? (Math.random() > 0.4 ? "taken" : "missed") : "pending";
-      doses.push({
-        id: `${med.id}_${time}_${today}`,
-        medicineId: med.id,
-        medicineName: med.name,
-        scheduledTime: time,
-        status,
-        takenAt: status === "taken" ? new Date().toISOString() : undefined,
-        date: today,
-      });
-    }
-  }
-  return doses;
-}
-
-function generateDoseHistory(medicines: Medicine[]): DoseHistoryDay[] {
-  const history: DoseHistoryDay[] = [];
-  for (let i = 29; i >= 1; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const total = medicines.reduce((s, m) => s + m.times.length, 0);
-    const taken = Math.round(total * (0.6 + Math.random() * 0.4));
-    history.push({
-      date: d.toISOString().split("T")[0],
-      taken: Math.min(taken, total),
-      total,
-    });
-  }
-  return history;
-}
-
-const DEMO_FOLLOW_UPS: FollowUp[] = [
-  {
-    id: "f1",
-    title: "Cardiology Follow-up",
-    doctorName: "Dr. Sarah Mitchell",
-    dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    location: "City Heart Hospital, Room 204",
-    notes: "Bring latest BP readings and medication list",
-    completed: false,
-  },
-  {
-    id: "f2",
-    title: "Blood Test",
-    doctorName: "Lab at General Hospital",
-    dateTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    location: "Pathology Lab, Ground Floor",
-    notes: "Fasting required - no food 8 hours before",
-    completed: false,
-  },
-];
-
-const DEMO_PATIENT: Patient = {
-  id: "p1",
-  name: "John Doe",
-  age: 58,
-  condition: "Post-cardiac surgery recovery",
-  dischargeDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  medicines: DEMO_MEDICINES,
-  doseLogs: [],
-  symptomLogs: [],
-  followUps: DEMO_FOLLOW_UPS,
-  emergencyContact: "+1 (555) 911-0000",
-};
+// Dummy items moved to DataProvider implementations
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<AppUser | null>(null);
   const [role, setRoleState] = useState<UserRole>(null);
-  const [medicines, setMedicines] = useState<Medicine[]>(DEMO_MEDICINES);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [todayDoses, setTodayDoses] = useState<DoseLog[]>([]);
   const [symptomLogs, setSymptomLogs] = useState<SymptomLog[]>([]);
-  const [followUps, setFollowUps] = useState<FollowUp[]>(DEMO_FOLLOW_UPS);
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [isOnboarded, setIsOnboardedState] = useState(false);
   const [language, setLanguageState] = useState<Language>("en");
   const [hapticsEnabled, setHapticsEnabledState] = useState(true);
   const [isProcessingPrescription, setIsProcessingPrescription] = useState(false);
   const [streak, setStreak] = useState(7);
   const [xp, setXP] = useState(340);
-  const [achievements, setAchievements] = useState<Achievement[]>([
-    { ...ALL_ACHIEVEMENTS[0], unlockedAt: new Date(Date.now() - 5 * 86400000).toISOString() },
-    { ...ALL_ACHIEVEMENTS[1], unlockedAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-    { ...ALL_ACHIEVEMENTS[4], unlockedAt: new Date(Date.now() - 1 * 86400000).toISOString() },
-  ]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [doseHistory, setDoseHistory] = useState<DoseHistoryDay[]>([]);
   const [lastXPGain, setLastXPGain] = useState(0);
 
+  const [dataProvider, setDataProvider] = useState<IDataProvider>(new MockProvider());
+  const [isInitializing, setIsInitializing] = useState(true);
+
   useEffect(() => {
-    loadData();
+    // Shared initialization of base URL and token getter
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+    setBaseUrl(apiUrl);
+    setAuthTokenGetter(async () => await AsyncStorage.getItem("discharge_buddy_token"));
+    
+    initApp();
   }, []);
 
   useEffect(() => {
-    if (medicines.length > 0) {
-      setTodayDoses(generateTodayDoses(medicines));
-      setDoseHistory(generateDoseHistory(medicines));
+    if (!isInitializing) {
+      loadData();
     }
-  }, [medicines]);
+  }, [dataProvider, isInitializing]);
 
-  async function loadData() {
+  async function initApp() {
     try {
+      const token = await AsyncStorage.getItem("discharge_buddy_token");
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      
+      if (token && dataProvider instanceof MockProvider) {
+          setDataProvider(new ApiProvider());
+      }
+
       if (raw) {
         const data = JSON.parse(raw);
         if (data.role) setRoleState(data.role);
@@ -356,15 +251,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (data.isOnboarded !== undefined) setIsOnboardedState(data.isOnboarded);
         if (data.hapticsEnabled !== undefined) setHapticsEnabledState(data.hapticsEnabled);
         if (data.language) setLanguageState(data.language);
-        if (data.medicines) setMedicines(data.medicines);
-        if (data.symptomLogs) setSymptomLogs(data.symptomLogs);
-        if (data.followUps) setFollowUps(data.followUps);
         if (data.streak) setStreak(data.streak);
         if (data.xp) setXP(data.xp);
         if (data.achievements) setAchievements(data.achievements);
-        if (data.journalEntries) setJournalEntries(data.journalEntries);
       }
-    } catch {}
+    } catch (err) {
+      console.error("Failed to initialize app state", err);
+    } finally {
+      setIsInitializing(false);
+    }
+  }
+
+  async function loadData() {
+    try {
+      const dbMedicines = await dataProvider.getMedicines();
+      setMedicines(dbMedicines);
+
+      const dbTodayDoses = await dataProvider.getTodayDoses();
+      setTodayDoses(dbTodayDoses);
+
+      const dbSymptoms = await dataProvider.getSymptomLogs();
+      setSymptomLogs(dbSymptoms);
+
+      const dbFollowUps = await dataProvider.getFollowUps();
+      setFollowUps(dbFollowUps);
+
+      const dbJournal = await dataProvider.getJournalEntries();
+      setJournalEntries(dbJournal);
+    } catch (err) {
+        console.error("Failed to load generic data", err);
+    }
   }
 
   async function saveData(updates: Record<string, unknown>) {
@@ -415,7 +331,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveData({ medicines: updated });
   };
 
-  const updateDoseStatus = (doseId: string, status: DoseLog["status"]) => {
+  const updateDoseStatus = async (doseId: string, status: DoseLog["status"], snoozeMinutes?: number) => {
+    await dataProvider.updateDoseStatus(doseId, status, snoozeMinutes);
+    
+    // Optimistic UI update
     setTodayDoses((prev) => {
       const updated = prev.map((d) =>
         d.id === doseId ? { ...d, status, takenAt: status === "taken" ? new Date().toISOString() : undefined } : d
@@ -433,37 +352,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const addSymptomLog = (log: SymptomLog) => {
-    const updated = [log, ...symptomLogs];
-    setSymptomLogs(updated);
-    saveData({ symptomLogs: updated });
+  const addSymptomLog = async (log: SymptomLog) => {
+    await dataProvider.addSymptomLog(log);
+    
+    setSymptomLogs([log, ...symptomLogs]);
     awardXP(15);
     unlockAchievement("symptom_logger");
   };
 
-  const addFollowUp = (followUp: FollowUp) => {
-    const updated = [followUp, ...followUps];
-    setFollowUps(updated);
-    saveData({ followUps: updated });
+  const addFollowUp = async (followUp: FollowUp) => {
+    setFollowUps([followUp, ...followUps]);
   };
 
-  const completeFollowUp = (id: string) => {
-    const updated = followUps.map((f) => (f.id === id ? { ...f, completed: true } : f));
-    setFollowUps(updated);
-    saveData({ followUps: updated });
+  const completeFollowUp = async (id: string) => {
+    await dataProvider.completeFollowUp(id);
+    
+    setFollowUps(followUps.map((f) => (f.id === id ? { ...f, completed: true } : f)));
     awardXP(25);
     unlockAchievement("follow_up");
   };
 
-  const addJournalEntry = (entry: JournalEntry) => {
-    const updated = [entry, ...journalEntries];
-    setJournalEntries(updated);
-    saveData({ journalEntries: updated });
+  const addJournalEntry = async (entry: JournalEntry) => {
+    await dataProvider.addJournalEntry(entry);
+    
+    setJournalEntries([entry, ...journalEntries]);
     awardXP(20);
     unlockAchievement("journal_keeper");
   };
 
-  const triggerEmergency = () => console.log("EMERGENCY TRIGGERED");
+  const triggerEmergency = async () => {
+    await dataProvider.triggerEmergency();
+    console.log("EMERGENCY ACTUALLY TRIGGERED AND SENT TO BACKEND");
+  };
 
   const addPrescription = async (_imageUri: string) => {
     setIsProcessingPrescription(true);
@@ -477,17 +397,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return DRUG_INTERACTIONS.filter((i) => i.medIds.every((id) => ids.includes(id)));
   };
 
+  const login = async (userData: AppUser, token: string) => {
+    await AsyncStorage.setItem("discharge_buddy_token", token);
+    setUser(userData);
+    setRole(userData.role);
+    setDataProvider(new ApiProvider());
+  };
+
+  const logout = () => {
+    AsyncStorage.removeItem("discharge_buddy_token");
+    AsyncStorage.removeItem(STORAGE_KEY);
+    setUserState(null);
+    setRoleState(null);
+    setDataProvider(new MockProvider());
+    router.replace("/login");
+  };
+
   return (
     <AppContext.Provider
       value={{
-        user, role, patient: DEMO_PATIENT, medicines, todayDoses, symptomLogs, followUps,
-        isOnboarded, language, linkedPatients: [DEMO_PATIENT], isProcessingPrescription,
+        user, role, patient: null, medicines, todayDoses, symptomLogs, followUps,
+        isOnboarded, language, linkedPatients: [], isProcessingPrescription,
         hapticsEnabled,
         streak, xp, achievements, doseHistory, lastXPGain, journalEntries,
         drugInteractions: checkInteractions(medicines),
         setRole, setUser, addMedicine, updateDoseStatus, addSymptomLog, addFollowUp,
         completeFollowUp, setOnboarded, setHapticsEnabled, triggerEmergency, setLanguage, addPrescription,
-        addJournalEntry, awardXP, unlockAchievement,
+        addJournalEntry, awardXP, unlockAchievement, login, logout,
       }}
     >
       {children}

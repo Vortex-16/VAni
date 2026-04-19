@@ -59,8 +59,8 @@ const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
 function BearSvg({ 
   size = 90, 
   mood = "HAPPY",
-  blink = 0,
-  mouthOpen = 0 
+  blink,
+  mouthOpen 
 }: { 
   size?: number; 
   mood?: MascotMood;

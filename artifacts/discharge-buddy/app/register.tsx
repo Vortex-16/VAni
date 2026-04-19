@@ -25,7 +25,7 @@ const MUTED = "#64748b";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
-  const { setRole, setUser } = useApp();
+  const { login } = useApp();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,16 +36,33 @@ export default function RegisterScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const handleRegister = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setRole(role);
-    setUser({
-      id: Date.now().toString(),
-      name: fullName || (role === "patient" ? "John Doe" : "Mary Doe"),
-      email: email || `${role}@example.com`,
-      role,
-    });
-    router.replace("/(tabs)");
+  const handleRegister = async () => {
+    try {
+      if (!fullName || !email) {
+        alert("Please fill in all fields");
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      const res = await fetch(`${apiUrl}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name: fullName, role })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Registration failed");
+      }
+
+      const data = await res.json();
+      await login(data.user, data.token);
+      router.replace("/(tabs)");
+    } catch (err: any) {
+      console.error("Register Error", err);
+      alert(err.message || "Failed to register");
+    }
   };
 
   return (
@@ -60,7 +77,10 @@ export default function RegisterScreen() {
       >
         {/* Teal wave header */}
         <View style={[styles.header, { paddingTop: topInset + 24 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity 
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/login")} 
+            style={styles.backBtn}
+          >
             <Feather name="arrow-left" size={20} color={WHITE} />
           </TouchableOpacity>
 

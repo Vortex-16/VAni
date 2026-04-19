@@ -14,7 +14,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import { useApp } from "@/context/AppContext";
 
 const PINK = "#e91e8c";
@@ -27,7 +26,7 @@ const INPUT_BORDER = "#f8b4d9";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { setRole, setUser } = useApp();
+  const { login, setRole, setUser } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -38,16 +37,65 @@ export default function LoginScreen() {
   const topInset = Platform.OS === "web" ? 0 : insets.top;
   const bottomInset = Platform.OS === "web" ? 24 : insets.bottom;
 
-  const handleLogin = () => {
+  const handleGuestLogin = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setRole(role);
     setUser({
       id: Date.now().toString(),
-      name: email.split("@")[0] || (role === "patient" ? "John Doe" : "Mary Doe"),
-      email: email || `${role}@example.com`,
+      name: "Guest " + role,
+      email: "test@example.com",
       role,
     });
     router.replace("/(tabs)");
+  };
+
+  const handleLogin = async () => {
+    try {
+      if (!email) {
+        alert("Please enter your email");
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      const res = await fetch(`${apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Login failed");
+      }
+
+      const data = await res.json();
+      await login(data.user, data.token);
+      router.replace("/(tabs)");
+    } catch (err: any) {
+      console.error("Login Error", err);
+      alert(err.message || "Failed to connect to API backend");
+    }
+  };
+
+  const handleDevLogin = async () => {
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      const res = await fetch(`${apiUrl}/api/auth/dev-session`);
+
+      if (!res.ok) {
+        throw new Error("Dev session failed");
+      }
+
+      const data = await res.json();
+      await login(data.user, data.token);
+      router.replace("/(tabs)");
+    } catch (err: any) {
+      console.error("Dev Login Error", err);
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      alert(`Dev session failed: ${err.message}\nChecked URL: ${apiUrl}/api/auth/dev-session\nEnsure backend is running and the IP matches your network.`);
+    }
   };
 
   return (
@@ -174,12 +222,20 @@ export default function LoginScreen() {
 
           {/* Guest login */}
           <TouchableOpacity
-            onPress={handleLogin}
+            onPress={handleGuestLogin}
             style={styles.guestBtn}
             activeOpacity={0.8}
           >
-            <Text style={[styles.guestBtnText, { color: PINK }]}>GUEST LOG IN</Text>
+            <Text style={[styles.guestBtnText, { color: PINK }]}>GUEST LOG IN (OFFLINE)</Text>
           </TouchableOpacity>
+
+          {/* Developer Shortcut (Visible in Dev) */}
+          {__DEV__ && (
+            <TouchableOpacity onPress={handleDevLogin} style={styles.devBtn}>
+              <Feather name="code" size={16} color={PINK} />
+              <Text style={styles.devBtnText}>DEVELOPER QUICK START</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Sign up */}
           <View style={styles.signupRow}>
@@ -403,6 +459,25 @@ const styles = StyleSheet.create({
   signupLink: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
+  },
+  devBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: `${PINK}08`,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: `${PINK}20`,
+    borderStyle: "dashed",
+    marginTop: 8,
+  },
+  devBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: PINK,
+    letterSpacing: 1,
   },
 
   dots: {
