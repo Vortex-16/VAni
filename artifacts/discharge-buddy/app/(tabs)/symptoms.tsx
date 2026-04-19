@@ -25,7 +25,7 @@ import { SymptomLog, useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 const { width } = Dimensions.get("window");
-const PURPLE = "#7C3AED";
+const PURPLE = "#6C47FF";
 const PURPLE_LIGHT = "#EDE9FE";
 
 const COMMON_SYMPTOMS = [
@@ -215,18 +215,20 @@ export default function SymptomsScreen() {
   const severityColor = severity >= 8 ? "#EF4444" : severity >= 5 ? "#F59E0B" : "#10B981";
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8F7FF" }}>
+    <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
       {/* Header */}
       <LinearGradient
-        colors={showForm ? ["#5B21B6", "#7C3AED"] : ["#5B21B6", "#7C3AED", "#9333EA"]}
+        colors={["#4B26C8", PURPLE, "#8B5CF6"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: topInset + 20 }]}
       >
-        <View style={styles.decor} />
+        <View style={styles.decor1} />
+        <View style={styles.decor2} />
+        <View style={styles.decor3} />
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <Text style={{ fontSize: 26 }}>🩺</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <Text style={{ fontSize: 22 }}>🩺</Text>
               <Text style={styles.headerTitle}>Symptoms</Text>
             </View>
             <Text style={styles.headerSub}>{symptomLogs.length} logs · Track your recovery</Text>
@@ -275,7 +277,7 @@ export default function SymptomsScreen() {
                     borderColor: isSel ? (isDanger ? "#EF4444" : PURPLE) : "#E8E4FF",
                   }]}
                 >
-                  <Text style={{ fontSize: 14 }}>{SYMPTOM_ICONS[s] ?? "•"}</Text>
+                  <Text style={{ fontSize: 16 }}>{SYMPTOM_ICONS[s] ?? "•"}</Text>
                   <Text style={[styles.chipText, { color: isSel ? (isDanger ? "#EF4444" : PURPLE) : "#4B5563" }]}>
                     {s}
                   </Text>
@@ -392,16 +394,24 @@ export default function SymptomsScreen() {
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20, paddingBottom: 24,
-    borderBottomLeftRadius: 36, borderBottomRightRadius: 36,
+    borderBottomLeftRadius: 40, borderBottomRightRadius: 40,
     overflow: "hidden",
   },
-  decor: {
-    position: "absolute", width: 160, height: 160, borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.06)", top: -40, right: -30,
+  decor1: {
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -50,
+  },
+  decor2: {
+    position: "absolute", width: 110, height: 110, borderRadius: 55,
+    backgroundColor: "rgba(255,255,255,0.04)", bottom: -20, left: -20,
+  },
+  decor3: {
+    position: "absolute", width: 60, height: 60, borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.06)", top: 80, left: 30,
   },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
-  headerEmoji: { fontSize: 28, marginBottom: 4 },
-  headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#fff" },
+  headerEmoji: { fontSize: 22, marginBottom: 4 },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff" },
   headerSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 2 },
   logBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -424,18 +434,18 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#1E1B4B", marginBottom: 12 },
   symptomsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
   chip: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 50, borderWidth: 1.5,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 50, borderWidth: 1.5,
   },
-  chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  chipText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
 
-  severityRow: { flexDirection: "row", gap: 5 },
-  sevBtn: { flex: 1, aspectRatio: 1, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1.5 },
-  sevBtnText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  severityRow: { flexDirection: "row", gap: 6 },
+  sevBtn: { flex: 1, aspectRatio: 1, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1.5 },
+  sevBtnText: { fontSize: 14, fontFamily: "Inter_700Bold" },
 
   notesInput: {
     borderWidth: 1.5, borderColor: "#E8E4FF", borderRadius: 18, padding: 16,
-    fontSize: 15, fontFamily: "Inter_400Regular", minHeight: 90,
+    fontSize: 16, fontFamily: "Inter_400Regular", minHeight: 90,
     textAlignVertical: "top", backgroundColor: "#fff", color: "#1E1B4B",
   },
   formActions: { flexDirection: "row", gap: 12, marginTop: 24 },
@@ -443,28 +453,28 @@ const styles = StyleSheet.create({
     flex: 1, paddingVertical: 16, borderRadius: 18, alignItems: "center",
     borderWidth: 1.5, borderColor: "#E8E4FF", backgroundColor: "#fff",
   },
-  cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
+  cancelText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
   submitBtn: {
     flex: 2, flexDirection: "row", gap: 8, paddingVertical: 16,
     borderRadius: 18, alignItems: "center", justifyContent: "center",
-    backgroundColor: "#7C3AED",
+    backgroundColor: PURPLE,
   },
-  submitText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  submitText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 
   empty: { alignItems: "center", paddingTop: 40, gap: 12 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
   emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#9CA3AF", textAlign: "center" },
   startBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#7C3AED", paddingHorizontal: 24, paddingVertical: 14,
+    backgroundColor: PURPLE, paddingHorizontal: 24, paddingVertical: 14,
     borderRadius: 50, marginTop: 8,
   },
-  startBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  startBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 
   logCard: {
     backgroundColor: "#fff", borderRadius: 24, padding: 18,
     marginBottom: 12, gap: 12,
-    shadowColor: "#7C3AED", shadowOffset: { width: 0, height: 4 },
+    shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.07, shadowRadius: 12, elevation: 3,
   },
   logCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
@@ -476,11 +486,11 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "#F3F0FF", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
   },
-  symptomTagText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#7C3AED" },
+  symptomTagText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: PURPLE },
   sevBarRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   sevLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9CA3AF" },
   sevMini: { flex: 1, flexDirection: "row", gap: 3 },
   sevDot: { flex: 1, height: 7, borderRadius: 4 },
   sevNum: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E1B4B", width: 30, textAlign: "right" },
-  noteText: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic", color: "#6B7280" },
+  noteText: { fontSize: 14, fontFamily: "Inter_400Regular", fontStyle: "italic", color: "#6B7280" },
 });

@@ -15,12 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 
-import colors from "@/constants/colors";
-
-const theme = colors.light;
+const PURPLE = "#6C47FF";
 const WHITE = "#ffffff";
-const PINK = theme.primary;
-const PINK_DARK = "#fb2c67";
 
 export default function EmergencyCardScreen() {
   const insets = useSafeAreaInsets();
@@ -41,24 +37,27 @@ export default function EmergencyCardScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff1f4" }}>
+    <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
       {/* Header */}
       <LinearGradient
-        colors={[PINK_DARK, PINK]}
+        colors={["#4B26C8", PURPLE, "#8B5CF6"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: topInset + 20 }]}
       >
+        <View style={styles.decor1} />
+        <View style={styles.decor2} />
+        <View style={styles.decor3} />
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={WHITE} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerEmoji}>💖</Text>
+            <Text style={styles.headerEmoji}></Text>
             <Text style={styles.headerTitle}>Emergency Card</Text>
           </View>
           <TouchableOpacity onPress={() => editing ? handleSave() : setEditing(true)} style={styles.editBtn}>
-            <Feather name={editing ? "save" : "edit-2"} size={16} color={PINK_DARK} />
+            <Feather name={editing ? "save" : "edit-2"} size={16} color={PURPLE} />
           </TouchableOpacity>
         </View>
         <Text style={styles.headerSub}>Show this to emergency responders</Text>
@@ -69,10 +68,10 @@ export default function EmergencyCardScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Patient identity */}
-        <View style={[styles.card, styles.pinkBorder]}>
+        <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <View style={[styles.iconWrap, { backgroundColor: `${PINK}15` }]}>
-              <Feather name="user" size={18} color={PINK} />
+            <View style={[styles.iconWrap, { backgroundColor: `${PURPLE}15` }]}>
+              <Feather name="user" size={18} color={PURPLE} />
             </View>
             <Text style={styles.cardTitle}>Patient Information</Text>
           </View>
@@ -95,8 +94,8 @@ export default function EmergencyCardScreen() {
         {/* Current medicines */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <View style={[styles.iconWrap, { backgroundColor: `${PINK}15` }]}>
-              <Feather name="package" size={18} color={PINK} />
+            <View style={[styles.iconWrap, { backgroundColor: `${PURPLE}15` }]}>
+              <Feather name="package" size={18} color={PURPLE} />
             </View>
             <Text style={styles.cardTitle}>Current Medications</Text>
           </View>
@@ -112,10 +111,10 @@ export default function EmergencyCardScreen() {
         </View>
 
         {/* Emergency contact */}
-        <View style={[styles.card, styles.pinkBorder]}>
+        <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <View style={[styles.iconWrap, { backgroundColor: `${PINK_DARK}15` }]}>
-              <Feather name="phone" size={18} color={PINK_DARK} />
+            <View style={[styles.iconWrap, { backgroundColor: `${PURPLE}15` }]}>
+              <Feather name="phone" size={18} color={PURPLE} />
             </View>
             <Text style={styles.cardTitle}>Emergency Contact</Text>
           </View>
@@ -147,7 +146,7 @@ export default function EmergencyCardScreen() {
         {/* Call button */}
         <TouchableOpacity style={styles.callBtn} activeOpacity={0.85}>
           <LinearGradient
-            colors={[PINK_DARK, PINK]}
+            colors={["#4B26C8", PURPLE]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.callBtnGrad}
@@ -194,27 +193,41 @@ const rowStyles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
   editRow: { paddingVertical: 4 },
   label: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748b", flex: 1 },
-  value: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#4a0418", flex: 2, textAlign: "right" },
-  highlight: { color: PINK },
-  danger: { color: PINK_DARK },
+  value: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#1E1B4B", flex: 2, textAlign: "right" },
+  highlight: { color: PURPLE },
+  danger: { color: "#EF4444" },
   input: {
     borderWidth: 1.5,
-    borderColor: "#fecaca",
-    borderRadius: 10,
-    padding: 8,
-    fontSize: 13,
+    borderColor: "#E8E4FF",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
     fontFamily: "Inter_400Regular",
-    color: "#4a0418",
+    color: "#1E1B4B",
     marginTop: 4,
-    backgroundColor: "#fff1f4",
+    backgroundColor: "#fff",
   },
 });
 
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 8,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
+  },
+  decor1: {
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -50,
+  },
+  decor2: {
+    position: "absolute", width: 110, height: 110, borderRadius: 55,
+    backgroundColor: "rgba(255,255,255,0.04)", bottom: -20, left: -20,
+  },
+  decor3: {
+    position: "absolute", width: 60, height: 60, borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.06)", top: 80, left: 30,
   },
   headerRow: { flexDirection: "row", alignItems: "center" },
   backBtn: {
@@ -224,7 +237,7 @@ const styles = StyleSheet.create({
   },
   headerCenter: { flex: 1, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 },
   headerEmoji: { fontSize: 22 },
-  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: WHITE },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: WHITE },
   editBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: WHITE, alignItems: "center", justifyContent: "center",
@@ -235,27 +248,27 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: WHITE,
     borderRadius: 20,
-    padding: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "#fff1f4",
-    shadowColor: "#fb2c67",
+    padding: 18,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: "#E8E4FF",
+    shadowColor: PURPLE,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
-  pinkBorder: { borderColor: `${PINK}30` },
-  cardHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
-  iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  cardTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#4a0418" },
+
+  cardHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },
+  iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  cardTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
 
   medRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
   medRowBorder: { borderBottomWidth: 1, borderBottomColor: "#fff1f4" },
   medDot: { width: 10, height: 10, borderRadius: 5 },
   medInfo: { flex: 1 },
-  medName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#4a0418" },
-  medFreq: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748b" },
+  medName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#1E1B4B" },
+  medFreq: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#64748b" },
 
   callBtn: { borderRadius: 50, overflow: "hidden", marginTop: 10 },
   callBtnGrad: {
