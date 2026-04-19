@@ -190,6 +190,8 @@ interface AppContextType {
   unlockAchievement: (id: string) => void;
   login: (user: AppUser, token: string) => Promise<void>;
   logout: () => void;
+  resetOnboarding: () => void;
+  switchProvider: (provider: IDataProvider) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -278,7 +280,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const dbJournal = await dataProvider.getJournalEntries();
       setJournalEntries(dbJournal);
     } catch (err) {
+      // Graceful handling of network failures to prevent "Red Screen of Death"
+      if (err instanceof TypeError && err.message.includes("Network request failed")) {
+        console.warn("Backend server unreachable. Using local cache if available.");
+      } else {
         console.error("Failed to load generic data", err);
+      }
     }
   }
 
@@ -412,6 +419,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   };
 
+  const resetOnboarding = () => {
+    setIsOnboardedState(false);
+    saveData({ isOnboarded: false });
+  };
+
+  const switchProvider = (provider: IDataProvider) => {
+    setDataProvider(provider);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -422,7 +438,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         drugInteractions: checkInteractions(medicines),
         setRole, setUser, addMedicine, updateDoseStatus, addSymptomLog, addFollowUp,
         completeFollowUp, setOnboarded, setHapticsEnabled, triggerEmergency, setLanguage, addPrescription,
-        addJournalEntry, awardXP, unlockAchievement, login, logout,
+        addJournalEntry, awardXP, unlockAchievement, login, logout, resetOnboarding, switchProvider,
       }}
     >
       {children}

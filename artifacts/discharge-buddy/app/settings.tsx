@@ -22,7 +22,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { logout, hapticsEnabled, setHapticsEnabled } = useApp();
+  const { logout, hapticsEnabled, setHapticsEnabled, resetOnboarding } = useApp();
   const [notifications, setNotifications] = useState(true);
   const [appNotifs, setAppNotifs] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -135,6 +135,26 @@ export default function SettingsScreen() {
               <Text style={styles.rowValue}>English</Text>
               <Feather name="chevron-right" size={18} color="#94a3b8" />
             </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* App section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIcon, { backgroundColor: "#ec489920" }]}>
+              <Feather name="layers" size={20} color="#ec4899" />
+            </View>
+            <Text style={styles.sectionTitle}>App</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.row} 
+            onPress={() => {
+              resetOnboarding();
+              router.replace("/onboarding");
+            }}
+          >
+            <Text style={styles.rowLabel}>Restart Tutorial</Text>
+            <Feather name="refresh-cw" size={18} color="#94a3b8" />
           </TouchableOpacity>
         </View>
 
