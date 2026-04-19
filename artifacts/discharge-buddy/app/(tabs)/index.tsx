@@ -16,8 +16,10 @@ import {
 } from "react-native";
 import Svg, { Circle, G, Rect, Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { t } from "@/constants/translations";
 
 import { MascotBuddy } from "@/components/MascotBuddy";
+import { AnimPressable } from "@/components/AnimPressable";
 import colors from "@/constants/colors";
 import { getLevel, useApp } from "@/context/AppContext";
 import { useSidebar } from "@/context/SidebarContext";
@@ -31,34 +33,6 @@ const PURPLE_LIGHT = "#EDE9FE";
 const edgePad = Math.min(width * 0.05, 20);
 const isSmall = width < 360;
 
-// ─── AnimatedPressable ───────────────────────────────────────────────────────
-function AnimatedPressable({
-  onPress,
-  children,
-  style,
-}: {
-  onPress: () => void;
-  children: React.ReactNode;
-  style?: any;
-}) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () =>
-    Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, friction: 8, tension: 120 }).start();
-  const handlePressOut = () =>
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 6 }).start();
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
-    >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
-    </TouchableOpacity>
-  );
-}
 
 // ─── Circular Progress ───────────────────────────────────────────────────────
 function CircularProgress({ pct, size = 96 }: { pct: number; size?: number }) {
@@ -215,7 +189,7 @@ export default function HomeScreen() {
 
 // ─── Patient Dashboard ────────────────────────────────────────────────────────
 function PatientDashboard({ topInset }: { topInset: number }) {
-  const { user, todayDoses, medicines, followUps, updateDoseStatus } = useApp();
+  const { user, todayDoses, medicines, followUps, updateDoseStatus, language } = useApp();
   const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -227,6 +201,7 @@ function PatientDashboard({ topInset }: { topInset: number }) {
   const adherencePct = total > 0 ? Math.round((taken / total) * 100) : 0;
   const upcomingFollowUp = followUps.find((f) => !f.completed);
   const [showAll, setShowAll] = useState(false);
+  const [mascotTrigger, setMascotTrigger] = useState(0);
 
   // Hero fade in
   const heroFade = useRef(new Animated.Value(0)).current;
@@ -242,14 +217,14 @@ function PatientDashboard({ topInset }: { topInset: number }) {
   const riskLabel = missed >= 2 ? "High Risk" : missed === 1 ? "Moderate" : "On Track";
   const firstName = (user?.name ?? "Friend").split(" ")[0];
   const greetHour = new Date().getHours();
-  const greet = greetHour < 12 ? "Good Morning" : greetHour < 17 ? "Good Afternoon" : "Good Evening";
-
+  const greetKey = greetHour < 12 ? "morning" : greetHour < 17 ? "afternoon" : greetHour < 21 ? "evening" : "night";
+  const greet = t(greetKey, language);
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
       <StatusBar style="light" />
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset + 110 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 110 }]}
       >
         {/* ── Hero Header ── */}
         <LinearGradient
@@ -265,21 +240,21 @@ function PatientDashboard({ topInset }: { topInset: number }) {
 
           {/* Top bar */}
           <Animated.View style={[styles.headerTop, { opacity: heroFade }]}>
-            <AnimatedPressable onPress={openSidebar} style={styles.iconBtn}>
+            <AnimPressable onPress={openSidebar} style={styles.iconBtn}>
               <Feather name="menu" size={21} color="#fff" />
-            </AnimatedPressable>
+            </AnimPressable>
             <View style={styles.greetBlock}>
               <Text style={styles.greetText} numberOfLines={1}>{greet}</Text>
               <Text style={styles.nameText} numberOfLines={1}>{firstName} 👋</Text>
             </View>
-            <AnimatedPressable onPress={() => router.push("/notifications")} style={styles.iconBtn}>
+            <AnimPressable onPress={() => router.push("/notifications")} style={styles.iconBtn}>
               <Feather name="bell" size={19} color="#fff" />
               <View style={styles.notifDot} />
-            </AnimatedPressable>
+            </AnimPressable>
           </Animated.View>
 
           {/* Mascot */}
-          <MascotBuddy size={isSmall ? 76 : 84} />
+          <MascotBuddy size={isSmall ? 76 : 84} trigger={mascotTrigger} />
 
           {/* ── Stats Block ── responsive two-row layout */}
           <View style={styles.statsBlock}>
@@ -296,7 +271,7 @@ function PatientDashboard({ topInset }: { topInset: number }) {
                 <Text style={styles.dosesMain} numberOfLines={1} adjustsFontSizeToFit>
                   {taken}/{total}
                 </Text>
-                <Text style={styles.dosesLabel}>doses taken today</Text>
+                <Text style={styles.dosesLabel}>{t("takenToday", language)}</Text>
               </View>
             </View>
 
@@ -322,7 +297,7 @@ function PatientDashboard({ topInset }: { topInset: number }) {
 
         {/* ── Quick Actions ── */}
         <View style={styles.quickSection}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
+          <Text style={styles.sectionTitle}>{t("reminders", language)}</Text>
           <View style={styles.quickRow}>
             <QuickAction icon="activity" label="Symptoms" color="#EF4444" delay={0}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/symptoms" as any); }} />
@@ -337,10 +312,9 @@ function PatientDashboard({ topInset }: { topInset: number }) {
 
         {/* ── Follow-up Banner ── */}
         {upcomingFollowUp && (
-          <TouchableOpacity
+          <AnimPressable
             onPress={() => router.push("/(tabs)/followups" as any)}
             style={styles.followupCard}
-            activeOpacity={0.85}
           >
             <LinearGradient colors={["#EDE9FE", "#F5F3FF"]} style={styles.followupGrad}>
               <View style={styles.followupLeft}>
@@ -361,7 +335,7 @@ function PatientDashboard({ topInset }: { topInset: number }) {
                 <Feather name="chevron-right" size={16} color={PURPLE} />
               </View>
             </LinearGradient>
-          </TouchableOpacity>
+          </AnimPressable>
         )}
 
         {/* ── Recent Doses ── */}
@@ -394,6 +368,12 @@ function PatientDashboard({ topInset }: { topInset: number }) {
                   statusColor={statusColor}
                   statusIcon={statusIcon}
                   delay={idx * 60}
+                  onPress={() => {
+                    if (dose.status === "pending") {
+                      updateDoseStatus(dose.id, "taken");
+                      setMascotTrigger(prev => prev + 1);
+                    }
+                  }}
                 />
               );
             })
@@ -405,7 +385,7 @@ function PatientDashboard({ topInset }: { topInset: number }) {
 }
 
 // ─── Animated Dose Row ────────────────────────────────────────────────────────
-function DoseRow({ dose, med, statusColor, statusIcon, delay }: any) {
+function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -419,9 +399,11 @@ function DoseRow({ dose, med, statusColor, statusIcon, delay }: any) {
 
   return (
     <TouchableOpacity
+      onPress={onPress}
       onPressIn={() => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, friction: 8 }).start()}
       onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 6 }).start()}
       activeOpacity={1}
+      disabled={dose.status !== "pending"}
     >
       <Animated.View
         style={[
@@ -469,16 +451,16 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
           <View style={styles.decor1} />
           <View style={styles.decor2} />
           <Animated.View style={[styles.headerTop, { opacity: heroFade }]}>
-            <AnimatedPressable onPress={openSidebar} style={styles.iconBtn}>
+            <AnimPressable onPress={openSidebar} style={styles.iconBtn}>
               <Feather name="menu" size={21} color="#fff" />
-            </AnimatedPressable>
+            </AnimPressable>
             <View style={styles.greetBlock}>
               <Text style={styles.greetText}>Caregiver Mode</Text>
               <Text style={styles.nameText} numberOfLines={1}>{(user?.name ?? "Caregiver").split(" ")[0]} 💜</Text>
             </View>
-            <AnimatedPressable onPress={() => {}} style={styles.iconBtn}>
+            <AnimPressable onPress={() => {}} style={styles.iconBtn}>
               <Feather name="settings" size={19} color="#fff" />
-            </AnimatedPressable>
+            </AnimPressable>
           </Animated.View>
           <MascotBuddy size={isSmall ? 76 : 84} message="Hi! Let's keep our patient safe today! 💜" />
           <View style={styles.careStats}>
@@ -716,4 +698,5 @@ const styles = StyleSheet.create({
   patientStatus: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 2 },
   patientBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, flexShrink: 0 },
   patientBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  scrollContent: { paddingHorizontal: 0 },
 });

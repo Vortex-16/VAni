@@ -1,8 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Language } from "@/constants/translations";
 
 export type UserRole = "patient" | "caregiver" | null;
-export type Language = "en" | "hi" | "es" | "ur";
+// Language type imported from translations.ts
 
 export interface Medicine {
   id: string;

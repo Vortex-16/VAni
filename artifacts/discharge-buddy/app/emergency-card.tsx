@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import { AnimPressable } from "@/components/AnimPressable";
 
 const PURPLE = "#6C47FF";
 const WHITE = "#ffffff";
@@ -49,22 +50,22 @@ export default function EmergencyCardScreen() {
         <View style={styles.decor2} />
         <View style={styles.decor3} />
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <AnimPressable onPress={() => router.back()} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={WHITE} />
-          </TouchableOpacity>
+          </AnimPressable>
           <View style={styles.headerCenter}>
             <Text style={styles.headerEmoji}></Text>
             <Text style={styles.headerTitle}>Emergency Card</Text>
           </View>
-          <TouchableOpacity onPress={() => editing ? handleSave() : setEditing(true)} style={styles.editBtn}>
+          <AnimPressable onPress={() => editing ? handleSave() : setEditing(true)} style={styles.editBtn}>
             <Feather name={editing ? "save" : "edit-2"} size={16} color={PURPLE} />
-          </TouchableOpacity>
+          </AnimPressable>
         </View>
         <Text style={styles.headerSub}>Show this to emergency responders</Text>
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Patient identity */}
@@ -144,7 +145,7 @@ export default function EmergencyCardScreen() {
         </View>
 
         {/* Call button */}
-        <TouchableOpacity style={styles.callBtn} activeOpacity={0.85}>
+        <AnimPressable style={styles.callBtn} onPress={() => {}}>
           <LinearGradient
             colors={["#4B26C8", PURPLE]}
             start={{ x: 0, y: 0 }}
@@ -154,7 +155,7 @@ export default function EmergencyCardScreen() {
             <Feather name="phone" size={20} color={WHITE} />
             <Text style={styles.callBtnText}>Call Emergency Contact</Text>
           </LinearGradient>
-        </TouchableOpacity>
+        </AnimPressable>
 
         <Text style={styles.footerNote}>
           🔒 This information is stored only on your device and is not shared without your consent.

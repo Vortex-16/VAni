@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useSegments } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
+import { useSidebar } from "@/context/SidebarContext";
 
 const { width } = Dimensions.get("window");
 const isSmall = width < 360;
@@ -24,7 +25,7 @@ const PURPLE_LIGHT = "#EDE9FE";
 // Responsive sizes
 const TAB_ICON_SIZE = isSmall ? 20 : 22;
 const TAB_LABEL_SIZE = isSmall ? 9 : 11;
-const ICON_WRAP = isSmall ? 36 : 40;
+const ICON_WRAP = isSmall ? 38 : 42;
 const FAB_SIZE = isSmall ? 52 : 58;
 const FAB_ICON = isSmall ? 23 : 26;
 
@@ -52,11 +53,16 @@ interface FloatingTabBarProps {
   descriptors: any;
   navigation: any;
 }
-
 export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBarProps) {
   const insets = useSafeAreaInsets();
   const { hapticsEnabled } = useApp();
+  const { isOpen: isSidebarOpen } = useSidebar();
+  const segments = useSegments();
   const [fabOpen, setFabOpen] = useState(false);
+
+  // Hide if sidebar is open OR if we are in a root modal route (not in (tabs))
+  const isTabRoute = segments[0] === "(tabs)";
+  const isHidden = isSidebarOpen || !isTabRoute;
   const fabAnim = useRef(new Animated.Value(0)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const bottomPad = Platform.OS === "web" ? 16 : Math.max(insets.bottom, 8);
@@ -98,63 +104,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
   const leftRoutes = visibleRoutes.slice(0, 2);
   const rightRoutes = visibleRoutes.slice(2);
 
-  const renderTab = (item: { route: any; index: number }) => {
-    const { route, index: actualIndex } = item;
-    const { options } = descriptors[route.key];
-    const label = options.tabBarLabel ?? options.title ?? route.name;
-    const isFocused = state.index === actualIndex;
-    const tabScale = useRef(new Animated.Value(1)).current;
-    const dotOpacity = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-
-    const onPress = () => {
-      Animated.sequence([
-        Animated.spring(tabScale, { toValue: 0.82, useNativeDriver: true, friction: 8 }),
-        Animated.spring(tabScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
-      ]).start();
-      if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-      if (!isFocused && !event.defaultPrevented) {
-        navigation.navigate(route.name);
-      }
-    };
-
-    return (
-      <TouchableOpacity
-        key={route.key}
-        onPress={onPress}
-        style={styles.tabItem}
-        activeOpacity={1}
-        hitSlop={{ top: 6, bottom: 6 }}
-      >
-        <Animated.View style={{ transform: [{ scale: tabScale }], alignItems: "center" }}>
-          <View style={[
-            styles.tabIconWrap,
-            { width: ICON_WRAP, height: ICON_WRAP, borderRadius: ICON_WRAP / 2 },
-            isFocused && { backgroundColor: PURPLE_LIGHT },
-          ]}>
-            {options.tabBarIcon?.({ color: isFocused ? PURPLE : "#9CA3AF", size: TAB_ICON_SIZE })}
-          </View>
-          <Text
-            style={[
-              styles.tabLabel,
-              {
-                color: isFocused ? PURPLE : "#9CA3AF",
-                fontFamily: isFocused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: TAB_LABEL_SIZE,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {label}
-          </Text>
-          {/* Active dot indicator */}
-          {isFocused && (
-            <View style={styles.activeDot} />
-          )}
-        </Animated.View>
-      </TouchableOpacity>
-    );
-  };
+  if (isHidden) return null;
 
   return (
     <>
@@ -204,14 +154,32 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
       <View style={[styles.container, { paddingBottom: bottomPad }]} pointerEvents="box-none">
         <View style={[styles.pill, shadow("#6C47FF", 24, 8, 0.12)]}>
           <View style={styles.tabGroup}>
-            {leftRoutes.map((item: any) => renderTab(item))}
+            {leftRoutes.map((item: any) => (
+              <TabItem
+                key={item.route.key}
+                item={item}
+                state={state}
+                descriptors={descriptors}
+                navigation={navigation}
+                hapticsEnabled={hapticsEnabled}
+              />
+            ))}
           </View>
 
           {/* Center Spacer for FAB */}
           <View style={styles.fabSpacer} pointerEvents="none" />
 
           <View style={styles.tabGroup}>
-            {rightRoutes.map((item: any) => renderTab(item))}
+            {rightRoutes.map((item: any) => (
+              <TabItem
+                key={item.route.key}
+                item={item}
+                state={state}
+                descriptors={descriptors}
+                navigation={navigation}
+                hapticsEnabled={hapticsEnabled}
+              />
+            ))}
           </View>
         </View>
       </View>
@@ -234,6 +202,59 @@ export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBa
   );
 }
 
+function TabItem({ item, state, descriptors, navigation, hapticsEnabled }: any) {
+  const { route, index: actualIndex } = item;
+  const { options } = descriptors[route.key];
+  const label = options.tabBarLabel ?? options.title ?? route.name;
+  const isFocused = state.index === actualIndex;
+  const tabScale = useRef(new Animated.Value(1)).current;
+
+  const onPress = () => {
+    Animated.sequence([
+      Animated.spring(tabScale, { toValue: 0.82, useNativeDriver: true, friction: 8 }),
+      Animated.spring(tabScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
+    ]).start();
+    if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+    if (!isFocused && !event.defaultPrevented) {
+      navigation.navigate(route.name);
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.tabItem}
+      activeOpacity={1}
+      hitSlop={{ top: 6, bottom: 6 }}
+    >
+      <Animated.View style={{ transform: [{ scale: tabScale }], alignItems: "center" }}>
+        <View style={[
+          styles.tabIconWrap,
+          { width: ICON_WRAP, height: ICON_WRAP, borderRadius: 100 },
+          isFocused && { backgroundColor: PURPLE_LIGHT },
+        ]}>
+          {options.tabBarIcon?.({ color: isFocused ? PURPLE : "#9CA3AF", size: TAB_ICON_SIZE })}
+        </View>
+        <Text
+          style={[
+            styles.tabLabel,
+            {
+              color: isFocused ? PURPLE : "#9CA3AF",
+              fontFamily: isFocused ? "Inter_700Bold" : "Inter_500Medium",
+              fontSize: TAB_LABEL_SIZE,
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        {isFocused && <View style={styles.activeDot} />}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     position: "absolute", bottom: 0, left: 0, right: 0,
@@ -253,6 +274,7 @@ const styles = StyleSheet.create({
   },
   tabIconWrap: {
     alignItems: "center", justifyContent: "center",
+    overflow: "hidden",
   },
   tabLabel: {
     textAlign: "center",

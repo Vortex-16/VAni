@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { AnimPressable } from "@/components/AnimPressable";
 
 const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
@@ -70,23 +71,23 @@ export function Sidebar() {
       <Animated.View
         style={[
           styles.drawer,
-          { width: SIDEBAR_WIDTH, transform: [{ translateX }], paddingTop: topInset },
+          { width: SIDEBAR_WIDTH, transform: [{ translateX }] },
         ]}
       >
         {/* Profile header — wave-style */}
-        <View style={styles.profileHeader}>
+        <View style={[styles.profileHeader, { paddingTop: topInset + 20 }]}>
           <TouchableOpacity onPress={close} style={styles.closeBtn}>
             <Feather name="x" size={20} color={WHITE} />
           </TouchableOpacity>
 
-          <View style={styles.avatarContainer}>
+          <AnimPressable onPress={() => handleNav("/profile")} style={styles.avatarContainer}>
             <View style={styles.avatarLarge}>
               <Feather name={role === "caregiver" ? "users" : "user"} size={36} color={TEAL} />
             </View>
-            <TouchableOpacity style={styles.editBadge}>
+            <View style={styles.editBadge}>
               <Feather name="edit-2" size={11} color={WHITE} />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </AnimPressable>
 
           <Text style={styles.profileName}>{user?.name ?? "User"}</Text>
           <Text style={styles.profileRole}>{role === "caregiver" ? "Caregiver" : "Patient"}</Text>
@@ -98,30 +99,26 @@ export function Sidebar() {
         {/* Menu items */}
         <View style={styles.menuList}>
           {MENU_ITEMS.map((item, i) => (
-            <TouchableOpacity
+            <AnimPressable
               key={i}
               style={styles.menuItem}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                handleNav(item.route);
-              }}
-              activeOpacity={0.7}
+              onPress={() => handleNav(item.route)}
             >
               <View style={styles.menuIconWrapper}>
                 <Feather name={item.icon} size={18} color={TEAL} />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
               <Feather name="chevron-right" size={16} color="#94a3b8" />
-            </TouchableOpacity>
+            </AnimPressable>
           ))}
         </View>
 
         {/* Logout button */}
         <View style={[styles.logoutArea, { paddingBottom: bottomInset + 16 }]}>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+          <AnimPressable style={styles.logoutBtn} onPress={handleLogout}>
             <Feather name="log-out" size={18} color={WHITE} />
             <Text style={styles.logoutText}>Log out</Text>
-          </TouchableOpacity>
+          </AnimPressable>
         </View>
       </Animated.View>
     </View>
