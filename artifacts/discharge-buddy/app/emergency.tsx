@@ -6,6 +6,7 @@ import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmergencyButton } from "@/components/EmergencyButton";
+import { AnimPressable } from "@/components/AnimPressable";
 import { useApp } from "@/context/AppContext";
 
 const PURPLE = "#6C47FF";
@@ -49,9 +50,9 @@ export default function EmergencyScreen() {
         <View style={styles.decor2} />
         <View style={styles.decor3} />
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.backBtn}>
+          <AnimPressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={WHITE} />
-          </TouchableOpacity>
+          </AnimPressable>
           <Text style={styles.headerTitle}>Emergency</Text>
           <View style={{ width: 38 }} />
         </View>
@@ -59,7 +60,7 @@ export default function EmergencyScreen() {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.emergencyCard, { backgroundColor: `${DESTRUCTIVE}10`, borderColor: `${DESTRUCTIVE}40` }]}>
@@ -87,9 +88,9 @@ export default function EmergencyScreen() {
                 <Text style={[styles.contactLabel, { color: MUTED }]}>{c.label}</Text>
                 <Text style={[styles.contactNumber, { color: FOREGROUND }]}>{c.number}</Text>
               </View>
-              <TouchableOpacity style={[styles.callBtn, { backgroundColor: `${SUCCESS}15` }]}>
+              <AnimPressable style={[styles.callBtn, { backgroundColor: `${SUCCESS}15` }]} onPress={() => {}}>
                 <Feather name="phone" size={16} color={SUCCESS} />
-              </TouchableOpacity>
+              </AnimPressable>
             </View>
           ))}
         </View>

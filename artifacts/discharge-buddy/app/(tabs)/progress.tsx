@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ALL_ACHIEVEMENTS, getLevel, useApp } from "@/context/AppContext";
+import { AnimPressable } from "@/components/AnimPressable";
 
 const PINK = "#e91e8c";
 const PURPLE = "#6C47FF";
@@ -104,12 +105,12 @@ function StreakCard({ streak }: { streak: number }) {
       style={streakStyles.card}
     >
       <View style={streakStyles.decor} />
-      <TouchableOpacity onPress={pulse} activeOpacity={0.9} style={streakStyles.content}>
+      <AnimPressable onPress={pulse} style={streakStyles.content}>
         <Animated.Text style={[streakStyles.fire, { transform: [{ scale }] }]}>🔥</Animated.Text>
         <Text style={streakStyles.number}>{streak}</Text>
         <Text style={streakStyles.label}>Day Streak</Text>
         <Text style={streakStyles.sub}>Tap to celebrate!</Text>
-      </TouchableOpacity>
+      </AnimPressable>
       <View style={streakStyles.weekRow}>
         {weeks.map((w, i) => (
           <View key={i} style={[streakStyles.dayDot, w.active && streakStyles.dayDotActive]}>
@@ -292,7 +293,7 @@ export default function ProgressScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Streak */}

@@ -4,88 +4,92 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Dimensions,
-  Image,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
 } from "react-native";
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import Animated, { 
+  FadeIn, 
+  SlideInDown, 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withRepeat, 
+  withSequence, 
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Path, Rect } from "react-native-svg";
 
 import { Medicine, useApp } from "@/context/AppContext";
-import { useColors } from "@/hooks/useColors";
 
 const { width, height } = Dimensions.get("window");
-const isSmall = width < 360;
+const PURPLE = "#A855F7";
 
-const MEDICINE_COLORS = ["#0891b2", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
-
-const MOCK_EXTRACTED: Partial<Medicine>[] = [
-  {
-    name: "Amlodipine",
-    dosage: "5mg",
-    frequency: "Once daily",
-    times: ["08:00"],
-    instructions: "Take once daily for blood pressure control. May cause ankle swelling.",
-    simplifiedInstructions: "Take this pill every morning. It controls blood pressure. Tell doctor if legs swell.",
-  },
-  {
-    name: "Omeprazole",
-    dosage: "20mg",
-    frequency: "Once daily",
-    times: ["07:00"],
-    instructions: "Take 30 minutes before breakfast for stomach protection.",
-    simplifiedInstructions: "Take this capsule 30 minutes before breakfast. It protects your stomach.",
-  },
-];
+const MOCK_RESULT = {
+  name: "Metformin 500mg",
+  dosage: "1 Tablet (Twice Daily)",
+  refills: "2",
+  confidence: "High"
+};
 
 export default function ScanScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addMedicine, addPrescription } = useApp();
+  const { addMedicine } = useApp();
 
   const [permission, requestPermission] = useCameraPermissions();
-  const [image, setImage] = useState<string | null>(null);
-  const [extracted, setExtracted] = useState<Partial<Medicine>[] | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [flashMode, setFlashMode] = useState<"on" | "off" | "auto">("off");
+  const [isScanning, setIsScanning] = useState(true);
+  const [showResult, setShowResult] = useState(false);
+  const [flashMode, setFlashMode] = useState<"on" | "off">("off");
+  const [confidence, setConfidence] = useState(0);
 
-  const topInset = Platform.OS === "web" ? 67 : Math.max(insets.top, 20);
-  const bottomInset = Platform.OS === "web" ? 34 : Math.max(insets.bottom, 20);
+  const topInset = Platform.OS === "web" ? 20 : insets.top;
 
-  // Viewfinder Animation
-  const cornerAnim = useSharedValue(0);
+  // Scanning progress simulation
   useEffect(() => {
-    cornerAnim.value = withRepeat(
+    if (isScanning) {
+      let interval = setInterval(() => {
+        setConfidence(prev => {
+          if (prev >= 96) {
+            clearInterval(interval);
+            return 96;
+          }
+          return prev + Math.floor(Math.random() * 5);
+        });
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [isScanning]);
+
+  // Viewfinder pulse animation
+  const glowOpacity = useSharedValue(0.4);
+  useEffect(() => {
+    glowOpacity.value = withRepeat(
       withSequence(
-        withTiming(4, { duration: 800 }),
-        withTiming(0, { duration: 800 })
+        withTiming(1, { duration: 1000 }),
+        withTiming(0.4, { duration: 1000 })
       ),
       -1,
       true
     );
   }, []);
 
-  const vfStyle = useAnimatedStyle(() => ({
-    padding: cornerAnim.value,
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
   }));
 
-  if (!permission) {
-    return <View />;
-  }
+  if (!permission) return <View />;
 
-  if (!permission.granted && !image) {
+  if (!permission.granted) {
     return (
-      <View style={[styles.container, { backgroundColor: "#1e1b4b", justifyContent: "center", alignItems: "center" }]}>
-        <Text style={{ color: "#fff", marginBottom: 20 }}>We need your permission to show the camera</Text>
+      <View style={[styles.container, { backgroundColor: "#000", justifyContent: "center", alignItems: "center" }]}>
+        <Text style={{ color: "#fff", marginBottom: 20 }}>Camera permission needed</Text>
         <TouchableOpacity style={styles.allowBtn} onPress={requestPermission}>
           <Text style={{ color: "#fff", fontWeight: "600" }}>Allow Camera</Text>
         </TouchableOpacity>
@@ -93,263 +97,265 @@ export default function ScanScreen() {
     );
   }
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
+  const handleCapture = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsScanning(false);
+    setTimeout(() => {
+      setShowResult(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }, 800);
+  };
+
+  const handleConfirm = () => {
+    addMedicine({
+      id: Date.now().toString(),
+      name: MOCK_RESULT.name,
+      dosage: MOCK_RESULT.dosage,
+      frequency: "Twice daily",
+      times: ["08:00", "20:00"],
+      instructions: "Take with food.",
+      simplifiedInstructions: "Take this pill with breakfast and dinner.",
+      startDate: new Date().toISOString(),
+      color: PURPLE,
     });
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-      processImage(result.assets[0].uri);
-    }
-  };
-
-  const takePhoto = async () => {
-    // In a real app we'd use cameraRef.current.takePictureAsync()
-    // but since we are mocking extraction anyway we can just mock capture
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setImage("preview"); // Mock active image state
-    processImage("mock_captured_uri");
-  };
-
-  const processImage = async (uri: string) => {
-    setProcessing(true);
-    setExtracted(null);
-    await addPrescription(uri);
-    await new Promise((r) => setTimeout(r, 1500));
-    setExtracted(MOCK_EXTRACTED);
-    setProcessing(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  const handleAddAll = () => {
-    if (!extracted) return;
-    extracted.forEach((med, i) => {
-      addMedicine({
-        id: `${Date.now()}_${i}`,
-        name: med.name ?? "Unknown",
-        dosage: med.dosage ?? "",
-        frequency: med.frequency ?? "",
-        times: med.times ?? ["08:00"],
-        instructions: med.instructions ?? "",
-        simplifiedInstructions: med.simplifiedInstructions ?? "",
-        startDate: new Date().toISOString(),
-        color: MEDICINE_COLORS[i % MEDICINE_COLORS.length],
-      });
-    });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
 
-  if (image) {
-    return (
-      <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={{ paddingTop: topInset + 12, paddingBottom: bottomInset + 40, paddingHorizontal: 16 }}
-      >
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="x" size={24} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Results</Text>
-          <View style={{ width: 24 }} />
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <CameraView style={StyleSheet.absoluteFill} facing="back" flash={flashMode} />
+      
+      {/* Immersive Overlay */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.4)" }]} />
+
+      {/* FIXED Header: Clearer spacing and no overlap */}
+      <View style={[styles.header, { top: topInset + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <Feather name="chevron-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerTitleWrap}>
+            <Text style={styles.headerTitle}>PRESCRIPTION SCANNER</Text>
         </View>
 
-        {processing ? (
-          <Animated.View entering={FadeIn} style={styles.processingBox}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.processingText, { color: colors.foreground }]}>Analyzing Scan...</Text>
-            <Text style={[styles.processingSubtext, { color: colors.mutedForeground }]}>
-              Extracting your medicines via AI
-            </Text>
-          </Animated.View>
-        ) : extracted ? (
-          <Animated.View entering={FadeIn} style={styles.extractedSection}>
-            <View style={styles.extractedHeader}>
-              <Feather name="check-circle" size={20} color={colors.success} />
-              <Text style={[styles.extractedTitle, { color: colors.foreground }]}>
-                {extracted.length} Medicines Found
-              </Text>
-            </View>
-
-            {extracted.map((med, i) => (
-              <View key={i} style={[styles.medExtractCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: MEDICINE_COLORS[i % MEDICINE_COLORS.length] }]}>
-                <Text style={[styles.medExtractName, { color: colors.foreground }]}>{med.name}</Text>
-                <Text style={[styles.medExtractDosage, { color: colors.mutedForeground }]}>
-                  {med.dosage} · {med.frequency}
-                </Text>
-                <Text style={[styles.medExtractInstructions, { color: colors.mutedForeground }]}>
-                  {med.simplifiedInstructions}
-                </Text>
-              </View>
-            ))}
-
-            <TouchableOpacity onPress={handleAddAll} style={[styles.addAllBtn, { backgroundColor: colors.primary }]}>
-              <Feather name="plus-circle" size={18} color="#fff" />
-              <Text style={styles.addAllText}>Add All to Schedule</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => { setImage(null); setExtracted(null); }} style={[styles.retryBtn, { borderColor: colors.border }]}>
-              <Text style={[styles.retryText, { color: colors.foreground }]}>Scan Another</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        ) : null}
-      </ScrollView>
-    );
-  }
-
-  return (
-    <View style={styles.cameraContainer}>
-      <CameraView style={StyleSheet.absoluteFill} facing="back" flash={flashMode as "on" | "off"} />
-      
-      {/* Dark tint overlay for premium feel */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.3)" }]} />
-
-      {/* Top Controls Pill */}
-      <View style={[styles.topControlsWrap, { top: topInset }]}>
-        <BlurView intensity={30} tint="dark" style={styles.pillGlass}>
-          <TouchableOpacity style={styles.pillItem}>
-            <Text style={styles.pillItemText}>HD</Text>
-            <Text style={styles.pillItemSub}>Quality</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pillItem}>
-            <Feather name="grid" size={16} color="#fff" />
-            <Text style={styles.pillItemSub}>Grid</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pillItem} onPress={() => {
-            Haptics.selectionAsync();
-            setFlashMode(f => f === "off" ? "on" : "off");
-          }}>
-            <Feather name="zap" size={16} color={flashMode === "on" ? "#EAB308" : "#fff"} />
-            <Text style={styles.pillItemSub}>Flash</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pillItem}>
-            <Feather name="sliders" size={16} color="#fff" />
-            <Text style={styles.pillItemSub}>Filters</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pillItem} onPress={() => router.back()}>
-            <Feather name="x" size={18} color="#fff" />
-            <Text style={styles.pillItemSub}>Close</Text>
-          </TouchableOpacity>
-        </BlurView>
+        <View style={styles.headerRight}>
+            <BlurView intensity={20} tint="dark" style={styles.topControlPill}>
+                <TouchableOpacity onPress={() => setFlashMode(f => f === "on" ? "off" : "on")} style={styles.topControlItem}>
+                    <Feather name="zap" size={16} color={flashMode === "on" ? "#FDE047" : "#fff"} />
+                </TouchableOpacity>
+                <View style={styles.topControlDivider} />
+                <TouchableOpacity style={styles.topControlItem}>
+                    <Feather name="mic-off" size={16} color="#fff" />
+                </TouchableOpacity>
+            </BlurView>
+        </View>
       </View>
 
-      {/* Viewfinder Crop Outline */}
-      <View style={styles.viewfinderContainer} pointerEvents="none">
-        <Animated.View style={[styles.viewfinderBox, vfStyle]}>
-          <Svg width="100%" height="100%" viewBox="0 0 300 400">
-            {/* Top Left */}
-            <Path d="M 0 40 L 0 0 L 40 0" stroke="#FDE047" strokeWidth="4" fill="none" strokeLinejoin="round" />
-            {/* Top Right */}
-            <Path d="M 260 0 L 300 0 L 300 40" stroke="#FDE047" strokeWidth="4" fill="none" strokeLinejoin="round" />
-            {/* Bottom Left */}
-            <Path d="M 0 360 L 0 400 L 40 400" stroke="#FDE047" strokeWidth="4" fill="none" strokeLinejoin="round" />
-            {/* Bottom Right */}
-            <Path d="M 300 360 L 300 400 L 260 400" stroke="#FDE047" strokeWidth="4" fill="none" strokeLinejoin="round" />
-          </Svg>
+      {/* Scanning status */}
+      {!showResult && (
+        <View style={[styles.statusLine, { top: topInset + 80 }]}>
+            <Text style={styles.scanningText}>SCANNING...</Text>
+        </View>
+      )}
+
+      {/* NEW: Right Vertical Control Pill (from feedback image) */}
+      {!showResult && (
+        <View style={styles.rightVerticalControls}>
+            <BlurView intensity={30} tint="dark" style={styles.verticalPill}>
+                <TouchableOpacity style={styles.verticalItem}>
+                    <Feather name="refresh-cw" size={18} color="#fff" />
+                </TouchableOpacity>
+                <View style={styles.verticalDivider} />
+                <TouchableOpacity style={styles.verticalItem}>
+                    <Feather name="more-horizontal" size={18} color="#fff" />
+                </TouchableOpacity>
+            </BlurView>
+        </View>
+      )}
+
+      {/* Viewfinder Frame */}
+      <View style={styles.viewfinderWrap} pointerEvents="none">
+        <Animated.View style={[styles.viewfinder, glowStyle]}>
+            <View style={[styles.corner, styles.tl]} />
+            <View style={[styles.corner, styles.tr]} />
+            <View style={[styles.corner, styles.bl]} />
+            <View style={[styles.corner, styles.br]} />
+
+            {/* Glowing Text Detection Boxes */}
+            {isScanning && (
+                <>
+                    <Animated.View entering={FadeIn.delay(200)} style={[styles.detectionBox, { top: "25%", left: "55%", width: "40%", height: 20 }]} />
+                    <Animated.View entering={FadeIn.delay(400)} style={[styles.detectionBox, { top: "45%", left: "10%", width: "50%", height: 22 }]} />
+                    <Animated.View entering={FadeIn.delay(600)} style={[styles.detectionBox, { top: "52%", left: "10%", width: "45%", height: 20 }]} />
+                </>
+            )}
+
+            {!showResult && (
+                <Text style={styles.confidenceText}>Confidence: {confidence}%</Text>
+            )}
         </Animated.View>
       </View>
 
-      {/* Bottom Actions Pill */}
-      <View style={[styles.bottomControlsWrap, { bottom: bottomInset + 20 }]}>
-        <BlurView intensity={30} tint="dark" style={styles.bottomPill}>
-          <TouchableOpacity style={styles.bottomSideBtn} onPress={pickImage}>
-            <Feather name="image" size={20} color="#fff" />
-            <Text style={styles.bottomSideText}>Gallery</Text>
-          </TouchableOpacity>
+      {/* Shutter Button */}
+      {!showResult && (
+        <View style={[styles.footer, { bottom: insets.bottom + 40 }]}>
+            <TouchableOpacity style={styles.captureBtn} onPress={handleCapture}>
+                <View style={styles.captureInner} />
+            </TouchableOpacity>
+        </View>
+      )}
 
-          <TouchableOpacity style={styles.shutterBtnOuter} onPress={takePhoto} activeOpacity={0.8}>
-            <View style={styles.shutterBtnInner}>
-              <Feather name="camera" size={24} color="#1E1B4B" />
+      {/* Result Card */}
+      {showResult && (
+        <Animated.View 
+            entering={SlideInDown.springify().damping(20)} 
+            style={[styles.resultSheet, { paddingBottom: insets.bottom + 20 }]}
+        >
+            <View style={styles.sheetHandle} />
+            
+            <View style={styles.resultHeader}>
+                <View style={styles.medIconWrap}>
+                    <Feather name="package" size={20} color="#fff" />
+                </View>
+                <Text style={styles.resultTitle}>EXTRACTED MEDICATION</Text>
             </View>
-          </TouchableOpacity>
 
-          <TouchableOpacity style={styles.bottomSideBtn}>
-            <Text style={styles.bottomSideLabelText}>DOC</Text>
-            <Text style={styles.bottomSideText}>Presets</Text>
-          </TouchableOpacity>
-        </BlurView>
-      </View>
+            <View style={styles.resultBody}>
+                <DetailRow label="Medicine" value={MOCK_RESULT.name} />
+                <DetailRow label="Dosage" value={MOCK_RESULT.dosage} />
+                <DetailRow label="Refills" value={MOCK_RESULT.refills} />
+                <DetailRow label="Confidence" value={MOCK_RESULT.confidence} isHigh />
+            </View>
+
+            <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+                <LinearGradient
+                    colors={[PURPLE, "#8B5CF6"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.btnGradient}
+                >
+                    <Feather name="maximize" size={20} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.confirmText}>CONFIRM</Text>
+                </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.editBtn} onPress={() => setShowResult(false)}>
+                <Text style={styles.editText}>EDIT/RESYNC</Text>
+            </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
 
+function DetailRow({ label, value, isHigh }: { label: string; value: string; isHigh?: boolean }) {
+    return (
+        <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>{label}: </Text>
+            <Text style={[styles.detailValue, isHigh && { color: "#fff" }]}>{value}</Text>
+        </View>
+    );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 },
-  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  allowBtn: { backgroundColor: "#6C47FF", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  container: { flex: 1, backgroundColor: "#000" },
   
-  // Camera Layout
-  cameraContainer: { flex: 1, backgroundColor: "#000" },
-  topControlsWrap: { position: "absolute", left: 0, right: 0, alignItems: "center" },
-  pillGlass: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(0,0,0,0.4)",
-    borderRadius: 50,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    width: "88%",
-    maxWidth: 400,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+  // Header with correct spacing
+  header: { 
+    position: "absolute", left: 0, right: 0, 
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 16, zIndex: 10 
   },
-  pillItem: { alignItems: "center", justifyContent: "center", gap: 3 },
-  pillItemText: { color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" },
-  pillItemSub: { color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Inter_500Medium" },
-
-  // ViewFinder
-  viewfinderContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
-  viewfinderBox: { width: "75%", height: "55%", maxWidth: 320, maxHeight: 450 },
-
-  // Bottom Pill
-  bottomControlsWrap: { position: "absolute", left: 0, right: 0, alignItems: "center" },
-  bottomPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 50,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    width: "82%",
-    maxWidth: 380,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  bottomSideBtn: { alignItems: "center", justifyContent: "center", gap: 4, flex: 1 },
-  bottomSideText: { color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: "Inter_500Medium" },
-  bottomSideLabelText: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold" },
+  headerTitleWrap: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "#fff", fontSize: 13, fontWeight: "800", letterSpacing: 0.5 },
+  headerRight: { minWidth: 40, alignItems: "flex-end" },
   
-  shutterBtnOuter: {
-    width: 68, height: 68, borderRadius: 34,
-    borderWidth: 3, borderColor: "#FDE047",
-    padding: 3,
-    alignItems: "center", justifyContent: "center",
+  iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  
+  topControlPill: { 
+    flexDirection: "row", alignItems: "center", 
+    backgroundColor: "rgba(255,255,255,0.1)", 
+    borderRadius: 20, padding: 4 
   },
-  shutterBtnInner: {
-    flex: 1, width: "100%", borderRadius: 50,
-    backgroundColor: "#FDE047",
-    alignItems: "center", justifyContent: "center",
+  topControlItem: { padding: 6 },
+  topControlDivider: { width: 1, height: 16, backgroundColor: "rgba(255,255,255,0.2)" },
+
+  statusLine: { position: "absolute", left: 0, right: 0, alignItems: "center", zIndex: 5 },
+  scanningText: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "600", letterSpacing: 2 },
+
+  // Right vertical controls from image
+  rightVerticalControls: { position: "absolute", right: 16, top: height * 0.4, zIndex: 10 },
+  verticalPill: { 
+    backgroundColor: "rgba(255,255,255,0.1)", 
+    borderRadius: 24, paddingVertical: 8, paddingHorizontal: 4,
+    alignItems: "center", gap: 8,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)"
+  },
+  verticalItem: { padding: 10 },
+  verticalDivider: { width: 16, height: 1, backgroundColor: "rgba(255,255,255,0.15)" },
+
+  viewfinderWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  viewfinder: { 
+    width: width * 0.82, height: height * 0.48, 
+    position: "relative"
+  },
+  corner: { position: "absolute", width: 44, height: 44, borderColor: PURPLE, borderWidth: 4 },
+  tl: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 28 },
+  tr: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 28 },
+  bl: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 28 },
+  br: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 28 },
+  
+  detectionBox: { 
+    position: "absolute", backgroundColor: "rgba(168, 85, 247, 0.15)", 
+    borderRadius: 6, borderWidth: 1, borderColor: "rgba(168, 85, 247, 0.5)",
+    shadowColor: PURPLE, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2
+  },
+  confidenceText: { 
+    position: "absolute", bottom: -36, right: 0, 
+    color: "#fff", fontSize: 12, fontWeight: "600", opacity: 0.7 
   },
 
-  // Results Styles
-  processingBox: { alignItems: "center", padding: 40, gap: 14, marginTop: "20%" },
-  processingText: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
-  processingSubtext: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  extractedSection: { gap: 14 },
-  extractedHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  extractedTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  medExtractCard: { padding: 16, borderRadius: 16, borderWidth: 1, borderLeftWidth: 4, gap: 6 },
-  medExtractName: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  medExtractDosage: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  medExtractInstructions: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  addAllBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 16, marginTop: 10 },
-  addAllText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  retryBtn: { paddingVertical: 16, borderRadius: 16, alignItems: "center", borderWidth: 1 },
-  retryText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  footer: { position: "absolute", left: 0, right: 0, alignItems: "center" },
+  captureBtn: { 
+    width: 80, height: 80, borderRadius: 40, borderWidth: 4, borderColor: "#fff", 
+    padding: 6, alignItems: "center", justifyContent: "center" 
+  },
+  captureInner: { flex: 1, width: "100%", borderRadius: 36, backgroundColor: "#fff" },
+
+  resultSheet: { 
+    position: "absolute", bottom: 0, left: 0, right: 0, 
+    backgroundColor: "#0D0D0D", borderTopLeftRadius: 36, borderTopRightRadius: 36,
+    paddingHorizontal: 24, paddingTop: 12,
+    shadowColor: PURPLE, shadowOffset: { width: 0, height: -12 },
+    shadowOpacity: 0.4, shadowRadius: 24, elevation: 15
+  },
+  sheetHandle: { 
+    width: 44, height: 4, backgroundColor: "rgba(255,255,255,0.2)", 
+    borderRadius: 2, alignSelf: "center", marginBottom: 20 
+  },
+  resultHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 },
+  medIconWrap: { 
+    width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.1)", 
+    alignItems: "center", justifyContent: "center" 
+  },
+  resultTitle: { color: "#fff", fontSize: 13, fontWeight: "800", letterSpacing: 0.5 },
+  resultBody: { gap: 10, marginBottom: 24 },
+  detailRow: { flexDirection: "row", alignItems: "center" },
+  detailLabel: { color: "rgba(255,255,255,0.45)", fontSize: 15, fontWeight: "600" },
+  detailValue: { color: "rgba(255,255,255,0.95)", fontSize: 15, fontWeight: "600" },
+
+  confirmBtn: { width: "100%", borderRadius: 18, overflow: "hidden", marginBottom: 12 },
+  btnGradient: { 
+    flexDirection: "row", alignItems: "center", justifyContent: "center", 
+    paddingVertical: 18 
+  },
+  confirmText: { color: "#fff", fontSize: 16, fontWeight: "800", letterSpacing: 1 },
+  editBtn: { 
+    width: "100%", paddingVertical: 18, borderRadius: 18, 
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center"
+  },
+  editText: { color: "rgba(255,255,255,0.5)", fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
+  allowBtn: { backgroundColor: PURPLE, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
 });

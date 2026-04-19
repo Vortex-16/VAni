@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { JournalEntry, useApp } from "@/context/AppContext";
+import { AnimPressable } from "@/components/AnimPressable";
 
 const PURPLE = "#6C47FF";
 const PINK = "#e91e8c";
@@ -86,16 +87,16 @@ export default function JournalScreen() {
         <View style={styles.decor1} />
         <View style={styles.decor2} />
         <View style={styles.decor3} />
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <AnimPressable onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={WHITE} />
-        </TouchableOpacity>
+        </AnimPressable>
         <Text style={styles.headerTitle}>Recovery Journal</Text>
         <Text style={styles.headerSub}>Your daily reflections</Text>
       </LinearGradient>
 
       {showForm ? (
         <ScrollView
-          contentContainerStyle={styles.formContent}
+          contentContainerStyle={[styles.formContent, { paddingBottom: insets.bottom + 120 }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>
@@ -106,14 +107,14 @@ export default function JournalScreen() {
             <Text style={styles.label}>How do you feel?</Text>
             <View style={styles.emojiRow}>
               {MOODS.map((m) => (
-                <TouchableOpacity
+                <AnimPressable
                   key={m.value}
                   onPress={() => { setMood(m.value); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                   style={[styles.emojiBtn, mood === m.value && { backgroundColor: `${m.color}20`, borderColor: m.color }]}
                 >
                   <Text style={styles.emojiChar}>{m.emoji}</Text>
                   <Text style={[styles.emojiLabel, { color: mood === m.value ? m.color : "#94a3b8" }]}>{m.label}</Text>
-                </TouchableOpacity>
+                </AnimPressable>
               ))}
             </View>
 
@@ -121,14 +122,14 @@ export default function JournalScreen() {
             <Text style={styles.label}>Energy level?</Text>
             <View style={styles.emojiRow}>
               {ENERGY_LEVELS.map((e) => (
-                <TouchableOpacity
+                <AnimPressable
                   key={e.value}
                   onPress={() => { setEnergy(e.value); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                   style={[styles.emojiBtn, energy === e.value && { backgroundColor: `${PURPLE}20`, borderColor: PURPLE }]}
                 >
                   <Text style={styles.emojiChar}>{e.emoji}</Text>
                   <Text style={[styles.emojiLabel, { color: energy === e.value ? PURPLE : "#94a3b8" }]}>{e.label}</Text>
-                </TouchableOpacity>
+                </AnimPressable>
               ))}
             </View>
 
@@ -145,10 +146,7 @@ export default function JournalScreen() {
               textAlignVertical="top"
             />
 
-            <TouchableOpacity
-              onPress={handleSave}
-              activeOpacity={0.85}
-            >
+            <AnimPressable onPress={handleSave}>
               <LinearGradient
                 colors={[PURPLE, PINK]}
                 start={{ x: 0, y: 0 }}
@@ -158,23 +156,20 @@ export default function JournalScreen() {
                 <Feather name="save" size={16} color={WHITE} />
                 <Text style={styles.saveBtnText}>Save Entry  +20 XP</Text>
               </LinearGradient>
-            </TouchableOpacity>
+            </AnimPressable>
 
-            <TouchableOpacity onPress={() => setShowForm(false)} style={styles.cancelBtn}>
+            <AnimPressable onPress={() => setShowForm(false)} style={styles.cancelBtn}>
               <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
+            </AnimPressable>
           </View>
         </ScrollView>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 120 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* Write today's entry CTA */}
-          <TouchableOpacity
-            onPress={() => setShowForm(true)}
-            activeOpacity={0.9}
-          >
+          <AnimPressable onPress={() => setShowForm(true)}>
             <LinearGradient
               colors={[`${PURPLE}15`, `${PINK}15`]}
               style={styles.ctaCard}
@@ -188,7 +183,7 @@ export default function JournalScreen() {
                 <Feather name="chevron-right" size={20} color={PURPLE} />
               </View>
             </LinearGradient>
-          </TouchableOpacity>
+          </AnimPressable>
 
           {/* Previous entries */}
           {journalEntries.length === 0 ? (

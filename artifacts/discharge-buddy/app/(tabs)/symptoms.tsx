@@ -21,6 +21,7 @@ import Svg, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RiskBanner } from "@/components/RiskBanner";
+import { AnimPressable } from "@/components/AnimPressable";
 import { SymptomLog, useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -50,26 +51,14 @@ const SYMPTOM_ICONS: Record<string, string> = {
   "Confusion": "😵",
 };
 
-function AnimPressable({ onPress, children, style }: { onPress: () => void; children: React.ReactNode; style?: any }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      onPressIn={() => Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, friction: 8 }).start()}
-      onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 5 }).start()}
-      activeOpacity={1}
-    >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
-    </TouchableOpacity>
-  );
-}
 
 function TrendChart({ logs }: { logs: SymptomLog[] }) {
   const chartW = width - 32;
   const chartH = 130;
-  const paddingLeft = 30;
+  const paddingLeft = 32;
   const paddingBottom = 26;
-  const plotW = chartW - paddingLeft - 10;
+  const paddingRight = 30; // Increased to prevent labels cutting off on right
+  const plotW = chartW - paddingLeft - paddingRight;
   const plotH = chartH - paddingBottom - 10;
 
   const days: { label: string; severity: number | null }[] = [];
@@ -127,7 +116,7 @@ function TrendChart({ logs }: { logs: SymptomLog[] }) {
           {[2, 5, 8].map((v) => {
             const y = 10 + plotH - (v / 10) * plotH;
             return (
-              <Line key={v} x1={paddingLeft} y1={y} x2={chartW - 10} y2={y} stroke="#E8E4FF" strokeWidth={1} />
+              <Line key={v} x1={paddingLeft} y1={y} x2={chartW - paddingRight} y2={y} stroke="#E8E4FF" strokeWidth={1} />
             );
           })}
           {[2, 5, 8].map((v) => {
@@ -249,7 +238,7 @@ export default function SymptomsScreen() {
       {showForm ? (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: insets.bottom + 120 }}
           showsVerticalScrollIndicator={false}
         >
           {/* Severity preview */}
@@ -330,7 +319,7 @@ export default function SymptomsScreen() {
       ) : (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: insets.bottom + 120 }}
           showsVerticalScrollIndicator={false}
         >
           <TrendChart logs={symptomLogs} />
@@ -378,7 +367,7 @@ export default function SymptomsScreen() {
                         }]} />
                       ))}
                     </View>
-                    <Text style={styles.sevNum}>{log.severity}/10</Text>
+                    <Text style={styles.sevNum} numberOfLines={1}>{log.severity}/10</Text>
                   </View>
                   {log.notes ? <Text style={styles.noteText}>"{log.notes}"</Text> : null}
                 </View>
@@ -487,10 +476,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F0FF", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
   },
   symptomTagText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: PURPLE },
-  sevBarRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sevLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9CA3AF" },
-  sevMini: { flex: 1, flexDirection: "row", gap: 3 },
-  sevDot: { flex: 1, height: 7, borderRadius: 4 },
-  sevNum: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E1B4B", width: 30, textAlign: "right" },
+  sevBarRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
+  sevLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#6B7280" },
+  sevMini: { flex: 1, flexDirection: "row", gap: 2, marginHorizontal: 4 },
+  sevDot: { flex: 1, height: 6, borderRadius: 3 },
+  sevNum: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E1B4B", width: 40, textAlign: "right" },
   noteText: { fontSize: 14, fontFamily: "Inter_400Regular", fontStyle: "italic", color: "#6B7280" },
 });

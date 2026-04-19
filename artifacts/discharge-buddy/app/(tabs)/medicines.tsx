@@ -15,6 +15,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MedicineCard } from "@/components/MedicineCard";
+import { AnimPressable } from "@/components/AnimPressable";
+import { MascotBuddy } from "@/components/MascotBuddy";
 import { Medicine, useApp } from "@/context/AppContext";
 
 const PURPLE = "#6C47FF";
@@ -38,29 +40,10 @@ function computeRefillDays(med: Medicine): number {
 }
 
 function AnimatedTab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const scale = useRef(new Animated.Value(1)).current;
   return (
-    <TouchableOpacity
-      onPress={() => {
-        Animated.sequence([
-          Animated.spring(scale, { toValue: 0.92, useNativeDriver: true, friction: 8 }),
-          Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 5 }),
-        ]).start();
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-      activeOpacity={1}
-    >
-      <Animated.View
-        style={[
-          tabStyles.btn,
-          active && tabStyles.btnActive,
-          { transform: [{ scale }] },
-        ]}
-      >
-        <Text style={[tabStyles.text, active && tabStyles.textActive]}>{label}</Text>
-      </Animated.View>
-    </TouchableOpacity>
+    <AnimPressable onPress={onPress} style={[tabStyles.btn, active && tabStyles.btnActive]}>
+      <Text style={[tabStyles.text, active && tabStyles.textActive]}>{label}</Text>
+    </AnimPressable>
   );
 }
 
@@ -76,34 +59,27 @@ function RefillCard({ med }: { med: Medicine }) {
   const total = med.totalPills ?? 30;
   const usedPct = Math.min(1, Math.max(0, 1 - (days * med.times.length) / total));
   const color = days <= 7 ? "#EF4444" : days <= 14 ? "#F59E0B" : "#10B981";
-  const scale = useRef(new Animated.Value(1)).current;
 
   return (
-    <TouchableOpacity
-      activeOpacity={1}
-      onPressIn={() => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, friction: 8 }).start()}
-      onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 5 }).start()}
-    >
-      <Animated.View style={[rfStyles.card, { transform: [{ scale }] }]}>
-        <View style={rfStyles.row}>
-          <View style={[rfStyles.colorBar, { backgroundColor: med.color }]} />
-          <View style={rfStyles.info}>
-            <Text style={rfStyles.name}>{med.name}</Text>
-            <Text style={rfStyles.dosage}>{med.dosage} · {med.frequency}</Text>
-          </View>
-          <View style={[rfStyles.badge, { backgroundColor: `${color}15` }]}>
-            <Feather name="refresh-cw" size={11} color={color} />
-            <Text style={[rfStyles.badgeText, { color }]}>
-              {days <= 0 ? "Refill!" : `${days}d`}
-            </Text>
-          </View>
+    <AnimPressable onPress={() => { }} style={rfStyles.card}>
+      <View style={rfStyles.row}>
+        <View style={[rfStyles.colorBar, { backgroundColor: med.color }]} />
+        <View style={rfStyles.info}>
+          <Text style={rfStyles.name}>{med.name}</Text>
+          <Text style={rfStyles.dosage}>{med.dosage} · {med.frequency}</Text>
         </View>
-        <View style={rfStyles.barBg}>
-          <Animated.View style={[rfStyles.barFill, { width: `${usedPct * 100}%`, backgroundColor: color }]} />
+        <View style={[rfStyles.badge, { backgroundColor: `${color}15` }]}>
+          <Feather name="refresh-cw" size={11} color={color} />
+          <Text style={[rfStyles.badgeText, { color }]}>
+            {days <= 0 ? "Refill!" : `${days}d`}
+          </Text>
         </View>
-        <Text style={rfStyles.barLabel}>{days > 0 ? `${days} days of supply remaining` : "Needs refill now"}</Text>
-      </Animated.View>
-    </TouchableOpacity>
+      </View>
+      <View style={rfStyles.barBg}>
+        <Animated.View style={[rfStyles.barFill, { width: `${usedPct * 100}%`, backgroundColor: color }]} />
+      </View>
+      <Text style={rfStyles.barLabel}>{days > 0 ? `${days} days of supply remaining` : "Needs refill now"}</Text>
+    </AnimPressable>
   );
 }
 
@@ -132,6 +108,7 @@ export default function MedicinesScreen() {
   const insets = useSafeAreaInsets();
   const { medicines, todayDoses, updateDoseStatus, drugInteractions } = useApp();
   const [activeTab, setActiveTab] = useState<"today" | "all" | "refills">("today");
+  const [mascotTrigger, setMascotTrigger] = useState(0);
   const topInset = Platform.OS === "web" ? 0 : insets.top;
 
   const getDosesForSlot = (range: [string, string]) =>
@@ -158,18 +135,22 @@ export default function MedicinesScreen() {
         <View style={styles.headerTop}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <Text style={{ fontSize: 26 }}>💊</Text>
+              {/* <Text style={{ fontSize: 26 }}>💊</Text> */}
               <Text style={styles.headerTitle}>My Medicines</Text>
             </View>
             <Text style={styles.headerSub}>{takenCount} of {totalCount} taken today</Text>
           </View>
-          <TouchableOpacity
+          <AnimPressable
             onPress={() => router.push("/scan")}
             style={styles.scanBtn}
-            activeOpacity={0.85}
           >
             <Feather name="camera" size={20} color={PURPLE} />
-          </TouchableOpacity>
+          </AnimPressable>
+        </View>
+
+        {/* Mascot for feedback */}
+        <View style={{ marginTop: 10, width: '100%' }}>
+          <MascotBuddy size={70} trigger={mascotTrigger} />
         </View>
 
         {/* Progress bar */}
@@ -193,7 +174,11 @@ export default function MedicinesScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 120 }]}
+        showsVerticalScrollIndicator={false}
+      >
         {activeTab === "today" ? (
           totalCount === 0 ? (
             <View style={styles.empty}>
@@ -225,7 +210,10 @@ export default function MedicinesScreen() {
                         key={dose.id}
                         medicine={med}
                         dose={dose}
-                        onTake={(id) => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); updateDoseStatus(id, "taken"); }}
+                        onTake={(id) => {
+                          updateDoseStatus(id, "taken");
+                          setMascotTrigger(prev => prev + 1);
+                        }}
                         onSnooze={(id) => updateDoseStatus(id, "snoozed")}
                       />
                     );

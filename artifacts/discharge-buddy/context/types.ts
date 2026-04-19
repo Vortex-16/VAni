@@ -15,4 +15,5 @@ export interface IDataProvider {
   completeFollowUp(id: string): Promise<void>;
 
   triggerEmergency(): Promise<void>;
+  getLinkedPatients(): Promise<Patient[]>;
 }

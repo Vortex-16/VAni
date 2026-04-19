@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Language } from "@/constants/translations";
 import { MockProvider } from "./MockProvider";
 import { ApiProvider } from "./ApiProvider";
 import type { IDataProvider } from "./types";
@@ -7,7 +8,7 @@ import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { router } from "expo-router";
 
 export type UserRole = "patient" | "caregiver" | null;
-export type Language = "en" | "hi" | "es" | "ur";
+// Language type imported from translations.ts
 
 export interface Medicine {
   id: string;
@@ -217,6 +218,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [doseHistory, setDoseHistory] = useState<DoseHistoryDay[]>([]);
   const [lastXPGain, setLastXPGain] = useState(0);
+  const [linkedPatients, setLinkedPatients] = useState<Patient[]>([]);
 
   const [dataProvider, setDataProvider] = useState<IDataProvider>(new MockProvider());
   const [isInitializing, setIsInitializing] = useState(true);
@@ -279,6 +281,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const dbJournal = await dataProvider.getJournalEntries();
       setJournalEntries(dbJournal);
+
+      const dbPatients = await dataProvider.getLinkedPatients();
+      setLinkedPatients(dbPatients);
     } catch (err) {
       // Graceful handling of network failures to prevent "Red Screen of Death"
       if (err instanceof TypeError && err.message.includes("Network request failed")) {
@@ -432,7 +437,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider
       value={{
         user, role, patient: null, medicines, todayDoses, symptomLogs, followUps,
-        isOnboarded, language, linkedPatients: [], isProcessingPrescription,
+        isOnboarded, language, linkedPatients, isProcessingPrescription,
         hapticsEnabled,
         streak, xp, achievements, doseHistory, lastXPGain, journalEntries,
         drugInteractions: checkInteractions(medicines),

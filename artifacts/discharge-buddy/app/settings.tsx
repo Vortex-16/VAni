@@ -1,15 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -22,10 +14,19 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { logout, hapticsEnabled, setHapticsEnabled, resetOnboarding } = useApp();
+  const { logout, hapticsEnabled, setHapticsEnabled, language, setLanguage, resetOnboarding } = useApp();
   const [notifications, setNotifications] = useState(true);
   const [appNotifs, setAppNotifs] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [showLangModal, setShowLangModal] = useState(false);
+
+  const languages = [
+    { label: "English", value: "en", flag: "🇺🇸" },
+    { label: "हिंदी (Hindi)", value: "hi", flag: "🇮🇳" },
+    { label: "Español (Spanish)", value: "es", flag: "🇪🇸" },
+  ];
+
+  const currentLangLabel = languages.find(l => l.value === language)?.label || "English";
 
   const handleLogout = () => {
     logout();
@@ -39,8 +40,8 @@ export default function SettingsScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { paddingTop: topInset + 12 }]}>
-          <TouchableOpacity 
-            onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} 
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
             style={styles.backBtn}
           >
             <Feather name="arrow-left" size={20} color={WHITE} />
@@ -129,10 +130,10 @@ export default function SettingsScreen() {
               thumbColor={hapticsEnabled ? "#8b5cf6" : "#cbd5e1"}
             />
           </View>
-          <TouchableOpacity style={styles.row}>
+          <TouchableOpacity style={styles.row} onPress={() => setShowLangModal(true)}>
             <Text style={styles.rowLabel}>Language</Text>
             <View style={styles.rowRight}>
-              <Text style={styles.rowValue}>English</Text>
+              <Text style={styles.rowValue}>{currentLangLabel}</Text>
               <Feather name="chevron-right" size={18} color="#94a3b8" />
             </View>
           </TouchableOpacity>
@@ -191,6 +192,47 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Language Modal */}
+        <Modal
+          visible={showLangModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowLangModal(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowLangModal(false)}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Language</Text>
+                <TouchableOpacity onPress={() => setShowLangModal(false)}>
+                  <Feather name="x" size={24} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+              {languages.map((lang) => (
+                <TouchableOpacity
+                  key={lang.value}
+                  style={[
+                    styles.langItem,
+                    language === lang.value && styles.langItemActive
+                  ]}
+                  onPress={() => {
+                    setLanguage(lang.value as any);
+                    setShowLangModal(false);
+                  }}
+                >
+                  <Text style={styles.langFlag}>{lang.flag}</Text>
+                  <Text style={[
+                    styles.langLabel,
+                    language === lang.value && styles.langLabelActive
+                  ]}>{lang.label}</Text>
+                  {language === lang.value && (
+                    <Feather name="check" size={20} color="#0891b2" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -291,5 +333,53 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     overflow: "hidden",
     paddingVertical: 4,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: WHITE,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: "#0f172a",
+  },
+  langItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+    gap: 12,
+  },
+  langItemActive: {
+    backgroundColor: "#f0f9ff",
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+  },
+  langFlag: { fontSize: 24 },
+  langLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_500Medium",
+    color: "#334155",
+  },
+  langLabelActive: {
+    color: "#0891b2",
+    fontFamily: "Inter_700Bold",
   },
 });

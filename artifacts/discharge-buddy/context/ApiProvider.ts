@@ -63,4 +63,10 @@ export class ApiProvider implements IDataProvider {
       body: JSON.stringify({ token })
     });
   }
+
+  async getLinkedPatients(): Promise<Patient[]> {
+    // Backend dev will implement this endpoint
+    const res = await customFetch<{ patients: Patient[] }>("/api/caregiver/patients").catch(() => ({ patients: [] }));
+    return res.patients || [];
+  }
 }
