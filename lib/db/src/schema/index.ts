@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   allergies: text("allergies"),
   emergencyContactName: text("emergency_contact_name"),
   emergencyContactPhone: text("emergency_contact_phone"),
+  pushToken: text("push_token"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -51,6 +52,7 @@ export const doseLogs = pgTable("dose_logs", {
   takenAt: timestamp("taken_at"),
   status: doseStatusEnum("status").default("pending").notNull(),
   date: text("date").notNull(), // YYYY-MM-DD
+  snoozedUntil: timestamp("snoozed_until"),
 });
 
 export const symptomLogs = pgTable("symptom_logs", {
@@ -83,6 +85,13 @@ export const journalEntries = pgTable("journal_entries", {
   text: text("text").notNull(),
 });
 
+export const emergencyAlerts = pgTable("emergency_alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  status: text("status").default("active").notNull(),
+});
+
 // Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -92,3 +101,4 @@ export const insertDoseLogSchema = createInsertSchema(doseLogs);
 export const insertSymptomLogSchema = createInsertSchema(symptomLogs);
 export const insertFollowUpSchema = createInsertSchema(followUps);
 export const insertJournalEntrySchema = createInsertSchema(journalEntries);
+export const insertEmergencyAlertSchema = createInsertSchema(emergencyAlerts);

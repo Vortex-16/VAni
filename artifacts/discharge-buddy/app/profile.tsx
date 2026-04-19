@@ -44,7 +44,10 @@ export default function ProfileScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { paddingTop: topInset + 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity 
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} 
+            style={styles.backBtn}
+          >
             <Feather name="arrow-left" size={20} color={WHITE} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{user?.name ?? "Profile"}</Text>

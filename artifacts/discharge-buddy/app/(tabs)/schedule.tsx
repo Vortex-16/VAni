@@ -44,7 +44,7 @@ export default function ScheduleScreen() {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState(today.getDate());
-  const { todayDoses, medicines, followUps } = useApp();
+  const { todayDoses, medicines, followUps, updateDoseStatus } = useApp();
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
@@ -73,6 +73,7 @@ export default function ScheduleScreen() {
       color: string;
       type: "dose" | "followup";
       status?: string;
+      rawId?: string;
     }> = [];
 
     const isSelected = (d: Date) =>
@@ -95,6 +96,7 @@ export default function ScheduleScreen() {
           color: med?.color ?? TEAL,
           type: "dose",
           status: dose.status,
+          rawId: dose.id
         });
       });
     } else {
@@ -287,6 +289,24 @@ export default function ScheduleScreen() {
                           <Text style={[styles.statusText, { color: statusColor }]}>
                             {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                           </Text>
+                        </View>
+                      )}
+
+                      {/* Reminder Interactions */}
+                      {item.type === "dose" && (item.status === "pending" || item.status === "snoozed") && item.rawId && (
+                        <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                          <TouchableOpacity 
+                            style={{ flex: 1, backgroundColor: TEAL_DARK, paddingVertical: 10, borderRadius: 8, alignItems: "center" }}
+                            onPress={() => updateDoseStatus(item.rawId!, "taken")}
+                          >
+                            <Text style={{ color: WHITE, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Mark Taken</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={{ flex: 1, backgroundColor: "#fdf2f8", borderWidth: 1, borderColor: "#fbcfe8", paddingVertical: 10, borderRadius: 8, alignItems: "center" }}
+                            onPress={() => updateDoseStatus(item.rawId!, "snoozed", 15)}
+                          >
+                            <Text style={{ color: "#db2777", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Snooze 15m</Text>
+                          </TouchableOpacity>
                         </View>
                       )}
                     </View>

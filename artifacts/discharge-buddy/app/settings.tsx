@@ -22,15 +22,13 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { setRole, setUser, hapticsEnabled, setHapticsEnabled } = useApp();
+  const { logout, hapticsEnabled, setHapticsEnabled } = useApp();
   const [notifications, setNotifications] = useState(true);
   const [appNotifs, setAppNotifs] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
   const handleLogout = () => {
-    setRole(null as any);
-    setUser(null as any);
-    router.replace("/login");
+    logout();
   };
 
   return (
@@ -41,7 +39,10 @@ export default function SettingsScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { paddingTop: topInset + 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity 
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} 
+            style={styles.backBtn}
+          >
             <Feather name="arrow-left" size={20} color={WHITE} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Settings</Text>
