@@ -44,6 +44,23 @@ const DEMO_FOLLOW_UPS: FollowUp[] = [
   }
 ];
 
+const DEMO_PATIENTS: Patient[] = [
+  {
+    id: "p1",
+    name: "Mary Smith",
+    age: 68,
+    condition: "Post-op Knee Replacement",
+    dischargeDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    medicines: DEMO_MEDICINES,
+    doseLogs: [], // Populated on the fly
+    symptomLogs: [
+      { id: "s1", date: new Date().toISOString(), symptoms: ["Pain"], severity: 3, notes: "Feeling okay", riskLevel: "low" }
+    ],
+    followUps: DEMO_FOLLOW_UPS,
+    emergencyContact: "John Smith (+1 555-0101)",
+  }
+];
+
 export class MockProvider implements IDataProvider {
   
   private async getData() {
@@ -130,5 +147,9 @@ export class MockProvider implements IDataProvider {
 
   async registerPushToken(token: string): Promise<void> {
     console.log("Mock push token registered:", token);
+  }
+
+  async getLinkedPatients(): Promise<Patient[]> {
+    return DEMO_PATIENTS;
   }
 }

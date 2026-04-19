@@ -484,10 +484,10 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
         <View style={styles.quickSection}>
           <Text style={styles.sectionTitle}>Caregiver Actions</Text>
           <View style={styles.quickRow}>
-            <QuickAction icon="eye" label="Monitor" color={PURPLE} delay={0} onPress={() => {}} />
-            <QuickAction icon="bell" label="Remind" color="#F59E0B" delay={60} onPress={() => {}} />
-            <QuickAction icon="message-circle" label="Message" color="#06B6D4" delay={120} onPress={() => {}} />
-            <QuickAction icon="alert-triangle" label="Alert" color="#EF4444" delay={180} onPress={() => {}} />
+            <QuickAction icon="eye" label="Monitor" color={PURPLE} delay={0} onPress={() => router.push("/caregiver/monitor" as any)} />
+            <QuickAction icon="bell" label="Remind" color="#F59E0B" delay={60} onPress={() => router.push("/caregiver/remind" as any)} />
+            <QuickAction icon="message-circle" label="Message" color="#06B6D4" delay={120} onPress={() => router.push("/caregiver/message" as any)} />
+            <QuickAction icon="alert-triangle" label="Alert" color="#EF4444" delay={180} onPress={() => router.push("/caregiver/alert" as any)} />
           </View>
         </View>
 

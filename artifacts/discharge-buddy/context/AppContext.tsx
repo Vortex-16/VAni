@@ -216,6 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [doseHistory, setDoseHistory] = useState<DoseHistoryDay[]>([]);
   const [lastXPGain, setLastXPGain] = useState(0);
+  const [linkedPatients, setLinkedPatients] = useState<Patient[]>([]);
 
   const [dataProvider, setDataProvider] = useState<IDataProvider>(new MockProvider());
   const [isInitializing, setIsInitializing] = useState(true);
@@ -278,6 +279,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const dbJournal = await dataProvider.getJournalEntries();
       setJournalEntries(dbJournal);
+
+      const dbPatients = await dataProvider.getLinkedPatients();
+      setLinkedPatients(dbPatients);
     } catch (err) {
         console.error("Failed to load generic data", err);
     }
@@ -417,7 +421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider
       value={{
         user, role, patient: null, medicines, todayDoses, symptomLogs, followUps,
-        isOnboarded, language, linkedPatients: [], isProcessingPrescription,
+        isOnboarded, language, linkedPatients, isProcessingPrescription,
         hapticsEnabled,
         streak, xp, achievements, doseHistory, lastXPGain, journalEntries,
         drugInteractions: checkInteractions(medicines),
