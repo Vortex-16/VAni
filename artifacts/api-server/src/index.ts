@@ -1,5 +1,9 @@
+import "dotenv/config";
 import app from "./app";
 import { logger } from "./lib/logger";
+
+// Start background services
+// NotificationService.init();
 
 const rawPort = process.env["PORT"];
 

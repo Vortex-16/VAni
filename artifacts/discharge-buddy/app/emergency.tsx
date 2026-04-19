@@ -39,6 +39,18 @@ export default function EmergencyScreen() {
   ];
 
   return (
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={{ paddingTop: topInset + 12, paddingBottom: 80, paddingHorizontal: 16 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}>
+          <Feather name="arrow-left" size={22} color={colors.foreground} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.foreground }]}>Emergency</Text>
+        <View style={{ width: 22 }} />
+      </View>
     <View style={[styles.container, { backgroundColor: BACKGROUND }]}>
       <LinearGradient
         colors={["#4B26C8", PURPLE, "#8B5CF6"]}
