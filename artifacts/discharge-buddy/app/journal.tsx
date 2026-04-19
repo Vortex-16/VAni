@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { JournalEntry, useApp } from "@/context/AppContext";
 
-const PURPLE = "#8b5cf6";
+const PURPLE = "#6C47FF";
 const PINK = "#e91e8c";
 const WHITE = "#ffffff";
 
@@ -75,14 +75,17 @@ export default function JournalScreen() {
   const moodCfg = MOODS.find((m) => m.value === mood) ?? MOODS[2];
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
+    <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
       {/* Header */}
       <LinearGradient
-        colors={[PURPLE, PINK]}
+        colors={["#4B26C8", PURPLE, "#8B5CF6"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: topInset + 20 }]}
       >
+        <View style={styles.decor1} />
+        <View style={styles.decor2} />
+        <View style={styles.decor3} />
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={WHITE} />
         </TouchableOpacity>
@@ -225,6 +228,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 24,
     gap: 4,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
+  },
+  decor1: {
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -50,
+  },
+  decor2: {
+    position: "absolute", width: 110, height: 110, borderRadius: 55,
+    backgroundColor: "rgba(255,255,255,0.04)", bottom: -20, left: -20,
+  },
+  decor3: {
+    position: "absolute", width: 60, height: 60, borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.06)", top: 80, left: 30,
   },
   backBtn: {
     width: 38,
@@ -235,7 +253,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold", color: WHITE },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: WHITE },
   headerSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
 
   formContent: { padding: 16, paddingBottom: 120 },
@@ -245,9 +263,9 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-  cardTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#0f172a" },
+  cardTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#0f172a" },
   promptText: {
-    fontSize: 13,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: "#64748b",
     fontStyle: "italic",
@@ -257,7 +275,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: PURPLE,
   },
-  label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0f172a" },
+  label: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#0f172a" },
   emojiRow: { flexDirection: "row", gap: 6 },
   emojiBtn: {
     flex: 1,
@@ -269,15 +287,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     gap: 4,
   },
-  emojiChar: { fontSize: 22 },
-  emojiLabel: { fontSize: 9, fontFamily: "Inter_500Medium" },
+  emojiChar: { fontSize: 26 },
+  emojiLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
   textArea: {
     backgroundColor: "#f8fafc",
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: "#e2e8f0",
     padding: 14,
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "Inter_400Regular",
     color: "#0f172a",
     minHeight: 120,
@@ -290,9 +308,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 50,
   },
-  saveBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: WHITE },
+  saveBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: WHITE },
   cancelBtn: { alignItems: "center", paddingVertical: 10 },
-  cancelText: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#94a3b8" },
+  cancelText: { fontSize: 16, fontFamily: "Inter_500Medium", color: "#94a3b8" },
 
   listContent: { padding: 16, paddingBottom: 120, gap: 12 },
   ctaCard: {
@@ -306,8 +324,8 @@ const styles = StyleSheet.create({
   },
   ctaEmoji: { fontSize: 36 },
   ctaText: { flex: 1 },
-  ctaTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0f172a" },
-  ctaSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", marginTop: 2 },
+  ctaTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#0f172a" },
+  ctaSub: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", marginTop: 2 },
   ctaChevron: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: `${PURPLE}15`, alignItems: "center", justifyContent: "center",
@@ -315,8 +333,8 @@ const styles = StyleSheet.create({
 
   empty: { alignItems: "center", paddingTop: 60, gap: 10 },
   emptyEmoji: { fontSize: 52 },
-  emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#1e293b" },
-  emptySub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#94a3b8", textAlign: "center" },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#1e293b" },
+  emptySub: { fontSize: 15, fontFamily: "Inter_400Regular", color: "#94a3b8", textAlign: "center" },
 
   entryCard: {
     backgroundColor: WHITE,
@@ -325,8 +343,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   entryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  entryDate: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#0f172a" },
+  entryDate: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#0f172a" },
   entryBadges: { flexDirection: "row", gap: 6 },
-  entryBadge: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#64748b" },
-  entryText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 20 },
+  entryBadge: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" },
+  entryText: { fontSize: 15, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 22 },
 });

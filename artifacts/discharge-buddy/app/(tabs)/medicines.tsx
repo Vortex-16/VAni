@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MedicineCard } from "@/components/MedicineCard";
 import { Medicine, useApp } from "@/context/AppContext";
 
-const PURPLE = "#7C3AED";
+const PURPLE = "#6C47FF";
 const PURPLE_LIGHT = "#EDE9FE";
 const WHITE = "#FFFFFF";
 
@@ -146,14 +146,15 @@ export default function MedicinesScreen() {
   const progressPct = totalCount > 0 ? takenCount / totalCount : 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8F7FF" }}>
+    <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
       <LinearGradient
-        colors={["#5B21B6", "#7C3AED", "#9333EA"]}
+        colors={["#4B26C8", PURPLE, "#8B5CF6"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: topInset + 24 }]}
       >
         <View style={styles.decor1} />
         <View style={styles.decor2} />
+        <View style={styles.decor3} />
         <View style={styles.headerTop}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 }}>
@@ -271,20 +272,24 @@ export default function MedicinesScreen() {
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20, paddingBottom: 24,
-    borderBottomLeftRadius: 36, borderBottomRightRadius: 36,
+    borderBottomLeftRadius: 40, borderBottomRightRadius: 40,
     overflow: "hidden",
   },
   decor1: {
-    position: "absolute", width: 160, height: 160, borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.06)", top: -40, right: -30,
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -50,
   },
   decor2: {
-    position: "absolute", width: 80, height: 80, borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.05)", bottom: 20, left: -20,
+    position: "absolute", width: 110, height: 110, borderRadius: 55,
+    backgroundColor: "rgba(255,255,255,0.04)", bottom: -20, left: -20,
+  },
+  decor3: {
+    position: "absolute", width: 60, height: 60, borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.06)", top: 80, left: 30,
   },
   headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 },
   headerEmoji: { fontSize: 28, marginBottom: 4 },
-  headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold", color: WHITE },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: WHITE },
   headerSub: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 2 },
   scanBtn: {
     width: 50, height: 50, borderRadius: 25,

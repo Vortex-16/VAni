@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ALL_ACHIEVEMENTS, getLevel, useApp } from "@/context/AppContext";
 
 const PINK = "#e91e8c";
-const PURPLE = "#8b5cf6";
+const PURPLE = "#6C47FF";
 const TEAL = "#0891b2";
 const GOLD = "#f59e0b";
 const GREEN = "#10b981";
@@ -64,8 +64,8 @@ const xpStyles = StyleSheet.create({
   },
   levelNum: { fontSize: 20, fontFamily: "Inter_700Bold", color: WHITE },
   info: { flex: 1 },
-  levelTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0f172a" },
-  xpText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", marginTop: 2 },
+  levelTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0f172a" },
+  xpText: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", marginTop: 2 },
   barBg: {
     height: 10,
     borderRadius: 5,
@@ -140,8 +140,8 @@ const streakStyles = StyleSheet.create({
   content: { alignItems: "center", gap: 4 },
   fire: { fontSize: 52 },
   number: { fontSize: 48, fontFamily: "Inter_700Bold", color: WHITE, lineHeight: 56 },
-  label: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: WHITE },
-  sub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
+  label: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: WHITE },
+  sub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
   weekRow: { flexDirection: "row", justifyContent: "space-between" },
   dayDot: {
     width: 34,
@@ -152,7 +152,7 @@ const streakStyles = StyleSheet.create({
     justifyContent: "center",
   },
   dayDotActive: { backgroundColor: WHITE },
-  dayText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.7)" },
+  dayText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.7)" },
   dayTextActive: { color: "#f97316" },
 });
 
@@ -213,7 +213,7 @@ const calStyles = StyleSheet.create({
   legend: { flexDirection: "row", gap: 12 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748b" },
+  legendText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#64748b" },
   week: { flexDirection: "row", gap: 6 },
   dot: { flex: 1, aspectRatio: 1, borderRadius: 6 },
 });
@@ -248,11 +248,11 @@ const achStyles = StyleSheet.create({
   icon: { fontSize: 28 },
   iconLocked: { opacity: 0.4 },
   info: { flex: 1 },
-  title: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0f172a" },
-  desc: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", marginTop: 2 },
+  title: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0f172a" },
+  desc: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", marginTop: 2 },
   textLocked: { color: "#94a3b8" },
   xpBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  xpText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  xpText: { fontSize: 13, fontFamily: "Inter_700Bold" },
   checkDot: {
     position: "absolute",
     top: 10,
@@ -276,15 +276,16 @@ export default function ProgressScreen() {
   const totalCount = ALL_ACHIEVEMENTS.length;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
+    <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
       <LinearGradient
-        colors={[PURPLE, PINK]}
+        colors={["#4B26C8", PURPLE, "#8B5CF6"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: topInset + 20 }]}
       >
         <View style={styles.decor1} />
         <View style={styles.decor2} />
+        <View style={styles.decor3} />
         <Text style={styles.headerTitle}>My Progress</Text>
         <Text style={styles.headerSub}>{unlockedCount}/{totalCount} achievements · Keep going! 💪</Text>
       </LinearGradient>
@@ -323,17 +324,23 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingBottom: 24,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
     overflow: "hidden",
   },
   decor1: {
-    position: "absolute", width: 120, height: 120, borderRadius: 60,
-    backgroundColor: "rgba(255,255,255,0.08)", top: -30, right: -20,
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -50,
   },
   decor2: {
-    position: "absolute", width: 70, height: 70, borderRadius: 35,
-    backgroundColor: "rgba(255,255,255,0.06)", bottom: 10, left: -10,
+    position: "absolute", width: 110, height: 110, borderRadius: 55,
+    backgroundColor: "rgba(255,255,255,0.04)", bottom: -20, left: -20,
   },
-  headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold", color: WHITE },
+  decor3: {
+    position: "absolute", width: 60, height: 60, borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.06)", top: 80, left: 30,
+  },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: WHITE },
   headerSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)", marginTop: 4 },
   list: { padding: 16, paddingBottom: 120, gap: 14 },
   section: { gap: 0 },
