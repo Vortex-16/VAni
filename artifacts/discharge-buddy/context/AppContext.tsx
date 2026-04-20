@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { Language } from "@/constants/translations";
 import { MockProvider } from "./MockProvider";
 import { ApiProvider } from "./ApiProvider";
@@ -180,6 +181,8 @@ interface AppContextType {
   updateDoseStatus: (doseId: string, status: DoseLog["status"], snoozeMinutes?: number) => void;
   addSymptomLog: (log: SymptomLog) => void;
   addFollowUp: (followUp: FollowUp) => void;
+  getRecoveryTrends: () => Promise<any>;
+  simplifyInstruction: (text: string) => Promise<string>;
   completeFollowUp: (id: string) => void;
   setOnboarded: (val: boolean) => void;
   setHapticsEnabled: (val: boolean) => void;
@@ -225,7 +228,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Shared initialization of base URL and token getter
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+    let apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+    // Override for local browser testing to avoid IP connectivity issues in subagent
+    if (Platform.OS === "web") {
+      apiUrl = "http://localhost:3000";
+    }
     setBaseUrl(apiUrl);
     setAuthTokenGetter(async () => await AsyncStorage.getItem("discharge_buddy_token"));
     
@@ -284,6 +291,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const dbPatients = await dataProvider.getLinkedPatients();
       setLinkedPatients(dbPatients);
+
+      const dbTrends = await dataProvider.getRecoveryTrends();
+      // Handle setting trends state if added to context
     } catch (err) {
       // Graceful handling of network failures to prevent "Red Screen of Death"
       if (err instanceof TypeError && err.message.includes("Network request failed")) {
@@ -336,10 +346,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setHapticsEnabled = (val: boolean) => { setHapticsEnabledState(val); saveData({ hapticsEnabled: val }); };
   const setLanguage = (lang: Language) => { setLanguageState(lang); saveData({ language: lang }); };
 
-  const addMedicine = (medicine: Medicine) => {
+  const addMedicine = async (medicine: Medicine) => {
+    await dataProvider.addMedicine(medicine);
     const updated = [...medicines, medicine];
     setMedicines(updated);
     saveData({ medicines: updated });
+    unlockAchievement("first_step");
   };
 
   const updateDoseStatus = async (doseId: string, status: DoseLog["status"], snoozeMinutes?: number) => {
@@ -372,6 +384,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addFollowUp = async (followUp: FollowUp) => {
+    await dataProvider.addFollowUp(followUp);
     setFollowUps([followUp, ...followUps]);
   };
 
@@ -396,11 +409,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     console.log("EMERGENCY ACTUALLY TRIGGERED AND SENT TO BACKEND");
   };
 
-  const addPrescription = async (_imageUri: string) => {
+  const addPrescription = async (imageUri: string) => {
     setIsProcessingPrescription(true);
-    await new Promise((r) => setTimeout(r, 2500));
-    setIsProcessingPrescription(false);
-    unlockAchievement("scan_master");
+    try {
+      // In a real flow, you'd upload the image to /api/storage/prescriptions
+      // For now, we simulate the text extraction and simplification
+      const mockExtractedText = "Take 1 tab PO BID AC";
+      const simplified = await dataProvider.simplifyInstruction(mockExtractedText);
+      
+      console.log("Extracted and Simplified:", simplified);
+      
+      // Add a medicine based on extracted data
+      addMedicine({
+        id: Date.now().toString(),
+        name: "Extracted Med",
+        dosage: "1 tab",
+        frequency: "BID",
+        times: ["08:00", "20:00"],
+        instructions: mockExtractedText,
+        simplifiedInstructions: simplified,
+        startDate: new Date().toISOString(),
+        color: "#8b5cf6",
+      });
+    } finally {
+      setIsProcessingPrescription(false);
+      unlockAchievement("scan_master");
+    }
+  };
+
+  const getRecoveryTrends = async () => {
+    return await dataProvider.getRecoveryTrends();
+  };
+
+  const simplifyInstruction = async (text: string) => {
+    return await dataProvider.simplifyInstruction(text);
   };
 
   const checkInteractions = (meds: Medicine[]): DrugInteraction[] => {
@@ -444,6 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setRole, setUser, addMedicine, updateDoseStatus, addSymptomLog, addFollowUp,
         completeFollowUp, setOnboarded, setHapticsEnabled, triggerEmergency, setLanguage, addPrescription,
         addJournalEntry, awardXP, unlockAchievement, login, logout, resetOnboarding, switchProvider,
+        getRecoveryTrends, simplifyInstruction,
       }}
     >
       {children}

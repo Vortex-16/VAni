@@ -46,10 +46,43 @@ export class ApiProvider implements IDataProvider {
 
   // Not implemented on backend yet, fallback to empty array
   async getFollowUps(): Promise<FollowUp[]> {
-    return [];
+    const res = await customFetch<{ followups: FollowUp[] }>("/api/followups/");
+    return res.followups;
   }
   
-  async completeFollowUp(id: string): Promise<void> { }
+  async addFollowUp(followUp: FollowUp): Promise<void> {
+    await customFetch("/api/followups/", {
+      method: "POST",
+      body: JSON.stringify({
+        title: followUp.title,
+        doctorName: followUp.doctorName,
+        scheduledDate: followUp.dateTime, // Map dateTime to backend's scheduledDate
+        location: followUp.location,
+        notes: followUp.notes,
+        type: "appointment"
+      })
+    });
+  }
+
+  async completeFollowUp(id: string): Promise<void> {
+    await customFetch(`/api/followups/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "completed" })
+    });
+  }
+
+  async simplifyInstruction(text: string): Promise<string> {
+    const res = await customFetch<{ simplified: string }>("/api/language/simplify", {
+      method: "POST",
+      body: JSON.stringify({ text })
+    });
+    return res.simplified;
+  }
+
+  async getRecoveryTrends(): Promise<any> {
+    const res = await customFetch("/api/recovery/trends");
+    return res;
+  }
 
   async triggerEmergency(): Promise<void> {
     await customFetch("/api/emergency", {
@@ -68,5 +101,12 @@ export class ApiProvider implements IDataProvider {
     // Backend dev will implement this endpoint
     const res = await customFetch<{ patients: Patient[] }>("/api/caregiver/patients").catch(() => ({ patients: [] }));
     return res.patients || [];
+  }
+
+  async addMedicine(medicine: Medicine): Promise<void> {
+    await customFetch("/api/medicines", {
+      method: "POST",
+      body: JSON.stringify(medicine)
+    });
   }
 }

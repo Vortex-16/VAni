@@ -269,7 +269,11 @@ const achStyles = StyleSheet.create({
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, xp, achievements, doseHistory } = useApp();
+  const { streak: rawStreak, xp: rawXP, achievements: rawAchievements, doseHistory: rawHistory } = useApp();
+  const streak = rawStreak || 0;
+  const xp = rawXP || 0;
+  const achievements = rawAchievements || [];
+  const doseHistory = rawHistory || [];
   const topInset = Platform.OS === "web" ? 0 : insets.top;
 
   const unlockedIds = achievements.filter((a) => a.unlockedAt).map((a) => a.id);
