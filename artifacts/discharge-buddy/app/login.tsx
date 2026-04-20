@@ -13,11 +13,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSequence, 
-  withTiming, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
   withRepeat,
   interpolate
 } from "react-native-reanimated";
@@ -70,11 +70,11 @@ export default function LoginScreen() {
   };
 
   const handleGuestLogin = async () => {
-    
+
     // Clear token so we don't accidentally try to connect to API
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
     await AsyncStorage.removeItem("discharge_buddy_token");
-    
+
     switchProvider(new MockProvider());
     setRole(role);
     setUser({
@@ -95,8 +95,9 @@ export default function LoginScreen() {
         shake();
         return;
       }
-      
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      console.log("[DEBUG] Fetching from Login URL:", `${apiUrl}/api/auth/login`);
       const res = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,9 +190,9 @@ export default function LoginScreen() {
             <Text style={styles.welcomeTitle}>Welcome Back</Text>
             <Text style={styles.welcomeSub}>Login to continue your recovery journey</Text>
 
-            <ErrorNotice 
-              message={error || ""} 
-              visible={!!error} 
+            <ErrorNotice
+              message={error || ""}
+              visible={!!error}
               onDismiss={() => setError(null)}
             />
 
@@ -218,7 +219,7 @@ export default function LoginScreen() {
 
             {/* Email */}
             <View style={[
-              styles.inputBox, 
+              styles.inputBox,
               emailFocused && styles.inputBoxFocused,
               error && !email && styles.inputBoxError
             ]}>
@@ -238,7 +239,7 @@ export default function LoginScreen() {
 
             {/* Password */}
             <View style={[
-              styles.inputBox, 
+              styles.inputBox,
               passwordFocused && styles.inputBoxFocused,
               error && !password && styles.inputBoxError
             ]}>
@@ -267,8 +268,8 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* Login button */}
-            <TouchableOpacity 
-              onPress={handleLogin} 
+            <TouchableOpacity
+              onPress={handleLogin}
               activeOpacity={0.85}
               disabled={isLoggingIn}
             >

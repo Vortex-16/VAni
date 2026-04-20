@@ -32,42 +32,43 @@ import { Medicine, useApp } from "@/context/AppContext";
 const { width, height } = Dimensions.get("window");
 const PURPLE = "#A855F7";
 
-const MOCK_RESULT = {
-  name: "Metformin 500mg",
-  dosage: "1 Tablet (Twice Daily)",
-  refills: "2",
-  confidence: "High"
-};
+interface ExtractedMed {
+  name: string;
+  dosage: string;
+  frequency: string;
+  instructions: string;
+  simplifiedInstructions: string;
+}
 
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const { addMedicine } = useApp();
+  const cameraRef = React.useRef<CameraView>(null);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(true);
   const [showResult, setShowResult] = useState(false);
   const [flashMode, setFlashMode] = useState<"on" | "off">("off");
   const [confidence, setConfidence] = useState(0);
+  const [extractedMeds, setExtractedMeds] = useState<ExtractedMed[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
   // Scanning progress simulation
   useEffect(() => {
-    if (isScanning) {
+    if (isScanning && !showResult) {
       let interval = setInterval(() => {
         setConfidence(prev => {
-          if (prev >= 96) {
-            clearInterval(interval);
-            return 96;
-          }
-          return prev + Math.floor(Math.random() * 5);
+          if (prev >= 98) return 98;
+          return prev + Math.floor(Math.random() * 3);
         });
-      }, 100);
+      }, 150);
       return () => clearInterval(interval);
     }
-  }, [isScanning]);
+  }, [isScanning, showResult]);
 
-  // Viewfinder pulse animation
+  // viewfinder pulse logic... (omitted for brevity in replace, but keeping it in the file)
   const glowOpacity = useSharedValue(0.4);
   useEffect(() => {
     glowOpacity.value = withRepeat(
@@ -97,34 +98,103 @@ export default function ScanScreen() {
     );
   }
 
-  const handleCapture = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsScanning(false);
-    setTimeout(() => {
-      setShowResult(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }, 800);
+  const handleCapture = async () => {
+    if (!cameraRef.current || isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: false,
+      });
+
+      if (!photo) throw new Error("Capture failed");
+
+      // Stop scanning animation
+      setIsScanning(false);
+      setConfidence(100);
+
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      const formData = new FormData();
+      
+      // @ts-ignore - FormData needs different handling on RN
+      formData.append("file", {
+        uri: photo.uri,
+        name: "prescription.jpg",
+        type: "image/jpeg",
+      });
+
+      const res = await fetch(`${apiUrl}/api/ocr/scan`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Accept": "application/json",
+          // Token will be added by provider if using customFetch, 
+          // but here we use raw fetch to handle FormData easily
+          "Authorization": `Bearer ${await (await import("@react-native-async-storage/async-storage")).default.getItem("discharge_buddy_token")}`
+        },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("[DEBUG ERROR] Server extraction failed. Status:", res.status, "Body:", errorText);
+        throw new Error(`Server extraction failed: ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log("[DEBUG] Extracted Data from Tesseract:", data);
+
+      if (data.medicines && data.medicines.length > 0) {
+        setExtractedMeds(data.medicines);
+        setShowResult(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        alert("Could not detect medicines. Please ensure the prescription is clear and try again.");
+        setIsScanning(true);
+        setConfidence(0);
+      }
+    } catch (err: any) {
+      console.error("Scan Error", err);
+      alert(`Scan Failed: ${err.message || "Unknown error"}. Check backend logs.`);
+      setIsScanning(true);
+      setConfidence(0);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleConfirm = () => {
-    addMedicine({
-      id: Date.now().toString(),
-      name: MOCK_RESULT.name,
-      dosage: MOCK_RESULT.dosage,
-      frequency: "Twice daily",
-      times: ["08:00", "20:00"],
-      instructions: "Take with food.",
-      simplifiedInstructions: "Take this pill with breakfast and dinner.",
-      startDate: new Date().toISOString(),
-      color: PURPLE,
-    });
-    router.back();
+  const handleConfirm = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Save all extracted medicines
+    for (const med of extractedMeds) {
+      await addMedicine({
+        id: Math.random().toString(36).substr(2, 9),
+        name: med.name,
+        dosage: med.dosage,
+        frequency: med.frequency,
+        times: ["08:00"], // Default
+        instructions: med.instructions,
+        simplifiedInstructions: med.simplifiedInstructions,
+        startDate: new Date().toISOString(),
+        color: PURPLE,
+      });
+    }
+    
+    router.replace("/(tabs)");
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <CameraView style={StyleSheet.absoluteFill} facing="back" flash={flashMode} />
+      <CameraView 
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill} 
+        facing="back" 
+        flash={flashMode} 
+      />
       
       {/* Immersive Overlay */}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.4)" }]} />
@@ -200,9 +270,22 @@ export default function ScanScreen() {
       {/* Shutter Button */}
       {!showResult && (
         <View style={[styles.footer, { bottom: insets.bottom + 40 }]}>
-            <TouchableOpacity style={styles.captureBtn} onPress={handleCapture}>
-                <View style={styles.captureInner} />
+            <TouchableOpacity 
+                style={[styles.captureBtn, isProcessing && { opacity: 0.5 }]} 
+                onPress={handleCapture}
+                disabled={isProcessing}
+            >
+                {isProcessing ? (
+                     <View style={{ transform: [{ scale: 1.5 }] }}>
+                        <Feather name="loader" size={24} color="#fff" />
+                     </View>
+                ) : (
+                    <View style={styles.captureInner} />
+                )}
             </TouchableOpacity>
+            {isProcessing && (
+                <Text style={[styles.scanningText, { marginTop: 12 }]}>AI IS READING...</Text>
+            )}
         </View>
       )}
 
@@ -222,10 +305,13 @@ export default function ScanScreen() {
             </View>
 
             <View style={styles.resultBody}>
-                <DetailRow label="Medicine" value={MOCK_RESULT.name} />
-                <DetailRow label="Dosage" value={MOCK_RESULT.dosage} />
-                <DetailRow label="Refills" value={MOCK_RESULT.refills} />
-                <DetailRow label="Confidence" value={MOCK_RESULT.confidence} isHigh />
+                {extractedMeds.map((med, idx) => (
+                    <View key={idx} style={{ marginBottom: 12, borderBottomWidth: idx < extractedMeds.length - 1 ? 1 : 0, borderBottomColor: "rgba(255,255,255,0.05)", paddingBottom: 12 }}>
+                        <DetailRow label="Med" value={med.name} />
+                        <DetailRow label="Dose" value={med.dosage} />
+                        <DetailRow label="Frequency" value={med.frequency} />
+                    </View>
+                ))}
             </View>
 
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
