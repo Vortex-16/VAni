@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, boolean, pgEnum, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, boolean, pgEnum, uuid, varchar, date, decimal, jsonb, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -92,7 +92,60 @@ export const emergencyAlerts = pgTable("emergency_alerts", {
   status: text("status").default("active").notNull(),
 });
 
+// ──────────────────────────────────────────────
+// NEW FEATURE TABLES (integrated from secondary codebase)
+// ──────────────────────────────────────────────
+
+// Follow-up Manager: User-level follow-up appointment tracking with reminders
+export const followups = pgTable("followups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  reminderDaysBefore: integer("reminder_days_before").default(1),
+  notes: text("notes"),
+  status: varchar("status", { length: 20 }).default('upcoming'),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Language Simplifier: Medical abbreviation dictionary
+export const medicalTermsDictionary = pgTable("medical_terms_dictionary", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  abbreviation: varchar("abbreviation", { length: 50 }).notNull().unique(),
+  simpleMeaning: varchar("simple_meaning", { length: 255 }).notNull(),
+  fullTerm: varchar("full_term", { length: 255 }),
+  category: varchar("category", { length: 50 }),
+});
+
+// Recovery Tracker: Daily recovery vitals logging
+export const recoveryLogs = pgTable("recovery_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  logDate: date("log_date").notNull(),
+  painLevel: integer("pain_level"),
+  energyLevel: integer("energy_level"),
+  fever: boolean("fever").default(false),
+  feverTemp: decimal("fever_temp", { precision: 4, scale: 1 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+  unq: unique().on(t.userId, t.logDate),
+}));
+
+// Data Storage: Prescription storage with extracted data
+export const prescriptions = pgTable("prescriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  imageUrl: text("image_url"),
+  rawText: text("raw_text"),
+  extractedData: jsonb("extracted_data"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ──────────────────────────────────────────────
 // Zod schemas for validation
+// ──────────────────────────────────────────────
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const insertPatientSchema = createInsertSchema(patients);
@@ -102,3 +155,6 @@ export const insertSymptomLogSchema = createInsertSchema(symptomLogs);
 export const insertFollowUpSchema = createInsertSchema(followUps);
 export const insertJournalEntrySchema = createInsertSchema(journalEntries);
 export const insertEmergencyAlertSchema = createInsertSchema(emergencyAlerts);
+export const insertFollowupSchema = createInsertSchema(followups);
+export const insertRecoveryLogSchema = createInsertSchema(recoveryLogs);
+export const insertPrescriptionSchema = createInsertSchema(prescriptions);
