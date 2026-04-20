@@ -43,12 +43,13 @@ export default function RegisterScreen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      console.log("[DEBUG] Fetching from Register URL:", `${apiUrl}/api/auth/register`);
       const res = await fetch(`${apiUrl}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name: fullName, role })
+        body: JSON.stringify({ email, name: fullName, role, password })
       });
 
       if (!res.ok) {
@@ -77,8 +78,8 @@ export default function RegisterScreen() {
       >
         {/* Teal wave header */}
         <View style={[styles.header, { paddingTop: topInset + 24 }]}>
-          <TouchableOpacity 
-            onPress={() => router.canGoBack() ? router.back() : router.replace("/login")} 
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/login")}
             style={styles.backBtn}
           >
             <Feather name="arrow-left" size={20} color={WHITE} />
