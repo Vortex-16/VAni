@@ -194,12 +194,16 @@ function PatientDashboard({ topInset }: { topInset: number }) {
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const taken = todayDoses.filter((d) => d.status === "taken").length;
-  const total = todayDoses.length;
-  const missed = todayDoses.filter((d) => d.status === "missed").length;
-  const pending = todayDoses.filter((d) => d.status === "pending").length;
+  const doses = todayDoses || [];
+  const meds = medicines || [];
+  const fus = followUps || [];
+
+  const taken = doses.filter((d) => d.status === "taken").length;
+  const total = doses.length;
+  const missed = doses.filter((d) => d.status === "missed").length;
+  const pending = doses.filter((d) => d.status === "pending").length;
   const adherencePct = total > 0 ? Math.round((taken / total) * 100) : 0;
-  const upcomingFollowUp = followUps.find((f) => !f.completed);
+  const upcomingFollowUp = fus.find((f) => !f.completed);
   const [showAll, setShowAll] = useState(false);
   const [mascotTrigger, setMascotTrigger] = useState(0);
 
@@ -209,9 +213,9 @@ function PatientDashboard({ topInset }: { topInset: number }) {
     Animated.timing(heroFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   }, []);
 
-  const recentActivity = todayDoses
+  const recentActivity = doses
     .slice(0, showAll ? undefined : 4)
-    .map((dose) => ({ dose, med: medicines.find((m) => m.id === dose.medicineId) }));
+    .map((dose) => ({ dose, med: meds.find((m) => m.id === dose.medicineId) }));
 
   const riskColor = missed >= 2 ? "#EF4444" : missed === 1 ? "#F59E0B" : "#22C55E";
   const riskLabel = missed >= 2 ? "High Risk" : missed === 1 ? "Moderate" : "On Track";
@@ -432,7 +436,7 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
   const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const patient = linkedPatients[0];
+  const patient = (linkedPatients || [])[0];
 
   const heroFade = useRef(new Animated.Value(0)).current;
   useEffect(() => {

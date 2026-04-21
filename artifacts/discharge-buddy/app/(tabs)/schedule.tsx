@@ -44,7 +44,10 @@ export default function ScheduleScreen() {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState(today.getDate());
-  const { todayDoses, medicines, followUps, updateDoseStatus } = useApp();
+  const { todayDoses: rawDoses, medicines: rawMeds, followUps: rawFUs, updateDoseStatus } = useApp();
+  const todayDoses = rawDoses || [];
+  const medicines = rawMeds || [];
+  const followUps = rawFUs || [];
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay = getFirstDayOfMonth(viewYear, viewMonth);

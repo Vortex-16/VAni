@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { IDataProvider } from "./types";
 import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult } from "./AppContext";
+import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient } from "./AppContext";
 import { ALL_ACHIEVEMENTS } from "./AppContext";
 
 const STORAGE_KEY = "discharge_buddy_data_v2";
@@ -106,7 +107,6 @@ export class MockProvider implements IDataProvider {
 
   async updateDoseStatus(doseId: string, status: DoseLog["status"], snoozeMinutes?: number): Promise<void> {
     // In mock mode, the AppContext manages the todayDoses array state inline.
-    // This method is just a simulated network call. 
     await new Promise(r => setTimeout(r, 200));
   }
 
@@ -135,10 +135,23 @@ export class MockProvider implements IDataProvider {
     return data.followUps || DEMO_FOLLOW_UPS;
   }
 
+  async addFollowUp(followUp: FollowUp): Promise<void> {
+    const followUps = await this.getFollowUps();
+    await this.saveData({ followUps: [followUp, ...followUps] });
+  }
+
   async completeFollowUp(id: string): Promise<void> {
     const followUps = await this.getFollowUps();
     const updated = followUps.map(f => f.id === id ? { ...f, completed: true } : f);
     await this.saveData({ followUps: updated });
+  }
+
+  async simplifyInstruction(text: string): Promise<string> {
+    return text + " (Simplified)";
+  }
+
+  async getRecoveryTrends(): Promise<any> {
+    return { data: [] };
   }
 
   async triggerEmergency(): Promise<void> {
@@ -177,5 +190,8 @@ export class MockProvider implements IDataProvider {
       ocr_source: "mock",
       processing_note: "Mock result for development"
     };
+  async addMedicine(medicine: Medicine): Promise<void> {
+    const medicines = await this.getMedicines();
+    await this.saveData({ medicines: [medicine, ...medicines] });
   }
 }

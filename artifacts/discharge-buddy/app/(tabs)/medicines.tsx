@@ -106,7 +106,7 @@ const rfStyles = StyleSheet.create({
 
 export default function MedicinesScreen() {
   const insets = useSafeAreaInsets();
-  const { medicines, todayDoses, updateDoseStatus, drugInteractions } = useApp();
+  const { medicines, todayDoses, updateDoseStatus, drugInteractions, addMedicine } = useApp();
   const [activeTab, setActiveTab] = useState<"today" | "all" | "refills">("today");
   const [mascotTrigger, setMascotTrigger] = useState(0);
   const topInset = Platform.OS === "web" ? 0 : insets.top;
@@ -245,6 +245,24 @@ export default function MedicinesScreen() {
             >
               <Feather name="camera" size={16} color={WHITE} />
               <Text style={styles.emptyBtnText}>Scan Prescription</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => addMedicine({
+                id: Date.now().toString(),
+                name: "Tylenol",
+                dosage: "500mg",
+                frequency: "Daily",
+                times: ["09:00", "21:00"],
+                instructions: "Take with food",
+                simplifiedInstructions: "Take with food",
+                startDate: new Date().toISOString(),
+                color: "#ff6b35"
+              })}
+              style={[styles.emptyBtn, { backgroundColor: WHITE, borderWidth: 1, borderColor: PURPLE, marginTop: 8 }]}
+              activeOpacity={0.85}
+            >
+              <Feather name="edit-3" size={16} color={PURPLE} />
+              <Text style={[styles.emptyBtnText, { color: PURPLE }]}>Add Manually (Demo)</Text>
             </TouchableOpacity>
           </View>
         ) : (

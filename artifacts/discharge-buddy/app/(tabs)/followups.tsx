@@ -20,7 +20,8 @@ import { useColors } from "@/hooks/useColors";
 export default function FollowupsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { followUps, addFollowUp, completeFollowUp } = useApp();
+  const { followUps: rawFollowUps, addFollowUp, completeFollowUp } = useApp();
+  const followUps = rawFollowUps || [];
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [doctor, setDoctor] = useState("");

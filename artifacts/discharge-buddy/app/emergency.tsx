@@ -50,7 +50,7 @@ export default function EmergencyScreen() {
         <View style={styles.decor2} />
         <View style={styles.decor3} />
         <View style={styles.headerTop}>
-          <AnimPressable onPress={() => router.back()} style={styles.backBtn}>
+          <AnimPressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={WHITE} />
           </AnimPressable>
           <Text style={styles.headerTitle}>Emergency</Text>
@@ -63,71 +63,71 @@ export default function EmergencyScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 }}
         showsVerticalScrollIndicator={false}
       >
-      <View style={[styles.emergencyCard, { backgroundColor: `${DESTRUCTIVE}10`, borderColor: `${DESTRUCTIVE}40` }]}>
-        <Text style={[styles.cardTitle, { color: DESTRUCTIVE }]}>Emergency Alert</Text>
-        <Text style={[styles.cardSubtitle, { color: MUTED }]}>
-          Press and hold to notify your caregiver and share your location
-        </Text>
-        <View style={styles.btnWrapper}>
-          <EmergencyButton />
-        </View>
-      </View>
-
-      <View style={[styles.contactCard, { backgroundColor: CARD_BG, borderColor: BORDER }]}>
-        <Text style={[styles.contactTitle, { color: FOREGROUND }]}>Emergency Contacts</Text>
-        {[
-          { label: "Emergency Contact", number: patient?.emergencyContact ?? "Not set", icon: "user" as const },
-          { label: "Emergency Services", number: "112 / 911", icon: "phone-call" as const },
-          { label: "Hospital Helpline", number: "1800-XXX-XXXX", icon: "home" as const },
-        ].map((c, i) => (
-          <View key={i} style={[styles.contactRow, { borderBottomColor: BORDER }]}>
-            <View style={[styles.contactIcon, { backgroundColor: `${PURPLE}15` }]}>
-              <Feather name={c.icon} size={16} color={PURPLE} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.contactLabel, { color: MUTED }]}>{c.label}</Text>
-              <Text style={[styles.contactNumber, { color: FOREGROUND }]}>{c.number}</Text>
-            </View>
-            <AnimPressable style={[styles.callBtn, { backgroundColor: `${SUCCESS}15` }]} onPress={() => {}}>
-              <Feather name="phone" size={16} color={SUCCESS} />
-            </AnimPressable>
+        <View style={[styles.emergencyCard, { backgroundColor: `${DESTRUCTIVE}10`, borderColor: `${DESTRUCTIVE}40` }]}>
+          <Text style={[styles.cardTitle, { color: DESTRUCTIVE }]}>Emergency Alert</Text>
+          <Text style={[styles.cardSubtitle, { color: MUTED }]}>
+            Press and hold to notify your caregiver and share your location
+          </Text>
+          <View style={styles.btnWrapper}>
+            <EmergencyButton />
           </View>
-        ))}
-      </View>
+        </View>
 
-      <Text style={[styles.sectionTitle, { color: FOREGROUND }]}>Danger Signs — Seek Help Immediately</Text>
+        <View style={[styles.contactCard, { backgroundColor: CARD_BG, borderColor: BORDER }]}>
+          <Text style={[styles.contactTitle, { color: FOREGROUND }]}>Emergency Contacts</Text>
+          {[
+            { label: "Emergency Contact", number: patient?.emergencyContact ?? "Not set", icon: "user" as const },
+            { label: "Emergency Services", number: "112 / 911", icon: "phone-call" as const },
+            { label: "Hospital Helpline", number: "1800-XXX-XXXX", icon: "home" as const },
+          ].map((c, i) => (
+            <View key={i} style={[styles.contactRow, { borderBottomColor: BORDER }]}>
+              <View style={[styles.contactIcon, { backgroundColor: `${PURPLE}15` }]}>
+                <Feather name={c.icon} size={16} color={PURPLE} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.contactLabel, { color: MUTED }]}>{c.label}</Text>
+                <Text style={[styles.contactNumber, { color: FOREGROUND }]}>{c.number}</Text>
+              </View>
+              <AnimPressable style={[styles.callBtn, { backgroundColor: `${SUCCESS}15` }]} onPress={() => {}}>
+                <Feather name="phone" size={16} color={SUCCESS} />
+              </AnimPressable>
+            </View>
+          ))}
+        </View>
 
-      {DANGER_SIGNS.map((item, i) => (
-        <View
-          key={i}
-          style={[
-            styles.dangerRow,
-            {
-              backgroundColor: item.urgent ? `${DESTRUCTIVE}08` : CARD_BG,
-              borderColor: item.urgent ? `${DESTRUCTIVE}30` : BORDER,
-            },
-          ]}
-        >
-          <Feather
-            name={item.urgent ? "alert-triangle" : "alert-circle"}
-            size={18}
-            color={item.urgent ? DESTRUCTIVE : WARNING}
-          />
-          <Text
+        <Text style={[styles.sectionTitle, { color: FOREGROUND }]}>Danger Signs — Seek Help Immediately</Text>
+
+        {DANGER_SIGNS.map((item, i) => (
+          <View
+            key={i}
             style={[
-              styles.dangerText,
-              { color: item.urgent ? DESTRUCTIVE : FOREGROUND },
+              styles.dangerRow,
+              {
+                backgroundColor: item.urgent ? `${DESTRUCTIVE}08` : CARD_BG,
+                borderColor: item.urgent ? `${DESTRUCTIVE}30` : BORDER,
+              },
             ]}
           >
-            {item.sign}
-          </Text>
-          {item.urgent && (
-            <View style={[styles.urgentBadge, { backgroundColor: `${DESTRUCTIVE}20` }]}>
-              <Text style={[{ color: DESTRUCTIVE, fontSize: 11, fontFamily: "Inter_700Bold" }]}>URGENT</Text>
-            </View>
-          )}
-        </View>
-      ))}
+            <Feather
+              name={item.urgent ? "alert-triangle" : "alert-circle"}
+              size={18}
+              color={item.urgent ? DESTRUCTIVE : WARNING}
+            />
+            <Text
+              style={[
+                styles.dangerText,
+                { color: item.urgent ? DESTRUCTIVE : FOREGROUND },
+              ]}
+            >
+              {item.sign}
+            </Text>
+            {item.urgent && (
+              <View style={[styles.urgentBadge, { backgroundColor: `${DESTRUCTIVE}20` }]}>
+                <Text style={[{ color: DESTRUCTIVE, fontSize: 11, fontFamily: "Inter_700Bold" }]}>URGENT</Text>
+              </View>
+            )}
+          </View>
+        ))}
       </ScrollView>
     </View>
   );

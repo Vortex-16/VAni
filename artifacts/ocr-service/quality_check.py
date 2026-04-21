@@ -37,6 +37,8 @@ class QualityReport(BaseModel):
 
 BLUR_THRESHOLD_ERROR = 40.0          # Laplacian variance below this = unusable
 BLUR_THRESHOLD_WARN = 100.0          # Tightened to 100 as per production hardening
+BLUR_THRESHOLD_ERROR = 30.0          # Laplacian variance below this = unusable
+BLUR_THRESHOLD_WARN = 80.0           # Below this = degraded quality
 
 BRIGHTNESS_LOW_ERROR = 40            # Mean brightness below this = too dark to use
 BRIGHTNESS_LOW_WARN = 70             # Below this = somewhat dark

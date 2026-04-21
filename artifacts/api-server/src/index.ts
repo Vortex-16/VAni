@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./env";
 import app from "./app";
 import { logger } from "./lib/logger";
 

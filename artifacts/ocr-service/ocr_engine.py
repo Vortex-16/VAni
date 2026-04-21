@@ -27,6 +27,7 @@ _trocr_model = None
 # Confidence threshold: words below this are sent to TrOCR for refinement
 # Increased to 0.75 to be more aggressive with handwriting models
 TROCR_REFINEMENT_THRESHOLD = 0.75
+TROCR_REFINEMENT_THRESHOLD = 0.65
 
 
 @dataclass
@@ -268,6 +269,10 @@ def run_ocr(image: np.ndarray, refine_with_trocr: bool = True) -> OCRResult:
 
         # Combine both outputs for the AI
         full_text = f"--- docTR Output ---\n{doctr_text}\n\n--- Tesseract Output ---\n{tesseract_text}"
+
+        # Overall stats
+        full_text = "\n".join(line.text for line in all_lines)
+        overall_confidence = float(np.mean([w.confidence for w in all_words_flat])) if all_words_flat else 0.0
 
         logger.info(
             f"OCR complete: {len(all_words_flat)} words, {len(all_lines)} lines, "

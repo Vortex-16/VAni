@@ -178,6 +178,34 @@ def preprocess_for_ocr(image: np.ndarray, aggressive: bool = False) -> np.ndarra
         gray = adaptive_threshold(gray, block_size=31, c=8)
 
     # Step 8: Convert back to BGR (docTR expects 3-channel)
+
+    Args:
+        image: Input BGR or grayscale image (numpy array).
+        aggressive: If True, applies adaptive thresholding for very poor images.
+
+    Returns:
+        Preprocessed image ready for OCR (BGR, enhanced).
+    """
+    # Step 1: Remove borders / crop to document
+    processed = remove_borders(image)
+
+    # Step 2: Denoise (before any enhancement to avoid amplifying noise)
+    processed = denoise(processed, strength=8)
+
+    # Step 3: CLAHE contrast enhancement on grayscale
+    gray = apply_clahe(processed, clip_limit=3.0)
+
+    # Step 4: Sharpen text edges
+    gray = sharpen(gray)
+
+    # Step 5: Deskew
+    gray = deskew(gray)
+
+    # Step 6: If aggressive mode, apply adaptive thresholding
+    if aggressive:
+        gray = adaptive_threshold(gray, block_size=31, c=8)
+
+    # Step 7: Convert back to BGR (docTR expects 3-channel)
     if len(gray.shape) == 2:
         result = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
     else:

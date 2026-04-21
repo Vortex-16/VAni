@@ -13,32 +13,69 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  withRepeat,
+  interpolate
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
+import { MockProvider } from "@/context/MockProvider";
+import { ErrorNotice } from "@/components/ErrorNotice";
 
 const PINK = "#e91e8c";
 const PINK_DARK = "#c2185b";
 const PINK_LIGHT = "#f06292";
 const WHITE = "#ffffff";
 const MUTED = "#94a3b8";
+const DESTRUCTIVE = "#ef4444";
 const INPUT_BG = "#fdf0f7";
 const INPUT_BORDER = "#f8b4d9";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login, setRole, setUser } = useApp();
+  const { login, setRole, setUser, switchProvider } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRoleState] = useState<"patient" | "caregiver">("patient");
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const shakeOffset = useSharedValue(0);
+
+  const shake = () => {
+    shakeOffset.value = withSequence(
+      withTiming(-10, { duration: 50 }),
+      withRepeat(withTiming(10, { duration: 50 }), 5, true),
+      withTiming(0, { duration: 50 })
+    );
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shakeOffset.value }],
+  }));
 
   const topInset = Platform.OS === "web" ? 0 : insets.top;
   const bottomInset = Platform.OS === "web" ? 24 : insets.bottom;
 
-  const handleGuestLogin = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  // Cleanup redundant "Error: " prefix from backends
+  const cleanErrorMessage = (msg: string) => {
+    return msg.replace(/^Error:\s*/i, "");
+  };
+
+  const handleGuestLogin = async () => {
+
+    // Clear token so we don't accidentally try to connect to API
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    await AsyncStorage.removeItem("discharge_buddy_token");
+
+    switchProvider(new MockProvider());
     setRole(role);
     setUser({
       id: Date.now().toString(),
@@ -50,51 +87,58 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    setError(null);
+    setIsLoggingIn(true);
     try {
-      if (!email) {
-        alert("Please enter your email");
+      if (!email || !password) {
+        setError("Please enter both email and password");
+        shake();
         return;
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      console.log("[DEBUG] Fetching from Login URL:", `${apiUrl}/api/auth/login`);
       const res = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, password })
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Login failed");
+        const data = await res.json();
+        throw new Error(data.error || "Login failed - Invalid credentials");
       }
 
       const data = await res.json();
       await login(data.user, data.token);
       router.replace("/(tabs)");
     } catch (err: any) {
-      console.error("Login Error", err);
-      alert(err.message || "Failed to connect to API backend");
+      // Use console.log instead of console.error to prevent unwanted system toasts in dev mode
+      console.log("[Auth] Login failure:", err.message);
+      setError(cleanErrorMessage(err.message || "Failed to connect to API backend"));
+      shake();
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   const handleDevLogin = async () => {
+    setError(null);
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
       const res = await fetch(`${apiUrl}/api/auth/dev-session`);
 
       if (!res.ok) {
-        throw new Error("Dev session failed");
+        throw new Error("Dev session failed - is backend running?");
       }
 
       const data = await res.json();
       await login(data.user, data.token);
       router.replace("/(tabs)");
     } catch (err: any) {
-      console.error("Dev Login Error", err);
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-      alert(`Dev session failed: ${err.message}\nChecked URL: ${apiUrl}/api/auth/dev-session\nEnsure backend is running and the IP matches your network.`);
+      console.log("[Auth] Dev Login failure:", err.message);
+      setError(cleanErrorMessage("Dev session failed. Ensure your backend is running."));
+      shake();
     }
   };
 
@@ -108,150 +152,172 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Gradient hero ── */}
-        <LinearGradient
-          colors={[PINK_DARK, PINK, PINK_LIGHT]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: topInset + 40 }]}
-        >
-          {/* Decorative circles */}
-          <View style={styles.decorCircle1} />
-          <View style={styles.decorCircle2} />
-          <View style={styles.decorCircle3} />
-
-          {/* Logo */}
-          <View style={styles.logoCircle}>
-            <Feather name="activity" size={36} color={PINK} />
-          </View>
-
-          <Text style={styles.appName}>DischargeBuddy</Text>
-          <Text style={styles.heroSubtitle}>Your recovery companion</Text>
-        </LinearGradient>
-
-        {/* ── Wave curve ── */}
-        <View style={styles.waveContainer}>
+        <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+          {/* ── Gradient hero ── */}
           <LinearGradient
-            colors={[PINK_LIGHT, PINK]}
+            colors={[PINK_DARK, PINK, PINK_LIGHT]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.waveBg}
-          />
-          <View style={styles.waveWhite} />
-        </View>
+            end={{ x: 1, y: 1 }}
+            style={[styles.hero, { paddingTop: topInset + 40 }]}
+          >
+            {/* Decorative circles */}
+            <View style={styles.decorCircle1} />
+            <View style={styles.decorCircle2} />
+            <View style={styles.decorCircle3} />
 
-        {/* ── Form ── */}
-        <View style={[styles.form, { paddingBottom: bottomInset + 32 }]}>
-          <Text style={styles.welcomeTitle}>Welcome Back</Text>
-          <Text style={styles.welcomeSub}>Login to continue your recovery journey</Text>
+            {/* Logo */}
+            <View style={styles.logoCircle}>
+              <Feather name="activity" size={36} color={PINK} />
+            </View>
 
-          {/* Role toggle */}
-          <View style={styles.roleRow}>
-            {(["patient", "caregiver"] as const).map((r) => (
-              <TouchableOpacity
-                key={r}
-                onPress={() => setRoleState(r)}
-                style={[styles.roleChip, role === r && styles.roleChipActive]}
-                activeOpacity={0.8}
-              >
-                <Feather
-                  name={r === "patient" ? "user" : "users"}
-                  size={13}
-                  color={role === r ? WHITE : PINK}
-                />
-                <Text style={[styles.roleChipText, { color: role === r ? WHITE : PINK }]}>
-                  {r === "patient" ? "Patient" : "Caregiver"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+            <Text style={styles.appName}>DischargeBuddy</Text>
+            <Text style={styles.heroSubtitle}>Your recovery companion</Text>
+          </LinearGradient>
 
-          {/* Email */}
-          <View style={[styles.inputBox, emailFocused && styles.inputBoxFocused]}>
-            <Feather name="mail" size={18} color={emailFocused ? PINK : MUTED} style={styles.inputIcon} />
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Email or username"
-              placeholderTextColor={MUTED}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              onFocus={() => setEmailFocused(true)}
-              onBlur={() => setEmailFocused(false)}
-            />
-          </View>
-
-          {/* Password */}
-          <View style={[styles.inputBox, passwordFocused && styles.inputBoxFocused]}>
-            <Feather name="lock" size={18} color={passwordFocused ? PINK : MUTED} style={styles.inputIcon} />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor={MUTED}
-              secureTextEntry={!showPassword}
-              style={[styles.input, { paddingRight: 44 }]}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeBtn}
-            >
-              <Feather name={showPassword ? "eye" : "eye-off"} size={18} color={MUTED} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Forgot */}
-          <TouchableOpacity style={styles.forgotRow}>
-            <Text style={[styles.forgotText, { color: PINK }]}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          {/* Login button */}
-          <TouchableOpacity onPress={handleLogin} activeOpacity={0.85}>
+          {/* ── Wave curve ── */}
+          <View style={styles.waveContainer}>
             <LinearGradient
-              colors={[PINK_DARK, PINK, PINK_LIGHT]}
+              colors={[PINK_LIGHT, PINK]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={styles.loginBtn}
+              style={styles.waveBg}
+            />
+            <View style={styles.waveWhite} />
+          </View>
+
+          {/* ── Form container ── */}
+          <View style={[styles.form, { paddingBottom: bottomInset + 32 }]}>
+            <Text style={styles.welcomeTitle}>Welcome Back</Text>
+            <Text style={styles.welcomeSub}>Login to continue your recovery journey</Text>
+
+            <ErrorNotice
+              message={error || ""}
+              visible={!!error}
+              onDismiss={() => setError(null)}
+            />
+
+            {/* Role toggle */}
+            <View style={styles.roleRow}>
+              {(["patient", "caregiver"] as const).map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setRoleState(r)}
+                  style={[styles.roleChip, role === r && styles.roleChipActive]}
+                  activeOpacity={0.8}
+                >
+                  <Feather
+                    name={r === "patient" ? "user" : "users"}
+                    size={13}
+                    color={role === r ? WHITE : PINK}
+                  />
+                  <Text style={[styles.roleChipText, { color: role === r ? WHITE : PINK }]}>
+                    {r === "patient" ? "Patient" : "Caregiver"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Email */}
+            <View style={[
+              styles.inputBox,
+              emailFocused && styles.inputBoxFocused,
+              error && !email && styles.inputBoxError
+            ]}>
+              <Feather name="mail" size={18} color={error && !email ? DESTRUCTIVE : (emailFocused ? PINK : MUTED)} style={styles.inputIcon} />
+              <TextInput
+                value={email}
+                onChangeText={(text) => { setEmail(text); setError(null); }}
+                placeholder="Email or username"
+                placeholderTextColor={MUTED}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={styles.input}
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
+              />
+            </View>
+
+            {/* Password */}
+            <View style={[
+              styles.inputBox,
+              passwordFocused && styles.inputBoxFocused,
+              error && !password && styles.inputBoxError
+            ]}>
+              <Feather name="lock" size={18} color={error && !password ? DESTRUCTIVE : (passwordFocused ? PINK : MUTED)} style={styles.inputIcon} />
+              <TextInput
+                value={password}
+                onChangeText={(text) => { setPassword(text); setError(null); }}
+                placeholder="Password"
+                placeholderTextColor={MUTED}
+                secureTextEntry={!showPassword}
+                style={[styles.input, { paddingRight: 44 }]}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+              >
+                <Feather name={showPassword ? "eye" : "eye-off"} size={18} color={MUTED} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Forgot */}
+            <TouchableOpacity style={styles.forgotRow}>
+              <Text style={[styles.forgotText, { color: PINK }]}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            {/* Login button */}
+            <TouchableOpacity
+              onPress={handleLogin}
+              activeOpacity={0.85}
+              disabled={isLoggingIn}
             >
-              <Text style={styles.loginBtnText}>LOG IN</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Guest login */}
-          <TouchableOpacity
-            onPress={handleGuestLogin}
-            style={styles.guestBtn}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.guestBtnText, { color: PINK }]}>GUEST LOG IN (OFFLINE)</Text>
-          </TouchableOpacity>
-
-          {/* Developer Shortcut (Visible in Dev) */}
-          {__DEV__ && (
-            <TouchableOpacity onPress={handleDevLogin} style={styles.devBtn}>
-              <Feather name="code" size={16} color={PINK} />
-              <Text style={styles.devBtnText}>DEVELOPER QUICK START</Text>
+              <LinearGradient
+                colors={[PINK_DARK, PINK, PINK_LIGHT]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.loginBtn, isLoggingIn && { opacity: 0.7 }]}
+              >
+                <Text style={styles.loginBtnText}>
+                  {isLoggingIn ? "LOGGING IN..." : "LOG IN"}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
-          )}
 
-          {/* Sign up */}
-          <View style={styles.signupRow}>
-            <Text style={styles.signupLabel}>Don't have an account?  </Text>
-            <TouchableOpacity onPress={() => router.replace("/register")}>
-              <Text style={[styles.signupLink, { color: PINK }]}>Sign Up</Text>
+            {/* Guest login */}
+            <TouchableOpacity
+              onPress={handleGuestLogin}
+              style={styles.guestBtn}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.guestBtnText, { color: PINK }]}>GUEST LOG IN (OFFLINE)</Text>
             </TouchableOpacity>
-          </View>
 
-          {/* Decorative dots */}
-          <View style={styles.dots}>
-            {[PINK, "#fbbf24", "#f472b6", PINK_LIGHT, "#fbbf24"].map((c, i) => (
-              <View key={i} style={[styles.dot, { backgroundColor: c, width: i % 2 === 0 ? 8 : 12, height: i % 2 === 0 ? 8 : 12 }]} />
-            ))}
+            {/* Developer Shortcut (Visible in Dev) */}
+            {__DEV__ && (
+              <TouchableOpacity onPress={handleDevLogin} style={styles.devBtn}>
+                <Feather name="code" size={16} color={PINK} />
+                <Text style={styles.devBtnText}>DEVELOPER QUICK START</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Sign up */}
+            <View style={styles.signupRow}>
+              <Text style={styles.signupLabel}>Don't have an account?  </Text>
+              <TouchableOpacity onPress={() => router.replace("/register")}>
+                <Text style={[styles.signupLink, { color: PINK }]}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Decorative dots */}
+            <View style={styles.dots}>
+              {[PINK, "#fbbf24", "#f472b6", PINK_LIGHT, "#fbbf24"].map((c, i) => (
+                <View key={i} style={[styles.dot, { backgroundColor: c, width: i % 2 === 0 ? 8 : 12, height: i % 2 === 0 ? 8 : 12 }]} />
+              ))}
+            </View>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -409,6 +475,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 14,
     top: 14,
+  },
+  inputBoxError: {
+    borderColor: "#ef4444",
+    backgroundColor: "#fffafa",
   },
 
   forgotRow: {

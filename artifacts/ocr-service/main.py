@@ -108,6 +108,7 @@ def decode_base64_image(b64_string: str) -> np.ndarray:
     except Exception as e:
         logger.error(f"Base64 decode failed: {str(e)}")
         raise ValueError(f"Failed to decode base64: {str(e)}")
+    image_bytes = base64.b64decode(b64_string)
 
     # Convert to PIL Image, then to numpy array
     pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")

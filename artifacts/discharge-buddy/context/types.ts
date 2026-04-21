@@ -1,4 +1,5 @@
 import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult } from "./AppContext";
+import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient } from "./AppContext";
 
 export interface IDataProvider {
   getMedicines(): Promise<Medicine[]>;
@@ -12,9 +13,14 @@ export interface IDataProvider {
   addJournalEntry(entry: JournalEntry): Promise<void>;
   
   getFollowUps(): Promise<FollowUp[]>;
+  addFollowUp(followUp: FollowUp): Promise<void>;
   completeFollowUp(id: string): Promise<void>;
+
+  simplifyInstruction(text: string): Promise<string>;
+  getRecoveryTrends(): Promise<any>;
 
   triggerEmergency(): Promise<void>;
   getLinkedPatients(): Promise<Patient[]>;
   scanPrescription(imageBase64: string): Promise<PrescriptionAnalysisResult>;
+  addMedicine(medicine: Medicine): Promise<void>;
 }
