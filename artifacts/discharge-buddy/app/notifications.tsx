@@ -16,27 +16,41 @@ const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
 const WHITE = "#ffffff";
 
-const NOTIFS = [
+type NotifItem = {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  color: string;
+  title: string;
+  body: string;
+  time: string;
+  read: boolean;
+};
+
+type NotifGroup = {
+  group: string;
+  items: NotifItem[];
+};
+
+const NOTIFS: NotifGroup[] = [
   {
     group: "Today",
     items: [
-      { icon: "check-circle" as const, color: "#10b981", title: "Dose Taken", body: "Lisinopril 10mg — marked as taken", time: "8:03 AM", read: false },
-      { icon: "alert-triangle" as const, color: "#f59e0b", title: "Missed Dose", body: "Aspirin 81mg — you missed your evening dose", time: "8:00 PM", read: false },
-      { icon: "calendar" as const, color: "#8b5cf6", title: "Upcoming Appointment", body: "Dr. Smith — tomorrow at 10:00 AM", time: "3:00 PM", read: false },
+      { icon: "check-circle", color: "#10b981", title: "Dose Taken", body: "Lisinopril 10mg — marked as taken", time: "8:03 AM", read: false },
+      { icon: "alert-triangle", color: "#f59e0b", title: "Missed Dose", body: "Aspirin 81mg — you missed your evening dose", time: "8:00 PM", read: false },
+      { icon: "calendar", color: "#8b5cf6", title: "Upcoming Appointment", body: "Dr. Smith — tomorrow at 10:00 AM", time: "3:00 PM", read: false },
     ],
   },
   {
     group: "Yesterday",
     items: [
-      { icon: "activity" as const, color: "#ef4444", title: "Symptom Alert", body: "Chest pain logged — consider calling your doctor", time: "2:15 PM", read: true },
-      { icon: "check-circle" as const, color: "#10b981", title: "All Doses Taken", body: "Great job! You had 100% adherence yesterday", time: "10:00 PM", read: true },
+      { icon: "activity", color: "#ef4444", title: "Symptom Alert", body: "Chest pain logged — consider calling your doctor", time: "2:15 PM", read: true },
+      { icon: "check-circle", color: "#10b981", title: "All Doses Taken", body: "Great job! You had 100% adherence yesterday", time: "10:00 PM", read: true },
     ],
   },
   {
     group: "This Week",
     items: [
-      { icon: "user" as const, color: TEAL, title: "Caregiver Update", body: "Mary has viewed your recovery report", time: "Mon", read: true },
-      { icon: "message-circle" as const, color: TEAL, title: "AI Recommendation", body: "Based on your logs, consider drinking more water", time: "Sun", read: true },
+      { icon: "user", color: TEAL, title: "Caregiver Update", body: "Mary has viewed your recovery report", time: "Mon", read: true },
+      { icon: "message-circle", color: TEAL, title: "AI Recommendation", body: "Based on your logs, consider drinking more water", time: "Sun", read: true },
     ],
   },
 ];

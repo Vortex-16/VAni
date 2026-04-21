@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { IDataProvider } from "./types";
-import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry } from "./AppContext";
+import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult } from "./AppContext";
 import { ALL_ACHIEVEMENTS } from "./AppContext";
 
 const STORAGE_KEY = "discharge_buddy_data_v2";
@@ -151,5 +151,31 @@ export class MockProvider implements IDataProvider {
 
   async getLinkedPatients(): Promise<Patient[]> {
     return DEMO_PATIENTS;
+  }
+
+  async scanPrescription(_imageBase64: string): Promise<PrescriptionAnalysisResult> {
+    await new Promise(r => setTimeout(r, 1500));
+    return {
+      medicines: [
+        {
+          name: "Amlodipine",
+          dosage: "5mg",
+          frequency: "Once daily",
+          duration: "30 days",
+          timing: "Morning",
+          notes: "For blood pressure",
+          confidence: 95,
+          low_confidence: false,
+          simplifiedInstructions: "Take this pill every morning. It controls blood pressure.",
+          times: ["08:00"]
+        }
+      ],
+      general_instructions: "Take as directed.",
+      explanation: "This is a mock prescription result.",
+      warnings: [],
+      overall_confidence: 95,
+      ocr_source: "mock",
+      processing_note: "Mock result for development"
+    };
   }
 }
