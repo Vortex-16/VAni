@@ -1,6 +1,6 @@
 import { customFetch } from "@workspace/api-client-react";
 import type { IDataProvider } from "./types";
-import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry } from "./AppContext";
+import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient } from "./AppContext";
 
 export class ApiProvider implements IDataProvider {
   async getMedicines(): Promise<Medicine[]> {

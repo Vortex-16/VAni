@@ -16,7 +16,16 @@ const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
 const WHITE = "#ffffff";
 
-const NOTIFS = [
+type NotifItem = {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  color: string;
+  title: string;
+  body: string;
+  time: string;
+  read: boolean;
+};
+
+const NOTIFS: { group: string; items: NotifItem[] }[] = [
   {
     group: "Today",
     items: [

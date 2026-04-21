@@ -409,31 +409,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     console.log("EMERGENCY ACTUALLY TRIGGERED AND SENT TO BACKEND");
   };
 
-  const addPrescription = async (imageUri: string) => {
+  const addPrescription = async (_imageUri: string) => {
+    // Prescription scanning is now handled directly in scan.tsx via /api/ocr/scan.
+    // This function is kept for interface compatibility.
     setIsProcessingPrescription(true);
     try {
-      // In a real flow, you'd upload the image to /api/storage/prescriptions
-      // For now, we simulate the text extraction and simplification
-      const mockExtractedText = "Take 1 tab PO BID AC";
-      const simplified = await dataProvider.simplifyInstruction(mockExtractedText);
-      
-      console.log("Extracted and Simplified:", simplified);
-      
-      // Add a medicine based on extracted data
-      addMedicine({
-        id: Date.now().toString(),
-        name: "Extracted Med",
-        dosage: "1 tab",
-        frequency: "BID",
-        times: ["08:00", "20:00"],
-        instructions: mockExtractedText,
-        simplifiedInstructions: simplified,
-        startDate: new Date().toISOString(),
-        color: "#8b5cf6",
-      });
+      console.log("[addPrescription] Prescription scan triggered via scan.tsx OCR pipeline.");
+      unlockAchievement("scan_master");
     } finally {
       setIsProcessingPrescription(false);
-      unlockAchievement("scan_master");
     }
   };
 

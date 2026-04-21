@@ -106,7 +106,7 @@ const rfStyles = StyleSheet.create({
 
 export default function MedicinesScreen() {
   const insets = useSafeAreaInsets();
-  const { medicines, todayDoses, updateDoseStatus, drugInteractions } = useApp();
+  const { medicines, todayDoses, updateDoseStatus, drugInteractions, addMedicine } = useApp();
   const [activeTab, setActiveTab] = useState<"today" | "all" | "refills">("today");
   const [mascotTrigger, setMascotTrigger] = useState(0);
   const topInset = Platform.OS === "web" ? 0 : insets.top;
