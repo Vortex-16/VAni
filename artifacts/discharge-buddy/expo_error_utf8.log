@@ -1,0 +1,94 @@
+﻿env: load .env
+env: export PORT LOG_LEVEL DATABASE_URL JWT_SECRET FRONTEND_URL EXPO_PUBLIC_API_URL
+Starting project at D:\hdd\GDG(App)\Discharge-Buddy\artifacts\discharge-buddy
+Γ£à Loaded environment variables from root .env
+Γ£à Loaded environment variables from root .env
+Γ£à Loaded environment variables from root .env
+Γ£à Loaded environment variables from root .env
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Γ£à Loaded environment variables from root .env
+Γ£à Loaded environment variables from root .env
+Γ£à Loaded environment variables from root .env
+Γ£à Loaded environment variables from root .env
+node.exe : The following packages should be updated for best compatibility with the installed expo version:
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (The following p...d expo version::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  expo-device@55.0.15 - expected version: ~8.0.10
+  expo-file-system@55.0.16 - expected version: ~19.0.21
+  expo-image-manipulator@55.0.15 - expected version: ~14.0.8
+  expo-notifications@55.0.19 - expected version: ~0.32.16
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8083
+Logs for your project will appear below.
+Web artifacts\discharge-buddy\index.js ΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæ  0.0% (0/1)
+Web artifacts\discharge-buddy\index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæ 51.0% ( 97/222)
+Web artifacts\discharge-buddy\index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæ 51.0% (362/549)
+| Γ£à Loaded environment variables from root .env
+Web artifacts\discharge-buddy\index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæΓûæΓûæΓûæΓûæΓûæ 63.4% ( 805/1011)
+Web artifacts\discharge-buddy\index.js ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûæΓûæΓûæ 86.5% (1142/1257)
+Web Bundling failed 15803ms artifacts\discharge-buddy\index.js (1458 modules)
+ ERROR  SyntaxError: D:\hdd\GDG(App)\Discharge-Buddy\artifacts\discharge-buddy\app\notifications.tsx: Unexpected token (34:0)
+
+  32 |
+  33 | const NOTIFS: NotifGroup[] = [
+> 34 | const NOTIFS: { group: string; items: NotifItem[] }[] = [
+     | ^
+  35 |   {
+  36 |     group: "Today",
+  37 |     items: [
+    at constructor (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:365:19)
+    at TypeScriptParserMixin.raise (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:6599:19)
+    at TypeScriptParserMixin.unexpected (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:6619:16)
+    at TypeScriptParserMixin.parseExprAtom (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11442:22)
+    at TypeScriptParserMixin.parseExprAtom (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:9786:20)
+    at D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12426:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10800:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12493:17)
+    at TypeScriptParserMixin.parseExprListItem (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12175:18)
+    at TypeScriptParserMixin.parseExprList (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12150:22)
+    at TypeScriptParserMixin.parseArrayLike (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12057:26)
+    at TypeScriptParserMixin.parseArrayLike (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:9193:24)
+    at TypeScriptParserMixin.parseExprAtom (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11335:23)
+    at TypeScriptParserMixin.parseExprAtom (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11081:23)
+    at TypeScriptParserMixin.parseUpdate (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11066:21)
+    at TypeScriptParserMixin.parseMaybeUnary (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:11046:23)
+    at TypeScriptParserMixin.parseMaybeUnary (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:9837:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10899:61)
+    at TypeScriptParserMixin.parseExprOps (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10904:23)
+    at TypeScriptParserMixin.parseMaybeConditional (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10881:23)
+    at TypeScriptParserMixin.parseMaybeAssign (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10831:21)
+    at TypeScriptParserMixin.parseMaybeAssign (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:9786:20)
+    at D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10800:39
+    at TypeScriptParserMixin.allowInAnd (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12421:16)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10800:17)
+    at TypeScriptParserMixin.parseVar (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:13384:91)
+    at TypeScriptParserMixin.parseVarStatement (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:13230:10)
+    at TypeScriptParserMixin.parseVarStatement (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:9408:31)
+    at TypeScriptParserMixin.parseStatementContent (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12851:23)
+    at TypeScriptParserMixin.parseStatementContent (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:9508:18)
+    at TypeScriptParserMixin.parseStatementLike (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12767:17)
+    at TypeScriptParserMixin.parseModuleItem (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12744:17)
+    at TypeScriptParserMixin.parseBlockOrModuleBlockBody (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:13316:36)
+    at TypeScriptParserMixin.parseBlockBody (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:13309:10)
+    at TypeScriptParserMixin.parseProgram (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12622:10)
+    at TypeScriptParserMixin.parseTopLevel (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:12612:25)
+    at TypeScriptParserMixin.parse (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:14488:25)
+    at TypeScriptParserMixin.parse (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:10126:18)
+    at parse (D:\hdd\GDG(App)\Discharge-Buddy\node_modules\.pnpm\@babel+parser@7.29.0\node_modules\@babel\parser\lib\index.js:14501:26)
+Γ£à Loaded environment variables from root .env
