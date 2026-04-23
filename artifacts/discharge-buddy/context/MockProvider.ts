@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { IDataProvider } from "./types";
 import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult } from "./AppContext";
-import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient } from "./AppContext";
 import { ALL_ACHIEVEMENTS } from "./AppContext";
 
 const STORAGE_KEY = "discharge_buddy_data_v2";
@@ -190,6 +189,8 @@ export class MockProvider implements IDataProvider {
       ocr_source: "mock",
       processing_note: "Mock result for development"
     };
+  }
+
   async addMedicine(medicine: Medicine): Promise<void> {
     const medicines = await this.getMedicines();
     await this.saveData({ medicines: [medicine, ...medicines] });

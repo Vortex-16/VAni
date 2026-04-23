@@ -441,16 +441,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsProcessingPrescription(false);
     }
-  const addPrescription = async (_imageUri: string) => {
-    // Prescription scanning is now handled directly in scan.tsx via /api/ocr/scan.
-    // This function is kept for interface compatibility.
-    setIsProcessingPrescription(true);
-    try {
-      console.log("[addPrescription] Prescription scan triggered via scan.tsx OCR pipeline.");
-      unlockAchievement("scan_master");
-    } finally {
-      setIsProcessingPrescription(false);
-    }
   };
 
   const getRecoveryTrends = async () => {

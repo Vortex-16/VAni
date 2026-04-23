@@ -1,7 +1,6 @@
 import { customFetch } from "@workspace/api-client-react";
 import type { IDataProvider } from "./types";
 import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult } from "./AppContext";
-import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient } from "./AppContext";
 
 export class ApiProvider implements IDataProvider {
   async getMedicines(): Promise<Medicine[]> {
@@ -47,8 +46,8 @@ export class ApiProvider implements IDataProvider {
 
   // Not implemented on backend yet, fallback to empty array
   async getFollowUps(): Promise<FollowUp[]> {
-    const res = await customFetch<{ followups: FollowUp[] }>("/api/followups/");
-    return res.followups;
+    const res = await customFetch<{ data: FollowUp[] }>("/api/followups/");
+    return res.data;
   }
   
   async addFollowUp(followUp: FollowUp): Promise<void> {
@@ -108,6 +107,9 @@ export class ApiProvider implements IDataProvider {
     return await customFetch("/api/ocr/scan", {
       method: "POST",
       body: JSON.stringify({ imageBase64 }),
+    });
+  }
+
   async addMedicine(medicine: Medicine): Promise<void> {
     await customFetch("/api/medicines", {
       method: "POST",

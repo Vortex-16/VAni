@@ -46,8 +46,10 @@ export class FollowupController {
       const status = req.query.status as "upcoming" | "completed" | "missed" | undefined;
       const followups = await FollowupService.getFollowups(req.user.id, status);
       res.json({ success: true, data: followups });
-    } catch {
-      res.status(500).json({ success: false, message: "Failed to get followups" });
+    } catch (err: unknown) {
+      console.error("[FollowupController] Error fetching followups:", err);
+      const message = err instanceof Error ? err.message : "Failed to get followups";
+      res.status(500).json({ success: false, message });
     }
   }
 

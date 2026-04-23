@@ -31,7 +31,7 @@ type NotifGroup = {
 };
 
 const NOTIFS: NotifGroup[] = [
-const NOTIFS: { group: string; items: NotifItem[] }[] = [
+
   {
     group: "Today",
     items: [
