@@ -1,0 +1,20 @@
+2026-04-24 07:48:49,896 - ERROR - REPORT GEN ERROR: Traceback (most recent call last):
+  File "C:\Users\SRINJOYEE\Desktop\d-buddy\Discharge-Buddy\artifacts\ocr-service\main.py", line 59, in generate_report
+    from report_generator import RecoveryReportGenerator
+  File "C:\Users\SRINJOYEE\Desktop\d-buddy\Discharge-Buddy\artifacts\ocr-service\report_generator.py", line 1, in <module>
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Frame, KeepInFrame
+ModuleNotFoundError: No module named 'reportlab'
+
+2026-04-24 07:48:51,099 - ERROR - REPORT GEN ERROR: Traceback (most recent call last):
+  File "C:\Users\SRINJOYEE\Desktop\d-buddy\Discharge-Buddy\artifacts\ocr-service\main.py", line 59, in generate_report
+    from report_generator import RecoveryReportGenerator
+  File "C:\Users\SRINJOYEE\Desktop\d-buddy\Discharge-Buddy\artifacts\ocr-service\report_generator.py", line 1, in <module>
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Frame, KeepInFrame
+ModuleNotFoundError: No module named 'reportlab'
+
+2026-04-24 07:51:18,144 - INFO - Generating Medical Report for Dev Tester2...
+2026-04-24 07:51:18,154 - INFO - Data: {'name': 'Dev Tester2', 'period': 'Last 7 Days', 'adherence': 100, 'taken': 0, 'missed': 0, 'total': 0, 'medications': [{'name': 'Azithromycin', 'dosage': '500mg', 'status': 'Pending'}, {'name': 'Paracetamol', 'dosage': '650mg', 'status': 'Pending'}, {'name': 'Levocetirizine', 'dosage': '5mg', 'status': 'Pending'}, {'name': 'Throat Lozenges', 'dosage': '', 'status': 'Pending'}, {'name': 'ORS Sachets', 'dosage': '1 sachet in 1 glass of water', 'status': 'Pending'}, {'name': 'n,', 'dosage': '5', 'status': 'Pending'}], 'insights': ['Consistency is excellent this week.', 'Starting a new streak today!'], 'summary': "You've maintained exceptional consistency this week. Your recovery is on a very positive trajectory.", 'recommendations': ['Set evening reminders to avoid missed doses.', 'Keep your medications in a visible, convenient spot.', 'Continue monitoring your daily symptoms.']}
+2026-04-24 07:51:18,215 - INFO - PDF Generated successfully.
+2026-04-24 07:56:10,209 - INFO - Generating Medical Report for Dev Tester2...
+2026-04-24 07:56:10,210 - INFO - Data: {'name': 'Dev Tester2', 'period': 'Last 7 Days', 'adherence': 0, 'taken': 0, 'missed': 0, 'total': 0, 'medications': [{'name': 'Azithromycin', 'dosage': '500mg', 'status': 'Pending'}, {'name': 'Paracetamol', 'dosage': '650mg', 'status': 'Pending'}, {'name': 'Levocetirizine', 'dosage': '5mg', 'status': 'Pending'}, {'name': 'Throat Lozenges', 'dosage': '', 'status': 'Pending'}, {'name': 'ORS Sachets', 'dosage': '1 sachet in 1 glass of water', 'status': 'Pending'}, {'name': 'n,', 'dosage': '5', 'status': 'Pending'}], 'insights': ['Try to be more consistent with evening doses.', 'Starting a new streak today!'], 'summary': 'Good progress! There is some slight room for improvement in dose timing consistency.', 'recommendations': ['Set evening reminders to avoid missed doses.', 'Keep your medications in a visible, convenient spot.', 'Continue monitoring your daily symptoms.']}
+2026-04-24 07:56:10,301 - INFO - PDF Generated successfully.

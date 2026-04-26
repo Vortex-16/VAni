@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, Redirect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
@@ -13,28 +13,28 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
-import Svg, { Circle, G, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, G, Rect, Text as SvgText, TSpan } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "@/constants/translations";
 
 import { MascotBuddy } from "@/components/MascotBuddy";
 import { AnimPressable } from "@/components/AnimPressable";
+import { NeuralOrb } from "@/components/NeuralOrb";
 import colors from "@/constants/colors";
-import { getLevel, useApp } from "@/context/AppContext";
+import { useApp } from "@/context/AppContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { SuccessBurst } from "@/components/SuccessBurst";
 
 const { width } = Dimensions.get("window");
 const theme = colors.light;
 const PURPLE = "#6C47FF";
 const PURPLE_LIGHT = "#EDE9FE";
 
-// Responsive helpers
 const edgePad = Math.min(width * 0.05, 20);
 const isSmall = width < 360;
 
-
-// ─── Circular Progress ───────────────────────────────────────────────────────
 function CircularProgress({ pct, size = 96 }: { pct: number; size?: number }) {
   const stroke = 9;
   const r = (size - stroke * 2) / 2;
@@ -43,7 +43,6 @@ function CircularProgress({ pct, size = 96 }: { pct: number; size?: number }) {
   const circumference = 2 * Math.PI * r;
   const offset = circumference - (pct / 100) * circumference;
 
-  // Animated progress
   const animPct = useRef(new Animated.Value(0)).current;
   const [displayPct, setDisplayPct] = useState(0);
 
@@ -78,7 +77,8 @@ function CircularProgress({ pct, size = 96 }: { pct: number; size?: number }) {
         fontSize={isSmall ? "20" : "22"}
         fontFamily="Inter_700Bold"
       >
-        {displayPct}%
+        {displayPct}
+        <TSpan fontSize={isSmall ? "11" : "13"} dx="4" dy="-4">%</TSpan>
       </SvgText>
       <SvgText
         x={cx} y={cy + 13}
@@ -93,20 +93,23 @@ function CircularProgress({ pct, size = 96 }: { pct: number; size?: number }) {
   );
 }
 
-// ─── Weekly Bars ─────────────────────────────────────────────────────────────
-function WeeklyBars({ taken = 0, total = 0 }: { taken: number; total: number }) {
+function WeeklyBars({ history = [] }: { history: any[] }) {
   const today = new Date();
   const days = ["M", "T", "W", "T", "F", "S", "S"];
   const todayIdx = (today.getDay() + 6) % 7;
-
-  const chartW = width - edgePad * 2 - 32; // full inner width
-  const barW = Math.min(22, (chartW - 6 * 8) / 7); // dynamic bar width
+  const chartW = width - edgePad * 2 - 32; 
+  const barW = Math.min(22, (chartW - 6 * 8) / 7); 
   const barH = isSmall ? 52 : 60;
   const gap = (chartW - days.length * barW) / (days.length - 1);
 
-  const baseData = [92, 100, 75, 90, 100, 85, 0];
-  const todayPct = total > 0 ? (taken / total) * 100 : 0;
-  const vals = baseData.map((v, i) => (i === todayIdx ? todayPct : i < todayIdx ? v : 0));
+  const vals = new Array(7).fill(0);
+  history.forEach(h => {
+    if (h.date) {
+      const d = new Date(h.date);
+      const dayOfWeek = (d.getDay() + 6) % 7;
+      vals[dayOfWeek] = h.percentage;
+    }
+  });
 
   return (
     <Svg width={chartW} height={barH + 22} viewBox={`0 0 ${chartW} ${barH + 22}`}>
@@ -137,7 +140,6 @@ function WeeklyBars({ taken = 0, total = 0 }: { taken: number; total: number }) 
   );
 }
 
-// ─── Stat Chip ────────────────────────────────────────────────────────────────
 function StatChip({ count, label, color }: { count: number; label: string; color: string }) {
   return (
     <View style={[styles.statChip, { backgroundColor: `${color}22` }]}>
@@ -147,7 +149,6 @@ function StatChip({ count, label, color }: { count: number; label: string; color
   );
 }
 
-// ─── Quick Action ─────────────────────────────────────────────────────────────
 function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; label: string; color: string; onPress: () => void; delay?: number }) {
   const scale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -178,21 +179,50 @@ function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; la
   );
 }
 
-// ─── Main Export ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { role } = useApp();
+  const { user, role } = useApp();
+
+  if (!user) return <Redirect href="/login" />;
   const topInset = Platform.OS === "web" ? 67 : insets.top;
-  if (role === "caregiver") return <CaregiverDashboard topInset={topInset} />;
+  if (role === "caregiver") {
+    return <Redirect href="/caregiver/dashboard" />;
+  }
   return <PatientDashboard topInset={topInset} />;
 }
 
-// ─── Patient Dashboard ────────────────────────────────────────────────────────
 function PatientDashboard({ topInset }: { topInset: number }) {
-  const { user, todayDoses, medicines, followUps, updateDoseStatus, language } = useApp();
+  const { 
+    user, todayDoses, medicines, followUps, updateDoseStatus, language, 
+    doseHistory, recoverySuggestion, clearRecoverySuggestion, refreshData,
+    streak, speakNeural, isSpeaking, speakingTargetId 
+  } = useApp();
   const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isGreetingSpeaking = isSpeaking && speakingTargetId === "patient_greeting";
+
+  const handleDailyGreeting = async () => {
+    if (isGreetingSpeaking) {
+      await speakNeural("");
+      return;
+    }
+
+    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const doseCount = todayDoses.length;
+    const greeting = `Good morning ${user?.name || 'there'}! Today is ${todayStr}. You have ${doseCount} ${doseCount === 1 ? 'dose' : 'doses'} scheduled today. Your current streak is ${streak} days. Keep up the great work on your recovery!`;
+    
+    await speakNeural(greeting, "patient_greeting");
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await refreshData();
+    setIsRefreshing(false);
+  };
 
   const doses = todayDoses || [];
   const meds = medicines || [];
@@ -206,23 +236,21 @@ function PatientDashboard({ topInset }: { topInset: number }) {
   const upcomingFollowUp = fus.find((f) => !f.completed);
   const [showAll, setShowAll] = useState(false);
   const [mascotTrigger, setMascotTrigger] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  // Hero fade in
   const heroFade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(heroFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   }, []);
 
   const recentActivity = doses
+    .filter(d => d.status !== "taken")
     .slice(0, showAll ? undefined : 4)
     .map((dose) => ({ dose, med: meds.find((m) => m.id === dose.medicineId) }));
 
   const riskColor = missed >= 2 ? "#EF4444" : missed === 1 ? "#F59E0B" : "#22C55E";
   const riskLabel = missed >= 2 ? "High Risk" : missed === 1 ? "Moderate" : "On Track";
-  const firstName = (user?.name ?? "Friend").split(" ")[0];
-  const greetHour = new Date().getHours();
-  const greetKey = greetHour < 12 ? "morning" : greetHour < 17 ? "afternoon" : greetHour < 21 ? "evening" : "night";
-  const greet = t(greetKey, language);
+
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
       <StatusBar style="light" />
@@ -230,39 +258,56 @@ function PatientDashboard({ topInset }: { topInset: number }) {
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 110 }]}
       >
-        {/* ── Hero Header ── */}
         <LinearGradient
           colors={["#4B26C8", PURPLE, "#8B5CF6"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.headerBg, { paddingTop: topInset + 14 }]}
         >
-          {/* Decorative blobs */}
           <View style={styles.decor1} />
           <View style={styles.decor2} />
           <View style={styles.decor3} />
 
-          {/* Top bar */}
           <Animated.View style={[styles.headerTop, { opacity: heroFade }]}>
             <AnimPressable onPress={openSidebar} style={styles.iconBtn}>
               <Feather name="menu" size={21} color="#fff" />
             </AnimPressable>
-            <View style={styles.greetBlock}>
-              <Text style={styles.greetText} numberOfLines={1}>{greet}</Text>
-              <Text style={styles.nameText} numberOfLines={1}>{firstName} 👋</Text>
+            <View style={styles.headerInfo}>
+              <Text style={styles.welcomeText}>{t('dashboard_hi', language)},</Text>
+              <TouchableOpacity 
+                onPress={handleDailyGreeting}
+                style={styles.greetingRow}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.nameText} numberOfLines={1}>{user?.name} 👋</Text>
+                {isGreetingSpeaking ? (
+                  <View style={styles.greetingOrb}>
+                    <NeuralOrb isSpeaking={true} isProcessing={false} />
+                  </View>
+                ) : (
+                  <View style={styles.voiceSmallBtn}>
+                    <Feather name="volume-2" size={14} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
-            <AnimPressable onPress={() => router.push("/notifications")} style={styles.iconBtn}>
-              <Feather name="bell" size={19} color="#fff" />
-              <View style={styles.notifDot} />
-            </AnimPressable>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <AnimPressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/scan-qr' as any); }}
+                style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.22)' }]}
+              >
+                <Feather name="maximize" size={18} color="#fff" />
+              </AnimPressable>
+              <AnimPressable onPress={() => router.push("/notifications")} style={styles.iconBtn}>
+                <Feather name="bell" size={19} color="#fff" />
+                <View style={styles.notifDot} />
+              </AnimPressable>
+            </View>
           </Animated.View>
 
-          {/* Mascot */}
           <MascotBuddy size={isSmall ? 76 : 84} trigger={mascotTrigger} />
 
-          {/* ── Stats Block ── responsive two-row layout */}
           <View style={styles.statsBlock}>
-            {/* Row 1: Ring + Dose count */}
             <View style={styles.statsRow1}>
               <View style={styles.ringWrap}>
                 <CircularProgress pct={adherencePct} size={isSmall ? 88 : 96} />
@@ -279,7 +324,6 @@ function PatientDashboard({ topInset }: { topInset: number }) {
               </View>
             </View>
 
-            {/* Row 2: Missed + Pending chips */}
             <View style={styles.statsRow2}>
               <StatChip count={missed} label="missed" color="#EF4444" />
               <View style={styles.statsDivider} />
@@ -289,32 +333,41 @@ function PatientDashboard({ topInset }: { topInset: number }) {
             </View>
           </View>
 
-          {/* ── Weekly chart ── */}
           <View style={styles.weeklyWrap}>
             <View style={styles.weeklyHeader}>
               <Feather name="bar-chart-2" size={13} color="rgba(255,255,255,0.65)" />
               <Text style={styles.weeklyLabel}>This Week</Text>
             </View>
-            <WeeklyBars taken={taken} total={total} />
+            <WeeklyBars history={doseHistory} />
           </View>
         </LinearGradient>
 
-        {/* ── Quick Actions ── */}
+        {recoverySuggestion && (
+          <RecoverySupportBanner 
+            suggestion={recoverySuggestion} 
+            onDismiss={clearRecoverySuggestion}
+            onStart={() => {
+              clearRecoverySuggestion();
+              router.push("/recovery-support" as any);
+            }}
+          />
+        )}
+
         <View style={styles.quickSection}>
           <Text style={styles.sectionTitle}>{t("reminders", language)}</Text>
           <View style={styles.quickRow}>
             <QuickAction icon="activity" label="Symptoms" color="#EF4444" delay={0}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/symptoms" as any); }} />
-            <QuickAction icon="calendar" label="Schedule" color={PURPLE} delay={60}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/schedule" as any); }} />
+            <QuickAction icon="wind" label="Meditation" color="#A21CAF" delay={60}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/meditation" as any); }} />
+
             <QuickAction icon="message-circle" label="AI Help" color="#06B6D4" delay={120}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/chat" as any); }} />
-            <QuickAction icon="alert-triangle" label="Emergency" color="#F59E0B" delay={180}
+            <QuickAction icon="alert-triangle" label="Emergency" color="#F59E0B" delay={160}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); router.push("/emergency" as any); }} />
           </View>
         </View>
 
-        {/* ── Follow-up Banner ── */}
         {upcomingFollowUp && (
           <AnimPressable
             onPress={() => router.push("/(tabs)/followups" as any)}
@@ -342,10 +395,14 @@ function PatientDashboard({ topInset }: { topInset: number }) {
           </AnimPressable>
         )}
 
-        {/* ── Recent Doses ── */}
         <View style={styles.recentSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Doses</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.sectionTitle}>Recent Doses</Text>
+              <TouchableOpacity onPress={handleRefresh} disabled={isRefreshing}>
+                <Feather name="refresh-cw" size={14} color={PURPLE} style={{ opacity: isRefreshing ? 0.5 : 1 }} />
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
               onPress={() => setShowAll(!showAll)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -376,6 +433,8 @@ function PatientDashboard({ topInset }: { topInset: number }) {
                     if (dose.status === "pending") {
                       updateDoseStatus(dose.id, "taken");
                       setMascotTrigger(prev => prev + 1);
+                      setShowSuccess(true);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     }
                   }}
                 />
@@ -384,11 +443,14 @@ function PatientDashboard({ topInset }: { topInset: number }) {
           )}
         </View>
       </ScrollView>
+      <SuccessBurst 
+        visible={showSuccess} 
+        onComplete={() => setShowSuccess(false)} 
+      />
     </View>
   );
 }
 
-// ─── Animated Dose Row ────────────────────────────────────────────────────────
 function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
@@ -430,7 +492,6 @@ function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
   );
 }
 
-// ─── Caregiver Dashboard ──────────────────────────────────────────────────────
 function CaregiverDashboard({ topInset }: { topInset: number }) {
   const { user, linkedPatients } = useApp();
   const { open: openSidebar } = useSidebar();
@@ -489,6 +550,7 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
           <Text style={styles.sectionTitle}>Caregiver Actions</Text>
           <View style={styles.quickRow}>
             <QuickAction icon="eye" label="Monitor" color={PURPLE} delay={0} onPress={() => router.push("/caregiver/monitor" as any)} />
+            <QuickAction icon="plus-circle" label="Issue Plan" color={PURPLE} delay={30} onPress={() => router.push("/caregiver/create-plan" as any)} />
             <QuickAction icon="bell" label="Remind" color="#F59E0B" delay={60} onPress={() => router.push("/caregiver/remind" as any)} />
             <QuickAction icon="message-circle" label="Message" color="#06B6D4" delay={120} onPress={() => router.push("/caregiver/message" as any)} />
             <QuickAction icon="alert-triangle" label="Alert" color="#EF4444" delay={180} onPress={() => router.push("/caregiver/alert" as any)} />
@@ -496,211 +558,336 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
         </View>
 
         {patient && (
-          <View style={styles.patientCard}>
-            <View style={styles.patientAvatar}>
-              <Feather name="user" size={22} color={PURPLE} />
-            </View>
-            <View style={styles.patientInfo}>
-              <Text style={styles.patientName} numberOfLines={1}>{patient.name}</Text>
-              <Text style={styles.patientStatus} numberOfLines={2}>Recovery in progress · Stable condition</Text>
-            </View>
-            <View style={[styles.patientBadge, { backgroundColor: "#DCFCE7" }]}>
-              <Text style={[styles.patientBadgeText, { color: "#16A34A" }]}>Stable</Text>
-            </View>
-          </View>
+          <CaregiverPatientCard patient={patient} />
         )}
       </ScrollView>
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  headerBg: {
-    paddingBottom: 24,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    overflow: "hidden",
-  },
-  decor1: {
-    position: "absolute", width: 200, height: 200, borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -50,
-  },
-  decor2: {
-    position: "absolute", width: 110, height: 110, borderRadius: 55,
-    backgroundColor: "rgba(255,255,255,0.04)", bottom: -20, left: -20,
-  },
-  decor3: {
-    position: "absolute", width: 60, height: 60, borderRadius: 30,
-    backgroundColor: "rgba(255,255,255,0.06)", top: 80, left: 30,
-  },
-  headerTop: {
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: edgePad, marginBottom: 4,
-  },
-  iconBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    alignItems: "center", justifyContent: "center",
-  },
-  greetBlock: { alignItems: "center", flex: 1, paddingHorizontal: 8 },
-  greetText: { color: "rgba(255,255,255,0.72)", fontSize: 12, fontFamily: "Inter_400Regular" },
-  nameText: { color: "#fff", fontSize: isSmall ? 17 : 19, fontFamily: "Inter_700Bold" },
-  notifDot: {
-    position: "absolute", top: 9, right: 9,
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: "#FCD34D",
-    borderWidth: 1.5, borderColor: PURPLE,
-  },
+function CaregiverPatientCard({ patient }: { patient: any }) {
+  const { fetchBriefing, isSpeaking, speakingTargetId, speakNeural } = useApp();
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Stats block — two-row responsive layout
-  statsBlock: {
-    marginHorizontal: edgePad,
-    marginTop: 8,
-    gap: 12,
-  },
-  statsRow1: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  ringWrap: {
+  const isMeSpeaking = isSpeaking && speakingTargetId === patient.id;
+
+  const handleBriefing = async () => {
+    if (isMeSpeaking) {
+      await speakNeural(""); // Stop
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const summary = await fetchBriefing(patient.id);
+      await speakNeural(summary, patient.id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const score = patient.riskScore || 0;
+  const level = patient.riskLevel || "Low";
+  const riskColor = level === "High" ? "#EF4444" : level === "Moderate" ? "#F59E0B" : "#22C55E";
+
+  return (
+    <View style={styles.cpCard}>
+      <View style={styles.patientMain}>
+        <View style={styles.cpAvatar}>
+          <Feather name="user" size={22} color={PURPLE} />
+        </View>
+        <View style={styles.cpInfo}>
+          <Text style={styles.cpName} numberOfLines={1}>{patient.name}</Text>
+          <Text style={styles.cpStatus} numberOfLines={1}>
+            {patient.condition} · {patient.age} yrs
+          </Text>
+        </View>
+        <TouchableOpacity 
+          onPress={handleBriefing}
+          style={styles.neuralContainer}
+        >
+          {isMeSpeaking ? (
+            <NeuralOrb isSpeaking={true} isProcessing={false} />
+          ) : isLoading ? (
+            <ActivityIndicator size="small" color={PURPLE} />
+          ) : (
+            <View style={styles.volumeCircle}>
+              <Feather name="volume-2" size={18} color={PURPLE} />
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.riskEngine}>
+        <View style={styles.riskHeader}>
+          <Feather name="shield" size={14} color="#64748B" />
+          <Text style={styles.riskTitle}>AI RISK SCORE</Text>
+          <View style={[styles.riskLevelBadge, { backgroundColor: `${riskColor}15` }]}>
+            <Text style={[styles.riskLevelText, { color: riskColor }]}>{level}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.riskGaugeBg}>
+          <Animated.View 
+            style={[
+              styles.riskGaugeFill, 
+              { width: `${score}%`, backgroundColor: riskColor }
+            ]} 
+          />
+        </View>
+        
+        <View style={styles.riskFooter}>
+          <Text style={styles.riskScoreText}>{score}/100</Text>
+          <Text style={styles.riskMessage}>
+            {level === "High" ? "Immediate attention required" : "Patient condition is stable"}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function RecoverySupportBanner({ suggestion, onDismiss, onStart }: any) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(-20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 } as any),
+    ]).start();
+  }, []);
+
+  const bgColor = suggestion.type === 'sleep' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.92)';
+  const accentColor = suggestion.type === 'sleep' ? '#1E1B4B' : PURPLE;
+  const icon = suggestion.type === 'sleep' ? 'moon' : suggestion.type === 'calm' ? 'wind' : 'refresh-cw';
+
+  return (
+    <Animated.View style={[
+      styles.supportBanner, 
+      { opacity: fadeAnim, transform: [{ translateY: slideAnim }], backgroundColor: bgColor }
+    ]}>
+      <View style={styles.supportContent}>
+        <View style={[styles.supportIcon, { backgroundColor: `${accentColor}15` }]}>
+          <Feather name={icon} size={20} color={accentColor} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.supportTitle, { color: '#1E1B4B' }]}>{suggestion.title}</Text>
+          <Text style={[styles.supportBody, { color: '#64748B' }]}>{suggestion.body}</Text>
+        </View>
+        <TouchableOpacity onPress={onStart} style={[styles.supportBtn, { backgroundColor: accentColor }]}>
+          <Text style={[styles.supportBtnText, { color: '#fff' }]}>Start</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onDismiss} style={styles.supportClose}>
+          <Feather name="x" size={16} color="#94a3b8" />
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  headerBg: { paddingBottom: 24, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, overflow: "hidden" },
+  decor1: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -50 },
+  decor2: { position: "absolute", width: 110, height: 110, borderRadius: 55, backgroundColor: "rgba(255,255,255,0.04)", bottom: -20, left: -20 },
+  decor3: { position: "absolute", width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.06)", top: 80, left: 30 },
+  headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: edgePad, marginBottom: 4 },
+  chatHeaderBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center",
     justifyContent: "center",
   },
-  dosesBlock: {
-    flex: 1,
-    gap: 4,
-    minWidth: 0,
+  assistantHero: {
+    marginTop: 15,
+    marginHorizontal: edgePad,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    marginBottom: 20,
   },
-  riskBadge: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    alignSelf: "flex-start", paddingHorizontal: 9, paddingVertical: 4,
-    borderRadius: 20,
+  assistantContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
+  assistantText: { flex: 1 },
+  assistantTitle: { fontSize: 18, color: '#fff', fontFamily: 'Inter_700Bold' },
+  assistantSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontFamily: 'Inter_400Regular' },
+  assistantOrbWrap: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
+  headerInfo: { flex: 1, paddingHorizontal: 8 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  voiceSmallBtn: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  greetingOrb: { width: 40, height: 40, transform: [{ scale: 0.5 }], marginTop: -5 },
+  welcomeText: { fontSize: 16, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_500Medium" },
+  greetBlock: { alignItems: "center", flex: 1, paddingHorizontal: 8 },
+  greetText: { color: "rgba(255,255,255,0.72)", fontSize: 12, fontFamily: "Inter_400Regular" },
+  nameText: { color: "#fff", fontSize: isSmall ? 17 : 19, fontFamily: "Inter_700Bold" },
+  notifDot: { position: "absolute", top: 9, right: 9, width: 8, height: 8, borderRadius: 4, backgroundColor: "#FCD34D", borderWidth: 1.5, borderColor: PURPLE },
+  statsBlock: { marginHorizontal: edgePad, marginTop: 8, gap: 12 },
+  statsRow1: { flexDirection: "row", alignItems: "center", gap: 16 },
+  ringWrap: { alignItems: "center", justifyContent: "center" },
+  dosesBlock: { flex: 1, gap: 4, minWidth: 0 },
+  riskBadge: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
   riskDot: { width: 6, height: 6, borderRadius: 3 },
   riskText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  dosesMain: {
-    color: "#fff", fontSize: isSmall ? 26 : 32,
-    fontFamily: "Inter_700Bold", lineHeight: isSmall ? 32 : 38,
-    includeFontPadding: false,
-  },
+  dosesMain: { color: "#fff", fontSize: isSmall ? 26 : 32, fontFamily: "Inter_700Bold", lineHeight: isSmall ? 32 : 38, includeFontPadding: false },
   dosesLabel: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "Inter_400Regular" },
-
-  statsRow2: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 18,
-    padding: 12,
-    justifyContent: "space-around",
-  },
-  statChip: {
-    flex: 1, alignItems: "center", gap: 2,
-  },
+  statsRow2: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 18, padding: 12, justifyContent: "space-around" },
+  statChip: { flex: 1, alignItems: "center", gap: 2 },
   statChipNum: { fontSize: isSmall ? 16 : 18, fontFamily: "Inter_700Bold" },
   statChipLbl: { fontSize: 10, fontFamily: "Inter_400Regular" },
   statsDivider: { width: 1, height: 28, backgroundColor: "rgba(255,255,255,0.2)" },
-
-  // Weekly chart
-  weeklyWrap: {
-    backgroundColor: "rgba(255,255,255,0.09)",
-    borderRadius: 22, padding: 14,
-    marginHorizontal: edgePad, marginTop: 16,
-  },
+  weeklyWrap: { backgroundColor: "rgba(255,255,255,0.09)", borderRadius: 22, padding: 14, marginHorizontal: edgePad, marginTop: 16 },
   weeklyHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
   weeklyLabel: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_500Medium" },
-
-  // Quick actions
   quickSection: { paddingHorizontal: edgePad, paddingTop: 26, paddingBottom: 4 },
   quickRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 14 },
   quickItem: { alignItems: "center", flex: 1, paddingHorizontal: 2 },
-  quickCircle: {
-    width: isSmall ? 52 : 58, height: isSmall ? 52 : 58, borderRadius: isSmall ? 26 : 29,
-    alignItems: "center", justifyContent: "center",
-    borderWidth: 1.5, marginBottom: 7,
-    shadowColor: "#6C47FF", shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
-  },
-  quickLabel: {
-    fontSize: isSmall ? 10 : 11, fontFamily: "Inter_600SemiBold",
-    color: "#4B5563", textAlign: "center",
-  },
-
-  // Follow-up
+  quickCircle: { width: isSmall ? 52 : 58, height: isSmall ? 52 : 58, borderRadius: isSmall ? 26 : 29, alignItems: "center", justifyContent: "center", borderWidth: 1.5, marginBottom: 7, shadowColor: "#6C47FF", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 2 },
+  quickLabel: { fontSize: isSmall ? 10 : 11, fontFamily: "Inter_600SemiBold", color: "#4B5563", textAlign: "center" },
   followupCard: { marginHorizontal: edgePad, marginTop: 18, borderRadius: 22, overflow: "hidden" },
   followupGrad: { padding: 16, flexDirection: "row", alignItems: "center" },
   followupLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12, minWidth: 0 },
-  followupIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
-    shadowColor: PURPLE, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12, shadowRadius: 4, elevation: 2,
-    flexShrink: 0,
-  },
+  followupIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", shadowColor: PURPLE, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2, flexShrink: 0 },
   followupTitle: { fontSize: 10, fontFamily: "Inter_500Medium", color: PURPLE, marginBottom: 1 },
   followupName: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
   followupDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 1 },
-  followupArrow: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
-    flexShrink: 0,
-  },
-
-  // Recent doses
+  followupArrow: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   recentSection: { paddingHorizontal: edgePad, paddingTop: 22 },
-  sectionHeader: {
-    flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 14,
-  },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
   sectionTitle: { fontSize: isSmall ? 16 : 17, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
   seeAll: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: PURPLE },
-
-  doseRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#fff", borderRadius: 18, padding: 13,
-    marginBottom: 9,
-    shadowColor: PURPLE, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-  },
+  doseRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 18, padding: 13, marginBottom: 9, shadowColor: PURPLE, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   doseIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   doseInfo: { flex: 1, minWidth: 0 },
   doseName: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
   doseSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 1 },
   doseStatus: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-
   emptyDoses: { alignItems: "center", paddingVertical: 28, gap: 8 },
   emptyEmoji: { fontSize: 34 },
   emptyText: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280" },
-
-  // Caregiver
-  careStats: {
-    flexDirection: "row", marginHorizontal: edgePad, marginTop: 16,
-    backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 20, padding: 16,
-    alignItems: "center", justifyContent: "space-between",
-  },
+  careStats: { flexDirection: "row", marginHorizontal: edgePad, marginTop: 16, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 20, padding: 16, alignItems: "center", justifyContent: "space-between" },
   careStat: { flex: 1, alignItems: "center" },
   careStatVal: { color: "#fff", fontSize: isSmall ? 18 : 20, fontFamily: "Inter_700Bold" },
   careStatLbl: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
   careStatDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.2)" },
-
-  patientCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    marginHorizontal: edgePad, marginTop: 14,
-    backgroundColor: "#fff", borderRadius: 20, padding: 14,
-    shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
-  },
-  patientAvatar: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: PURPLE_LIGHT, alignItems: "center", justifyContent: "center",
-    flexShrink: 0,
-  },
+  patientCard: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: edgePad, marginTop: 14, backgroundColor: "#fff", borderRadius: 20, padding: 14, shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 10, elevation: 3 },
+  patientAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: PURPLE_LIGHT, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   patientInfo: { flex: 1, minWidth: 0 },
   patientName: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
   patientStatus: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 2 },
   patientBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, flexShrink: 0 },
   patientBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   scrollContent: { paddingHorizontal: 0 },
+
+  // Recovery Support Styles
+  supportBanner: { marginHorizontal: 16, marginTop: -20, borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, zIndex: 100 },
+  supportContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  supportIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  supportTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#fff' },
+  supportBody: { fontSize: 12, fontFamily: 'Inter_400Regular', color: 'rgba(255,255,255,0.8)' },
+  supportBtn: { backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
+  supportBtnText: { fontSize: 13, fontFamily: 'Inter_700Bold', color: '#1E1B4B' },
+  supportClose: { padding: 4 },
+  // Caregiver Patient Card Styles
+  cpCard: {
+    marginHorizontal: edgePad,
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  patientMain: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  cpAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F5F3FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cpInfo: { flex: 1 },
+  cpName: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
+  cpStatus: { fontSize: 13, color: "#64748B", marginTop: 2 },
+  neuralContainer: {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  volumeCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: PURPLE_LIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  briefingBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F5F3FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  riskEngine: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  riskHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  riskTitle: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#64748B",
+    letterSpacing: 1,
+    flex: 1,
+  },
+  riskLevelBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  riskLevelText: { fontSize: 10, fontFamily: "Inter_700Bold" },
+  riskGaugeBg: {
+    height: 6,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 3,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  riskGaugeFill: { height: "100%", borderRadius: 3 },
+  riskFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  riskScoreText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
+  riskMessage: { fontSize: 11, color: "#64748B" },
 });

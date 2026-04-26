@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
@@ -18,6 +19,7 @@
     "drizzle-orm": "catalog:",
     "expo-server-sdk": "^6.1.0",
     "express": "^5",
+    "firebase-admin": "^13.8.0",
     "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",

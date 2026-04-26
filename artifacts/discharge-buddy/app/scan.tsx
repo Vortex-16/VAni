@@ -20,6 +20,9 @@ import {
   StatusBar,
   ActivityIndicator,
   Image,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import Animated, { 
   FadeIn, 
@@ -91,6 +94,7 @@ export default function ScanScreen() {
   const [processingStage, setProcessingStage] = useState("");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [editingMed, setEditingMed] = useState<{ index: number; data: ExtractedMed } | null>(null);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
@@ -215,6 +219,23 @@ export default function ScanScreen() {
     setCapturedImage(null);
   };
 
+  const handleDeleteMed = (index: number) => {
+    if (!scanResult) return;
+    const newMeds = [...scanResult.medicines];
+    newMeds.splice(index, 1);
+    setScanResult({ ...scanResult, medicines: newMeds });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  };
+
+  const handleUpdateMed = () => {
+    if (!scanResult || !editingMed) return;
+    const newMeds = [...scanResult.medicines];
+    newMeds[editingMed.index] = editingMed.data;
+    setScanResult({ ...scanResult, medicines: newMeds });
+    setEditingMed(null);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   const handleConfirm = async () => {
     if (!scanResult) return;
     try {
@@ -228,7 +249,7 @@ export default function ScanScreen() {
         } as any);
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/medicines");
     } catch (err) {
       console.error("Failed to add medicines:", err);
     }
@@ -347,12 +368,17 @@ export default function ScanScreen() {
 
             {scanResult.medicines.map((med, idx) => (
               <Animated.View key={idx} entering={FadeInDown.delay(300 + idx * 100)} style={[styles.medCard, med.low_confidence && styles.medCardLowConf]}>
-                <View style={styles.medCardHeader}>
-                  <Text style={styles.medName}>{med.name}</Text>
-                  <View style={[styles.confBadge, { backgroundColor: `${getConfidenceColor(med.confidence)}20` }]}>
-                    <Text style={[styles.confBadgeText, { color: getConfidenceColor(med.confidence) }]}>{med.confidence}%</Text>
+                  <View style={styles.medCardHeader}>
+                    <Text style={styles.medName}>{med.name}</Text>
+                    <View style={styles.medCardActions}>
+                      <TouchableOpacity onPress={() => setEditingMed({ index: idx, data: { ...med } })} style={styles.medActionBtn}>
+                        <Feather name="edit-2" size={16} color="rgba(255,255,255,0.6)" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteMed(idx)} style={styles.medActionBtn}>
+                        <Feather name="trash-2" size={16} color={RED} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
                 
                 {med.low_confidence && (
                   <View style={styles.lowConfWarning}>
@@ -396,6 +422,67 @@ export default function ScanScreen() {
           </ScrollView>
         </Animated.View>
       )}
+
+      {/* Edit Modal */}
+      <Modal visible={!!editingMed} transparent animationType="fade">
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalBlur, { backgroundColor: "rgba(0,0,0,0.6)" }]}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Medicine</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>NAME</Text>
+                <TextInput 
+                  style={styles.textInput}
+                  value={editingMed?.data.name}
+                  onChangeText={(t) => setEditingMed(prev => prev ? { ...prev, data: { ...prev.data, name: t } } : null)}
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>DOSAGE</Text>
+                <TextInput 
+                  style={styles.textInput}
+                  value={editingMed?.data.dosage}
+                  onChangeText={(t) => setEditingMed(prev => prev ? { ...prev, data: { ...prev.data, dosage: t } } : null)}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>FREQUENCY</Text>
+                <TextInput 
+                  style={styles.textInput}
+                  value={editingMed?.data.frequency}
+                  onChangeText={(t) => setEditingMed(prev => prev ? { ...prev, data: { ...prev.data, frequency: t } } : null)}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>NOTES</Text>
+                <TextInput 
+                  style={[styles.textInput, { minHeight: 48, maxHeight: 150 }]}
+                  multiline
+                  value={editingMed?.data.notes}
+                  onChangeText={(t) => setEditingMed(prev => prev ? { ...prev, data: { ...prev.data, notes: t } } : null)}
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setEditingMed(null)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalSave} onPress={handleUpdateMed}>
+                  <Text style={styles.modalSaveText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -575,7 +662,46 @@ const styles = StyleSheet.create({
   addAllBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 16, marginTop: 10 },
   addAllText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
   retryText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  
   medNotes: { color: "rgba(255,255,255,0.5)", fontSize: 12, marginTop: 8, fontStyle: "italic" },
+  
+  medCardActions: { flexDirection: "row", gap: 12 },
+  medActionBtn: { padding: 4 },
+
+  // Modal
+  modalOverlay: { flex: 1 },
+  modalBlur: { flex: 1, justifyContent: "center", alignItems: "center" },
+  modalContent: { 
+    width: width * 0.85, 
+    backgroundColor: "rgba(13,13,13,0.95)", 
+    borderRadius: 24, 
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  modalTitle: { color: "#fff", fontSize: 20, fontWeight: "800", marginBottom: 20, textAlign: "center" },
+  inputGroup: { marginBottom: 16 },
+  inputLabel: { color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: "800", letterSpacing: 1, marginBottom: 8 },
+  textInput: { 
+    backgroundColor: "rgba(255,255,255,0.05)", 
+    borderRadius: 12, 
+    padding: 12, 
+    color: "#fff", 
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  modalActions: { flexDirection: "row", gap: 12, marginTop: 8 },
+  modalCancel: { flex: 1, paddingVertical: 14, alignItems: "center" },
+  modalCancelText: { color: "rgba(255,255,255,0.5)", fontWeight: "600" },
+  modalSave: { 
+    flex: 2, 
+    backgroundColor: PURPLE, 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    alignItems: "center" 
+  },
+  modalSaveText: { color: "#fff", fontWeight: "700" },
 
   generalCard: {
     backgroundColor: "rgba(16,185,129,0.08)", borderRadius: 14,

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { IDataProvider } from "./types";
-import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult } from "./AppContext";
+import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult, AppUser } from "./AppContext";
 import { ALL_ACHIEVEMENTS } from "./AppContext";
 
 const STORAGE_KEY = "discharge_buddy_data_v2";
@@ -44,7 +44,7 @@ const DEMO_FOLLOW_UPS: FollowUp[] = [
   }
 ];
 
-const DEMO_PATIENTS: Patient[] = [
+export const DEMO_PATIENTS: Patient[] = [
   {
     id: "p1",
     name: "Mary Smith",
@@ -52,13 +52,53 @@ const DEMO_PATIENTS: Patient[] = [
     condition: "Post-op Knee Replacement",
     dischargeDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     medicines: DEMO_MEDICINES,
-    doseLogs: [], // Populated on the fly
+    doseLogs: [
+      { id: "dl1", medicineId: "m1", medicineName: "Metformin", scheduledTime: "08:00", takenAt: null, status: "missed", date: new Date().toISOString().split("T")[0] } as any,
+      { id: "dl2", medicineId: "m2", medicineName: "Lisinopril", scheduledTime: "08:00", takenAt: null, status: "missed", date: new Date().toISOString().split("T")[0] } as any,
+    ],
     symptomLogs: [
-      { id: "s1", date: new Date().toISOString(), symptoms: ["Pain"], severity: 3, notes: "Feeling okay", riskLevel: "low" }
+      { id: "s1", date: new Date().toISOString(), symptoms: ["Pain", "Fever"], severity: 7, notes: "Fever persisting", riskLevel: "high" }
     ],
     followUps: DEMO_FOLLOW_UPS,
     emergencyContact: "John Smith (+1 555-0101)",
-  }
+  },
+  {
+    id: "p2",
+    name: "Riya Patel",
+    age: 45,
+    condition: "Viral Pneumonia Recovery",
+    dischargeDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    medicines: [
+      { id: "m3", name: "Azithromycin", dosage: "500mg", frequency: "Once daily", times: ["09:00"], instructions: "Take with food", simplifiedInstructions: "Take with breakfast", startDate: new Date().toISOString(), color: "#f59e0b" },
+    ],
+    doseLogs: [
+      { id: "dl3", medicineId: "m3", medicineName: "Azithromycin", scheduledTime: "09:00", takenAt: new Date().toISOString(), status: "taken", date: new Date().toISOString().split("T")[0] } as any,
+    ],
+    symptomLogs: [
+      { id: "s2", date: new Date().toISOString(), symptoms: ["Cough"], severity: 4, notes: "Cough reducing", riskLevel: "medium" as any }
+    ],
+    followUps: [],
+    emergencyContact: "Rahul Patel (+91 9876543210)",
+  },
+  {
+    id: "p3",
+    name: "Amit Kumar",
+    age: 52,
+    condition: "Post Appendectomy",
+    dischargeDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+    medicines: [
+      { id: "m4", name: "Amoxicillin", dosage: "250mg", frequency: "Twice daily", times: ["08:00", "20:00"], instructions: "Complete the course", simplifiedInstructions: "Take with or without food", startDate: new Date().toISOString(), color: "#10b981" },
+    ],
+    doseLogs: [
+      { id: "dl4", medicineId: "m4", medicineName: "Amoxicillin", scheduledTime: "08:00", takenAt: new Date().toISOString(), status: "taken", date: new Date().toISOString().split("T")[0] } as any,
+      { id: "dl5", medicineId: "m4", medicineName: "Amoxicillin", scheduledTime: "20:00", takenAt: new Date().toISOString(), status: "taken", date: new Date().toISOString().split("T")[0] } as any,
+    ],
+    symptomLogs: [
+      { id: "s3", date: new Date().toISOString(), symptoms: [], severity: 1, notes: "Recovering well", riskLevel: "low" }
+    ],
+    followUps: [],
+    emergencyContact: "Sunita Kumar (+91 9123456789)",
+  },
 ];
 
 export class MockProvider implements IDataProvider {
@@ -79,7 +119,6 @@ export class MockProvider implements IDataProvider {
   }
 
   async getTodayDoses(): Promise<DoseLog[]> {
-    // Generate them on the fly similarly to the old AppContext
     const medicines = await this.getMedicines();
     const today = new Date().toISOString().split("T")[0];
     const doses: DoseLog[] = [];
@@ -104,8 +143,19 @@ export class MockProvider implements IDataProvider {
     return doses;
   }
 
-  async updateDoseStatus(doseId: string, status: DoseLog["status"], snoozeMinutes?: number): Promise<void> {
-    // In mock mode, the AppContext manages the todayDoses array state inline.
+  async getAdherenceHistory(): Promise<any[]> {
+    return [
+      { date: "2024-03-18", percentage: 92 },
+      { date: "2024-03-19", percentage: 100 },
+      { date: "2024-03-20", percentage: 75 },
+      { date: "2024-03-21", percentage: 90 },
+      { date: "2024-03-22", percentage: 100 },
+      { date: "2024-03-23", percentage: 85 },
+      { date: "2024-03-24", percentage: 0 },
+    ];
+  }
+
+  async updateDoseStatus(_doseId: string, _status: DoseLog["status"], _snoozeMinutes?: number): Promise<void> {
     await new Promise(r => setTimeout(r, 200));
   }
 
@@ -191,8 +241,78 @@ export class MockProvider implements IDataProvider {
     };
   }
 
-  async addMedicine(medicine: Medicine): Promise<void> {
+  async addMedicine(medData: Omit<Medicine, "id">): Promise<Medicine> {
     const medicines = await this.getMedicines();
-    await this.saveData({ medicines: [medicine, ...medicines] });
+    const newMed: Medicine = {
+      ...medData,
+      id: `m_${Date.now()}`
+    };
+    await this.saveData({ medicines: [newMed, ...medicines] });
+    return newMed;
+  }
+
+  async updateMedicine(id: string, updates: Partial<Medicine>): Promise<void> {
+    const medicines = await this.getMedicines();
+    const updated = medicines.map(m => m.id === id ? { ...m, ...updates } : m);
+    await this.saveData({ medicines: updated });
+  }
+
+  async deleteMedicine(id: string): Promise<void> {
+    const meds = await this.getMedicines();
+    await this.saveData({ medicines: meds.filter(m => m.id !== id) });
+  }
+
+  async updateProfile(updates: Partial<AppUser>): Promise<AppUser> {
+    const data = await this.getData();
+    const currentUser = data.user || { id: "u1", name: "User", email: "user@example.com", role: "patient" };
+    const updatedUser = { 
+      ...currentUser, 
+      ...updates 
+    };
+    await this.saveData({ user: updatedUser });
+    return updatedUser;
+  }
+
+  async changePassword(_old: string, _newP: string): Promise<void> {
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  async submitFeedback(_type: string, _message: string): Promise<void> {
+    console.log("Mock feedback submitted:", { _type, _message });
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  async getDischargePlan(id: string, devData?: any): Promise<any> {
+    if (id === "dev") return devData;
+    return {
+      patientName: "John Doe",
+      medicines: [
+        { name: "Paracetamol", dosage: "500mg", frequency: "BD", duration: 5 }
+      ]
+    };
+  }
+
+  async importDischargePlan(_planId: string, _mode: "merge" | "replace", _devData?: any): Promise<void> {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  async createDischargePlan(payload: any): Promise<{ planId: string }> {
+    return { planId: "mock-plan-id" };
+  }
+
+  async generateTTS(text: string): Promise<{ audioContent: string }> {
+    console.log("Mock TTS generating for:", text);
+    return { audioContent: "" }; // Return empty in mock
+  }
+
+  async getChatResponse(query: string): Promise<{ message: string; actions: { type: string; label: string }[] }> {
+    await new Promise(r => setTimeout(r, 1000));
+    return {
+      message: "I'm your recovery assistant. How are you feeling today?",
+      actions: [
+        { type: "LOG_SYMPTOM", label: "Log Symptom" },
+        { type: "START_MEDITATION", label: "Start Calm Session" }
+      ]
+    };
   }
 }

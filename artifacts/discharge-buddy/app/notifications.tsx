@@ -7,63 +7,32 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TouchableOpacity,
   View,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useApp } from "@/context/AppContext";
 
 const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
 const WHITE = "#ffffff";
 
-type NotifItem = {
-  icon: React.ComponentProps<typeof Feather>["name"];
-  color: string;
-  title: string;
-  body: string;
-  time: string;
-  read: boolean;
-};
-
-type NotifGroup = {
-  group: string;
-  items: NotifItem[];
-};
-
-const NOTIFS: NotifGroup[] = [
-
-  {
-    group: "Today",
-    items: [
-      { icon: "check-circle", color: "#10b981", title: "Dose Taken", body: "Lisinopril 10mg — marked as taken", time: "8:03 AM", read: false },
-      { icon: "alert-triangle", color: "#f59e0b", title: "Missed Dose", body: "Aspirin 81mg — you missed your evening dose", time: "8:00 PM", read: false },
-      { icon: "calendar", color: "#8b5cf6", title: "Upcoming Appointment", body: "Dr. Smith — tomorrow at 10:00 AM", time: "3:00 PM", read: false },
-    ],
-  },
-  {
-    group: "Yesterday",
-    items: [
-      { icon: "activity", color: "#ef4444", title: "Symptom Alert", body: "Chest pain logged — consider calling your doctor", time: "2:15 PM", read: true },
-      { icon: "check-circle", color: "#10b981", title: "All Doses Taken", body: "Great job! You had 100% adherence yesterday", time: "10:00 PM", read: true },
-    ],
-  },
-  {
-    group: "This Week",
-    items: [
-      { icon: "user", color: TEAL, title: "Caregiver Update", body: "Mary has viewed your recovery report", time: "Mon", read: true },
-      { icon: "message-circle", color: TEAL, title: "AI Recommendation", body: "Based on your logs, consider drinking more water", time: "Sun", read: true },
-    ],
-  },
-];
-
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  
+  const { 
+    notifications, 
+    clearAllNotifications, 
+    markNotificationRead 
+  } = useApp();
+
   const [doseAlerts, setDoseAlerts] = useState(true);
   const [appAlerts, setAppAlerts] = useState(true);
 
-  const unreadCount = NOTIFS.flatMap(g => g.items).filter(i => !i.read).length;
+  const unreadCount = notifications.flatMap(g => g.items).filter(i => !i.read).length;
+  const hasNotifs = notifications.some(g => g.items.length > 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: WHITE }}>
@@ -73,9 +42,9 @@ export default function NotificationsScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { paddingTop: topInset + 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={WHITE} />
-          </TouchableOpacity>
+          </Pressable>
           <Text style={styles.headerTitle}>Notifications</Text>
           {unreadCount > 0 && (
             <View style={styles.badgeChip}>
@@ -125,13 +94,18 @@ export default function NotificationsScreen() {
         </View>
 
         {/* Notification groups */}
-        {NOTIFS.map((group, gi) => (
+        {notifications.map((group, gi) => (
           <View key={gi} style={styles.group}>
             <Text style={styles.groupLabel}>{group.group}</Text>
-            {group.items.map((item, ii) => (
-              <View
-                key={ii}
-                style={[styles.notifRow, !item.read && styles.notifRowUnread]}
+            {group.items.map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => markNotificationRead(item.id)}
+                style={({ pressed }) => [
+                  styles.notifRow, 
+                  !item.read && styles.notifRowUnread,
+                  pressed && { opacity: 0.7 }
+                ]}
               >
                 <View style={[styles.notifIcon, { backgroundColor: `${item.color}15` }]}>
                   <Feather name={item.icon} size={18} color={item.color} />
@@ -139,21 +113,41 @@ export default function NotificationsScreen() {
                 <View style={styles.notifContent}>
                   <View style={styles.notifTitleRow}>
                     <Text style={styles.notifTitle}>{item.title}</Text>
-                    <Text style={styles.notifTime}>{item.time}</Text>
+                    <View style={styles.timeRow}>
+                      <Text style={styles.notifTime}>{item.time}</Text>
+                      {!item.read && <View style={[styles.unreadDot, { backgroundColor: item.color }]} />}
+                    </View>
                   </View>
                   <Text style={styles.notifBody}>{item.body}</Text>
                 </View>
-                {!item.read && <View style={[styles.unreadDot, { backgroundColor: item.color }]} />}
-              </View>
+              </Pressable>
             ))}
           </View>
         ))}
 
+        {!hasNotifs && (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconBg}>
+              <Feather name="bell-off" size={32} color="#94a3b8" />
+            </View>
+            <Text style={styles.emptyTitle}>All caught up!</Text>
+            <Text style={styles.emptySub}>No new notifications at the moment.</Text>
+          </View>
+        )}
+
         {/* Clear all */}
-        <TouchableOpacity style={styles.clearBtn}>
-          <Feather name="trash-2" size={16} color="#ef4444" />
-          <Text style={styles.clearText}>Clear all notifications</Text>
-        </TouchableOpacity>
+        {hasNotifs && (
+          <Pressable 
+            style={({ pressed }) => [
+              styles.clearBtn,
+              pressed && { opacity: 0.6 }
+            ]} 
+            onPress={clearAllNotifications}
+          >
+            <Feather name="trash-2" size={16} color="#ef4444" />
+            <Text style={styles.clearText}>Clear all notifications</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
@@ -271,14 +265,12 @@ const styles = StyleSheet.create({
   },
   notifTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0f172a" },
   notifTime: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8" },
+  timeRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   notifBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#475569", lineHeight: 18 },
   unreadDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    position: "absolute",
-    right: 18,
-    top: 18,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 
   clearBtn: {
@@ -290,4 +282,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   clearText: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#ef4444" },
+  
+  emptyState: { alignItems: "center", justifyContent: "center", paddingTop: 60, paddingHorizontal: 40 },
+  emptyIconBg: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#f8fafc", alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#0f172a", marginBottom: 8 },
+  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", textAlign: "center" },
 });

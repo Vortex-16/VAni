@@ -1,265 +1,514 @@
-import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import React, { useRef, useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
-  FlatList,
-  Platform,
-  StyleSheet,
+  View,
   Text,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
-  View,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+  ActivityIndicator,
 } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { LinearGradient } from "expo-linear-gradient";
+import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeInUp, LinearTransition, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from "react-native-reanimated";
 
-import { useColors } from "@/hooks/useColors";
+import { useApp } from "@/context/AppContext";
+import { NeuralOrb } from "@/components/NeuralOrb";
+
+const { width } = Dimensions.get("window");
+const PURPLE = "#6C47FF";
+const PURPLE_LIGHT = "#F5F3FF";
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
   text: string;
-  time: string;
+  sender: "user" | "ai";
+  actions?: { type: string; label: string }[];
 }
 
-const SUGGESTED = [
-  "What side effects should I watch for?",
-  "Can I take ibuprofen with my medicines?",
-  "What foods should I avoid?",
-  "When should I go to emergency?",
-];
-
-const BOT_RESPONSES: Record<string, string> = {
-  default:
-    "I'm here to help with your recovery questions. I can explain your medicines, symptoms to watch for, and general post-discharge care. For urgent medical concerns, please contact your doctor or use the emergency button.",
-  side:
-    "Common side effects to watch for include nausea, dizziness, headache, or unusual fatigue. If you experience chest pain, difficulty breathing, or severe allergic reactions, seek emergency care immediately.",
-  ibuprofen:
-    "Ibuprofen (NSAIDs) can interact with some of your medications like Lisinopril and Aspirin. It's best to avoid it and use acetaminophen (Paracetamol) for pain relief unless your doctor specifically approves it.",
-  food:
-    "With your current medications: avoid grapefruit juice (interferes with Atorvastatin), limit salt intake (for blood pressure), and eat regular meals with Metformin. Alcohol should be minimized.",
-  emergency:
-    "Go to emergency immediately if you experience: severe chest pain, difficulty breathing, sudden confusion, loss of consciousness, signs of stroke (face drooping, arm weakness, slurred speech), or if your emergency button is needed. Don't wait — call emergency services.",
+const ACTION_ICONS: Record<string, string> = {
+  LOG_SYMPTOM: "📋",
+  CONTACT_CAREGIVER: "👨‍⚕️",
+  START_MEDITATION: "🧘",
+  RETRY: "🔄",
 };
 
-function getResponse(msg: string): string {
-  const lower = msg.toLowerCase();
-  if (lower.includes("side") || lower.includes("effect")) return BOT_RESPONSES.side;
-  if (lower.includes("ibuprofen") || lower.includes("nsaid")) return BOT_RESPONSES.ibuprofen;
-  if (lower.includes("food") || lower.includes("eat") || lower.includes("diet") || lower.includes("avoid")) return BOT_RESPONSES.food;
-  if (lower.includes("emergency") || lower.includes("urgent") || lower.includes("hospital")) return BOT_RESPONSES.emergency;
-  return BOT_RESPONSES.default;
-}
-
 export default function ChatScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
-  const topInset = Platform.OS === "web" ? 67 : insets.top;
-  const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  const { api, user, speakNeural, isSpeaking, speakingTargetId, addNotification } = useApp();
+
+  const isAISpeakingGlobal = isSpeaking && speakingTargetId === "chat_ai";
 
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: "0",
-      role: "assistant",
-      text: "Hello! I'm your DischargeBuddy health assistant. I can help answer questions about your medicines, symptoms, and recovery. What would you like to know?",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      id: "1",
+      text: `Hello ${user?.name?.split(" ")[0] || "there"}! I'm Mr. Meddy, your recovery companion. How are you feeling today? 💜`,
+      sender: "ai",
+      actions: [
+        { type: "LOG_SYMPTOM", label: "Log Symptom" },
+        { type: "START_MEDITATION", label: "Start Calm Session" },
+      ],
     },
   ]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const flatRef = useRef<FlatList>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
-  const send = async (text?: string) => {
-    const msg = text ?? input.trim();
-    if (!msg) return;
+  useEffect(() => {
+    // Speak the welcome message with a short delay
+    const t = setTimeout(() => {
+      speakNeural(messages[0].text, messages[0].id);
+    }, 600);
+    return () => clearTimeout(t);
+  }, []);
 
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Initialize Web Speech API for STT
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        setInput(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error("STT Error:", event.error);
+        setIsListening(false);
+      };
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMsg: Message = { id: Date.now().toString(), text: input.trim(), sender: "user" };
+    setMessages(prev => [...prev, userMsg]);
+    setInput("");
+    setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      text: msg,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
+    try {
+      const response = await api.getChatResponse(userMsg.text);
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: response.message,
+        sender: "ai",
+        actions: response.actions,
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      await speakNeural(response.message, aiMsg.id);
+    } catch (err) {
+      const errorMsg: Message = {
+        id: "err_" + Date.now(),
+        text: "I'm having a little trouble connecting. Please rest a bit and try again. 💜",
+        sender: "ai",
+        actions: [{ type: "RETRY", label: "Try Again" }],
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    setMessages((prev) => [userMsg, ...prev]);
-    setInput("");
-    setIsTyping(true);
-
-    await new Promise((r) => setTimeout(r, 1200));
-
-    const botMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      text: getResponse(msg),
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-
-    setMessages((prev) => [botMsg, ...prev]);
-    setIsTyping(false);
+  const handleAction = (action: { type: string; label: string }) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    switch (action.type) {
+      case "LOG_SYMPTOM":
+        router.push("/symptoms");
+        break;
+      case "START_MEDITATION":
+        router.push("/recovery-support");
+        break;
+      case "CONTACT_CAREGIVER":
+        addNotification({
+          title: "Caregiver Notified",
+          body: "Your caregiver has been informed about your current symptoms.",
+          icon: "user",
+          color: "#6C47FF",
+        });
+        break;
+      case "RETRY":
+        if (messages.length > 1) {
+          const lastUserMsg = [...messages].reverse().find(m => m.sender === "user");
+          if (lastUserMsg) {
+            setInput(lastUserMsg.text);
+          }
+        }
+        break;
+    }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior="padding"
-      keyboardVerticalOffset={0}
-    >
-      <View style={[styles.header, { paddingTop: topInset + 12, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <View style={[styles.botAvatar, { backgroundColor: `${colors.primary}20` }]}>
-          <Feather name="cpu" size={20} color={colors.primary} />
-        </View>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Health Assistant</Text>
-          <Text style={[styles.headerSub, { color: colors.success }]}>Online</Text>
-        </View>
-      </View>
-
-      <FlatList
-        ref={flatRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        inverted
-        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 10 }}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          isTyping ? (
-            <View style={[styles.bubble, styles.botBubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.typingText, { color: colors.mutedForeground }]}>Typing...</Text>
-            </View>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <View
-            style={[
-              styles.bubble,
-              item.role === "user"
-                ? [styles.userBubble, { backgroundColor: colors.primary }]
-                : [styles.botBubble, { backgroundColor: colors.card, borderColor: colors.border }],
-            ]}
-          >
-            <Text
-              style={[
-                styles.bubbleText,
-                { color: item.role === "user" ? "#fff" : colors.foreground },
-              ]}
-            >
-              {item.text}
-            </Text>
-            <Text
-              style={[
-                styles.bubbleTime,
-                { color: item.role === "user" ? "rgba(255,255,255,0.7)" : colors.mutedForeground },
-              ]}
-            >
-              {item.time}
-            </Text>
-          </View>
-        )}
+    <View style={styles.container}>
+      {/* Soft Pastel Gradient Background */}
+      <LinearGradient
+        colors={["#E0E7FF", "#F5F3FF", "#FCE7F3"]}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       />
 
-      {messages.length === 1 && (
-        <View style={styles.suggestions}>
-          <Text style={[styles.suggestLabel, { color: colors.mutedForeground }]}>Suggested questions:</Text>
-          <View style={styles.suggestRow}>
-            {SUGGESTED.map((s) => (
-              <TouchableOpacity
-                key={s}
-                onPress={() => send(s)}
-                style={[styles.suggestChip, { backgroundColor: colors.card, borderColor: colors.border }]}
-              >
-                <Text style={[styles.suggestText, { color: colors.primary }]}>{s}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
+      {/* Decorative Background Blobs */}
+      <View style={[styles.blob, { top: 80, left: -60, backgroundColor: "rgba(216, 180, 254, 0.35)" }]} />
+      <View style={[styles.blob, { bottom: 120, right: -60, backgroundColor: "rgba(186, 230, 253, 0.35)" }]} />
+      <View style={[styles.blob, { top: "50%", left: "20%", backgroundColor: "rgba(253, 186, 233, 0.2)", width: 180, height: 180, borderRadius: 90 }]} />
 
-      <View style={[styles.inputRow, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: bottomInset + 8 }]}>
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="Ask a health question..."
-          placeholderTextColor={colors.mutedForeground}
-          style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-          onSubmitEditing={() => send()}
-          returnKeyType="send"
-        />
-        <TouchableOpacity
-          onPress={() => send()}
-          style={[styles.sendBtn, { backgroundColor: input.trim() ? colors.primary : colors.muted }]}
-          disabled={!input.trim()}
-        >
-          <Feather name="send" size={18} color={input.trim() ? "#fff" : colors.mutedForeground} />
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+          <Feather name="chevron-left" size={22} color={PURPLE} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Mr. Meddy</Text>
+          <Text style={styles.headerSub}>{isSpeaking ? "Speaking…" : "Recovery Companion"}</Text>
+        </View>
+        <TouchableOpacity style={styles.headerBtn}>
+          <Feather name="more-vertical" size={20} color={PURPLE} />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        >
+          {/* Central Orb Hero */}
+          <View style={styles.orbSection}>
+            <View style={styles.mainOrbWrapper}>
+              <NeuralOrb isSpeaking={isSpeaking} isProcessing={isLoading || isListening} isAssistant={true} />
+            </View>
+            {isListening ? (
+              <Text style={[styles.orbHint, { color: PURPLE, fontWeight: 'bold' }]}>Listening to you... 🎙️</Text>
+            ) : !isSpeaking && !isLoading && (
+              <Text style={styles.orbHint}>Tap a message's voice button to hear Mr. Meddy 🎙️</Text>
+            )}
+          </View>
+
+          {/* Message Thread */}
+          <View style={styles.messageList}>
+            {messages.map((msg, idx) => (
+              <Animated.View
+                key={msg.id}
+                entering={FadeInUp.delay(Math.min(idx * 80, 400)).springify()}
+                layout={LinearTransition.springify()}
+                style={[
+                  styles.messageWrapper,
+                  msg.sender === "user" ? styles.userMsgWrapper : styles.aiMsgWrapper,
+                ]}
+              >
+                {msg.sender === "ai" && (
+                  <View style={styles.aiAvatar}>
+                    <Text style={styles.aiAvatarText}>M</Text>
+                  </View>
+                )}
+                <View style={[msg.sender === "user" ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }, { flex: 1 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                    <View style={[styles.bubble, msg.sender === "user" ? styles.userBubble : styles.aiBubble]}>
+                      <Text style={[styles.bubbleText, msg.sender === "user" ? styles.userText : styles.aiText]}>
+                        {msg.text}
+                      </Text>
+                    </View>
+                    
+                    {msg.sender === "ai" && (
+                      <VoiceButton 
+                        text={msg.text} 
+                        msgId={msg.id} 
+                        isSpeaking={isSpeaking} 
+                        speakingTargetId={speakingTargetId} 
+                        speakNeural={speakNeural} 
+                      />
+                    )}
+                  </View>
+                  {msg.actions && msg.actions.length > 0 && (
+                    <View style={styles.actionRow}>
+                      {msg.actions.map((action, i) => (
+                        <TouchableOpacity
+                          key={i}
+                          style={styles.actionChip}
+                          onPress={() => handleAction(action)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.actionEmoji}>{ACTION_ICONS[action.type] || "💊"}</Text>
+                          <Text style={styles.actionLabel}>{action.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </Animated.View>
+            ))}
+
+            {isLoading && (
+              <View style={styles.typingBubble}>
+                <ActivityIndicator size="small" color={PURPLE} style={{ marginRight: 8 }} />
+                <Text style={styles.typingText}>Mr. Meddy is thinking…</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* Input Bar */}
+        <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 12 }]}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder={isListening ? "Listening..." : "How are you feeling?"}
+              placeholderTextColor="#A0AEC0"
+              value={input}
+              onChangeText={setInput}
+              onSubmitEditing={handleSend}
+              multiline={false}
+              returnKeyType="send"
+            />
+            <TouchableOpacity 
+              onPress={input.trim() ? handleSend : toggleListening} 
+              style={[
+                styles.sendBtn, 
+                !input.trim() && !isListening && styles.sendBtnDisabled,
+                isListening && { backgroundColor: '#F87171' }
+              ]}
+            >
+              <Feather name={input.trim() ? "send" : (isListening ? "square" : "mic")} size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
+const VoiceButton = ({ text, msgId, isSpeaking, speakingTargetId, speakNeural }: any) => {
+  const isActive = isSpeaking && speakingTargetId === msgId;
+  const pulse = useSharedValue(isActive ? 1 : 0);
+
+  useEffect(() => {
+    if (isActive) {
+      pulse.value = withRepeat(withSequence(withTiming(1, { duration: 500 }), withTiming(0.4, { duration: 500 })), -1, true);
+    } else {
+      pulse.value = withTiming(0, { duration: 300 });
+    }
+  }, [isActive]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: pulse.value,
+    transform: [{ scale: 1 + (pulse.value * 0.2) }]
+  }));
+
+  return (
+    <TouchableOpacity onPress={() => speakNeural(text, msgId)} style={styles.voiceBtnContainer}>
+      {isActive && <Animated.View style={[styles.pulsingBall, animatedStyle]} />}
+      <Feather name={isActive ? "volume-2" : "volume-1"} size={13} color={isActive ? PURPLE : "#94A3B8"} style={{ zIndex: 2 }} />
+    </TouchableOpacity>
+  );
+};
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  blob: {
+    position: "absolute",
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    // React Native doesn't support CSS blur directly; use opacity for the tint effect
+    opacity: 0.9,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
     paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    paddingBottom: 10,
+    zIndex: 10,
   },
-  botAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.55)",
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  headerSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
+  headerSub: { fontSize: 12, color: "#7C3AED", fontFamily: "Inter_500Medium", marginTop: 1 },
+  scrollContent: { paddingBottom: 20 },
+  orbSection: {
+    alignItems: "center",
+    paddingTop: 10,
+    paddingBottom: 24,
+  },
+  mainOrbWrapper: {
+    width: 200,
+    height: 200,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orbHint: {
+    fontSize: 13,
+    color: "#94A3B8",
+    fontFamily: "Inter_400Regular",
+    marginTop: 8,
+  },
+  messageList: { paddingHorizontal: 16 },
+  messageWrapper: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 16,
+    gap: 8,
+  },
+  userMsgWrapper: { justifyContent: "flex-end" },
+  aiMsgWrapper: { justifyContent: "flex-start" },
+  aiAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: PURPLE,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  aiAvatarText: { color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold" },
   bubble: {
-    maxWidth: "85%",
-    padding: 12,
-    borderRadius: 18,
-    gap: 4,
+    maxWidth: width * 0.72,
+    paddingHorizontal: 15,
+    paddingVertical: 11,
+    borderRadius: 20,
   },
-  userBubble: { alignSelf: "flex-end", borderBottomRightRadius: 4 },
-  botBubble: { alignSelf: "flex-start", borderBottomLeftRadius: 4, borderWidth: 1 },
-  bubbleText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  bubbleTime: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  typingText: { fontSize: 14, fontFamily: "Inter_400Regular", fontStyle: "italic" },
-  suggestions: { paddingHorizontal: 16, paddingVertical: 12 },
-  suggestLabel: { fontSize: 12, fontFamily: "Inter_500Medium", marginBottom: 8 },
-  suggestRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  suggestChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 50,
+  userBubble: {
+    backgroundColor: PURPLE,
+    borderBottomRightRadius: 6,
+    alignSelf: "flex-end",
+  },
+  aiBubble: {
+    backgroundColor: "rgba(255,255,255,0.75)",
     borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
+    borderBottomLeftRadius: 6,
   },
-  suggestText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  inputRow: {
+  bubbleText: { fontSize: 15, lineHeight: 22, fontFamily: "Inter_500Medium" },
+  userText: { color: "#fff" },
+  aiText: { color: "#1E1B4B" },
+  actionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+    gap: 8,
+  },
+  actionChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.65)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(108, 71, 255, 0.2)",
+  },
+  actionEmoji: { fontSize: 14 },
+  actionLabel: { fontSize: 13, color: PURPLE, fontFamily: "Inter_600SemiBold" },
+  typingBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 40,
+    marginBottom: 12,
+    backgroundColor: "rgba(255,255,255,0.65)",
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  typingText: { fontSize: 14, color: "#7C3AED", fontFamily: "Inter_500Medium" },
+  inputContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
+    backgroundColor: "transparent",
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.75)",
+    borderRadius: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(108,71,255,0.15)",
+    gap: 10,
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 50,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
+    height: 44,
+    fontSize: 15,
+    color: "#1E1B4B",
+    fontFamily: "Inter_500Medium",
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: PURPLE,
     alignItems: "center",
     justifyContent: "center",
+  },
+  sendBtnDisabled: {
+    backgroundColor: "#A78BFA",
+  },
+  voiceBtnContainer: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(108,71,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 6,
+  },
+  pulsingBall: {
+    position: "absolute",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(108,71,255,0.2)",
+    zIndex: 1
   },
 });

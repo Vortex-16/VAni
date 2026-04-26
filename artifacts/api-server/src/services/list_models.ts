@@ -9,7 +9,7 @@ async function listModels() {
   const response = await fetch("https://api.groq.com/openai/v1/models", {
     headers: { "Authorization": `Bearer ${apiKey}` }
   });
-  const data = await response.json();
+  const data = (await response.json()) as any;
   const visionModels = data.data.filter((m: any) => m.id.includes("vision"));
   console.log("Vision Models:", visionModels.map((m: any) => m.id));
 }

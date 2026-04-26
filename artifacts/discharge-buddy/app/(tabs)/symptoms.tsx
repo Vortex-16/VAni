@@ -444,7 +444,8 @@ const styles = StyleSheet.create({
   },
   cancelText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
   submitBtn: {
-    flex: 2, flexDirection: "row", gap: 8, paddingVertical: 16,
+    flex: 2, flexDirection: "row", gap: 10, paddingVertical: 16,
+    paddingHorizontal: 16,
     borderRadius: 18, alignItems: "center", justifyContent: "center",
     backgroundColor: PURPLE,
   },

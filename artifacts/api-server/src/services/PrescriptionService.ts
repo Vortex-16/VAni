@@ -13,6 +13,26 @@ import { type QualityReport } from "./ocrClient";
 
 // ─── Output Interfaces ───
 
+interface NvidiaResponse {
+  choices: Array<{
+    message: {
+      tool_calls?: Array<{
+        function: {
+          arguments: string;
+        };
+      }>;
+    };
+  }>;
+}
+
+interface GroqResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
 export interface ExtractedMedicine {
   name: string;
   dosage: string;
@@ -260,7 +280,7 @@ export class PrescriptionService {
       throw new Error(`NVIDIA API error: ${response.status} ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as NvidiaResponse;
     
     try {
       const toolCalls = data.choices[0]?.message?.tool_calls;
@@ -322,7 +342,7 @@ export class PrescriptionService {
       throw new Error(`Groq API error: ${response.status} ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as GroqResponse;
     const resultText = data.choices[0]?.message?.content;
 
     if (!resultText) {

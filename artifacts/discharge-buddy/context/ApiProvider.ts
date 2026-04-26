@@ -1,6 +1,6 @@
 import { customFetch } from "@workspace/api-client-react";
 import type { IDataProvider } from "./types";
-import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult } from "./AppContext";
+import type { Medicine, DoseLog, SymptomLog, FollowUp, JournalEntry, Patient, PrescriptionAnalysisResult, AppUser } from "./AppContext";
 
 export class ApiProvider implements IDataProvider {
   async getMedicines(): Promise<Medicine[]> {
@@ -11,6 +11,11 @@ export class ApiProvider implements IDataProvider {
   async getTodayDoses(): Promise<DoseLog[]> {
     const res = await customFetch<{ doseLogs: DoseLog[] }>("/api/medicines/doses/today");
     return res.doseLogs;
+  }
+
+  async getAdherenceHistory(): Promise<any[]> {
+    const res = await customFetch<{ history: any[] }>("/api/medicines/adherence/history");
+    return res.history;
   }
 
   async updateDoseStatus(doseId: string, status: DoseLog["status"], snoozeMinutes?: number): Promise<void> {
@@ -98,9 +103,15 @@ export class ApiProvider implements IDataProvider {
   }
 
   async getLinkedPatients(): Promise<Patient[]> {
-    // Backend dev will implement this endpoint
-    const res = await customFetch<{ patients: Patient[] }>("/api/caregiver/patients").catch(() => ({ patients: [] }));
+    const res = await customFetch<{ patients: Patient[] }>("/api/caregiver/patients");
     return res.patients || [];
+  }
+
+  async createDischargePlan(payload: any): Promise<{ planId: string }> {
+    return await customFetch<{ planId: string }>("/api/caregiver/create-plan", {
+      method: "POST",
+      body: JSON.stringify({ data: payload }),
+    });
   }
 
   async scanPrescription(imageBase64: string): Promise<PrescriptionAnalysisResult> {
@@ -110,10 +121,75 @@ export class ApiProvider implements IDataProvider {
     });
   }
 
-  async addMedicine(medicine: Medicine): Promise<void> {
-    await customFetch("/api/medicines", {
+  async addMedicine(medicine: Omit<Medicine, "id">): Promise<Medicine> {
+    return await customFetch<Medicine>("/api/medicines", {
       method: "POST",
       body: JSON.stringify(medicine)
     });
   }
+
+  async updateMedicine(id: string, updates: Partial<Medicine>): Promise<void> {
+    await customFetch(`/api/medicines/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updates)
+    });
+  }
+
+  async deleteMedicine(id: string): Promise<void> {
+    await customFetch(`/api/medicines/${id}`, {
+      method: "DELETE"
+    });
+  }
+
+  async updateProfile(updates: Partial<AppUser>): Promise<AppUser> {
+    const res = await customFetch<{ user: AppUser }>("/api/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(updates)
+    });
+    return res.user;
+  }
+
+  async changePassword(old: string, newP: string): Promise<void> {
+    await customFetch("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ old, newP })
+    });
+  }
+
+  async submitFeedback(type: string, message: string): Promise<void> {
+    await customFetch("/api/support/feedback", {
+      method: "POST",
+      body: JSON.stringify({ type, message })
+    });
+  }
+
+  async getDischargePlan(id: string, devData?: any): Promise<any> {
+    // If it's dev mode, we pass the data in the body for normalization
+    return await customFetch(`/api/discharge/${id}`, {
+      method: id === "dev" ? "POST" : "GET",
+      body: id === "dev" ? JSON.stringify({ data: devData }) : undefined
+    });
+  }
+
+  async importDischargePlan(planId: string, mode: "merge" | "replace", devData?: any): Promise<void> {
+    await customFetch("/api/discharge/import", {
+      method: "POST",
+      body: JSON.stringify({ planId, mode, data: devData })
+    });
+  }
+
+  async generateTTS(text: string): Promise<{ audioContent: string }> {
+    return await customFetch<{ audioContent: string }>("/api/ai/tts", {
+      method: "POST",
+      body: JSON.stringify({ text })
+    });
+  }
+
+  async getChatResponse(userQuery: string): Promise<{ message: string; actions: { type: string; label: string }[] }> {
+    return await customFetch<{ message: string; actions: { type: string; label: string }[] }>("/api/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({ userQuery })
+    });
+  }
+
 }

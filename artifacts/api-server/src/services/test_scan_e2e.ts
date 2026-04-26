@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { PrescriptionService } from './prescriptionService';
+import { PrescriptionService } from './PrescriptionService';
 
 async function testScan() {
   const b64Path = path.resolve(process.cwd(), 'test_bhavana_b64.txt');

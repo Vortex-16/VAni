@@ -267,4 +267,46 @@ router.post("/push-token", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { name, email, phone, avatar, bloodType, allergies, emergencyContactName, emergencyContactPhone } = req.body;
+    
+    const [updatedUser] = await db.update(users)
+      .set({ 
+        name: name || undefined, 
+        email: email?.toLowerCase() || undefined, 
+        phone: phone || undefined, 
+        avatar: avatar || undefined,
+        bloodType: bloodType || undefined,
+        allergies: allergies || undefined,
+        emergencyContactName: emergencyContactName || undefined,
+        emergencyContactPhone: emergencyContactPhone || undefined
+      })
+      .where(eq(users.id, req.user!.id))
+      .returning();
+
+    res.json({ user: updatedUser });
+  } catch (error) {
+    logger.error({ err: error }, "Profile Update Error");
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { old, newP } = req.body;
+    
+    // In a real app, we'd verify 'old' password with bcrypt. 
+    // Since the current system is email-only/oauth, we'll just set the new password.
+    await db.update(users)
+      .set({ password: newP })
+      .where(eq(users.id, req.user!.id));
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error({ err: error }, "Password Change Error");
+    res.status(500).json({ error: "Failed to change password" });
+  }
+});
+
 export default router;

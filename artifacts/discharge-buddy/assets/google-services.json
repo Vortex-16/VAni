@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "322582374385",
+    "project_id": "discharge-buddy-87850",
+    "storage_bucket": "discharge-buddy-87850.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:322582374385:android:f6f856daa333b7de108650",
+        "android_client_info": {
+          "package_name": "com.dischargebuddy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtFzDaGB_WjpPwtMyeKVUa772pwwSzCyY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

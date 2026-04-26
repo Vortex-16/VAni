@@ -27,9 +27,11 @@ const MENU_ITEMS = [
   { icon: "calendar" as const, label: "My Schedule", route: "/(tabs)/schedule" },
   { icon: "bell" as const, label: "Notifications", route: "/notifications" },
   { icon: "activity" as const, label: "Activity Log", route: "/(tabs)/symptoms" },
+  { icon: "wind" as const, label: "Meditation Timer", route: "/meditation" },
   { icon: "settings" as const, label: "Settings", route: "/settings" },
-  { icon: "help-circle" as const, label: "Help & Feedback", route: null },
+  { icon: "help-circle" as const, label: "Help & Feedback", route: "/help" },
 ];
+
 
 export function Sidebar() {
   const { isOpen, close, translateX, overlayOpacity, SIDEBAR_WIDTH } = useSidebar();

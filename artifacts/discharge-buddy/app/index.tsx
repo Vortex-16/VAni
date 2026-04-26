@@ -12,5 +12,9 @@ export default function EntryScreen() {
     return <Redirect href="/login" />;
   }
 
+  if (role === 'caregiver') {
+    return <Redirect href="/caregiver/dashboard" />;
+  }
+
   return <Redirect href="/(tabs)" />;
 }

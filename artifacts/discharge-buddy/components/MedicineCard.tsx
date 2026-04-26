@@ -10,6 +10,8 @@ interface Props {
   dose?: DoseLog;
   onTake?: (doseId: string) => void;
   onSnooze?: (doseId: string) => void;
+  onEdit?: (med: Medicine) => void;
+  onDelete?: (medId: string) => void;
   compact?: boolean;
 }
 
@@ -32,9 +34,11 @@ function MedIcon({ medicine }: { medicine: Medicine }) {
   );
 }
 
-export function MedicineCard({ medicine, dose, onTake, onSnooze, compact }: Props) {
-  const status = dose?.status ?? "pending";
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
+export function MedicineCard({ medicine, dose, onTake, onSnooze, onEdit, onDelete, compact }: Props) {
+  const status = dose ? dose.status : "active";
+  const cfg = status === "active" 
+    ? { color: "#64748b", bg: "#f1f5f9", icon: "check" as FeatherName, label: "Active" }
+    : (STATUS_CONFIG[status] ?? STATUS_CONFIG.pending);
   const isWebBox = Platform.OS === "web"
     ? { boxShadow: "0px 2px 12px rgba(0,0,0,0.07)" }
     : {
@@ -79,10 +83,13 @@ export function MedicineCard({ medicine, dose, onTake, onSnooze, compact }: Prop
             </View>
 
             {/* Time chip */}
-            {(dose?.scheduledTime || medicine.times[0]) && (
+            {(dose?.scheduledTime || (medicine.times && medicine.times.length > 0)) && (
               <View style={styles.timeChip}>
                 <Feather name="clock" size={10} color="#64748b" />
-                <Text style={styles.timeText}>{dose?.scheduledTime ?? medicine.times[0]}</Text>
+                <Text style={styles.timeText}>
+                  {dose?.scheduledTime ?? medicine.times[0]}
+                  {(!dose && medicine.times.length > 1) ? ` (+${medicine.times.length - 1})` : ""}
+                </Text>
               </View>
             )}
           </View>
@@ -105,6 +112,33 @@ export function MedicineCard({ medicine, dose, onTake, onSnooze, compact }: Prop
           {dose?.status === "taken" && (
             <View style={styles.checkCircle}>
               <Feather name="check" size={14} color="#10b981" />
+            </View>
+          )}
+
+          {!dose && (onEdit || onDelete) && (
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              {onEdit && (
+                <TouchableOpacity 
+                  onPress={() => {
+                    console.log("[MedicineCard] Edit tapped for:", medicine.id);
+                    onEdit(medicine);
+                  }} 
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 10 }}
+                >
+                  <Feather name="edit-2" size={18} color="#64748b" />
+                </TouchableOpacity>
+              )}
+              {onDelete && (
+                <TouchableOpacity 
+                  onPress={() => {
+                    console.log("[MedicineCard] Delete tapped for:", medicine.id);
+                    onDelete(medicine.id);
+                  }} 
+                  hitSlop={{ top: 15, bottom: 15, left: 10, right: 15 }}
+                >
+                  <Feather name="trash-2" size={18} color="#ef4444" />
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>

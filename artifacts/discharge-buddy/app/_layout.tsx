@@ -16,8 +16,16 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { SidebarProvider } from "@/context/SidebarContext";
+import { Audio } from 'expo-av';
 
 SplashScreen.preventAutoHideAsync();
+
+// Pre-configure global audio for the entire app
+Audio.setAudioModeAsync({
+  playsInSilentModeIOS: true,
+  staysActiveInBackground: false,
+  shouldDuckAndroid: true,
+}).catch(console.warn);
 
 const queryClient = new QueryClient();
 
@@ -31,7 +39,12 @@ function RootLayoutNav() {
       <Stack.Screen name="role-select" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="scan" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="scan-qr" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="help" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="chat" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="caregiver/create-plan" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="caregiver/dashboard" options={{ headerShown: false }} />
+      <Stack.Screen name="caregiver/patient-detail" options={{ presentation: "card", headerShown: false }} />
       <Stack.Screen name="emergency" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="notifications" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="profile" options={{ presentation: "modal", headerShown: false }} />
@@ -51,6 +64,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      // Pre-load the success sound as soon as the app is ready
+      import("@/utils/SoundHelper").then(({ soundHelper }) => {
+        soundHelper.load().catch(console.warn);
+      });
     }
   }, [fontsLoaded, fontError]);
 

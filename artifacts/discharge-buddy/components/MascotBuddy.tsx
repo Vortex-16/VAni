@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import * as Haptics from "expo-haptics";
-import { View, Text, StyleSheet, Dimensions } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,8 +20,12 @@ import Svg, {
   Path,
   G,
 } from "react-native-svg";
+import { BlurView } from "expo-blur";
 import { t } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
+import { getDynamicMessage } from "@/utils/MessageEngine";
+import { Feather } from "@expo/vector-icons";
+import { NeuralOrb } from "./NeuralOrb";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -29,7 +33,7 @@ export type MascotMood = "HAPPY" | "CELEBRATE" | "CONCERNED" | "LOVE" | "NEUTRAL
 
 const MESSAGES: Record<MascotMood, string[]> = {
   HAPPY: [
-    "Hi! I'm Beary 🐾 Let's have a great recovery day!",
+    "Hi! I'm Mr. Meddy 🐾 Let's have a great recovery day!",
     "Remember to take your medicine on time! 💊",
     "You're doing amazing! Keep it up! ⭐",
   ],
@@ -181,19 +185,14 @@ interface MascotBuddyProps {
 }
 
 export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "HAPPY" }: MascotBuddyProps) {
-  const { language } = useApp();
+  const { todayDoses, user, isSpeaking, speakingTargetId, speakNeural } = useApp();
   const [mood, setMood] = useState<MascotMood>(initialMood);
+
+  const isMeSpeaking = isSpeaking && speakingTargetId === "mascot_beary";
   
   const getInitialMsg = () => {
     if (message) return message;
-    const moodKeys: Record<MascotMood, string> = {
-      HAPPY: "morning",
-      CELEBRATE: "takeNow",
-      CONCERNED: "reminders",
-      LOVE: "hello",
-      NEUTRAL: "dashboard"
-    };
-    return t(moodKeys[initialMood], language);
+    return getDynamicMessage(todayDoses || [], new Date(), user?.name);
   };
 
   const [msg, setMsg] = useState(getInitialMsg());
@@ -203,12 +202,12 @@ export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "
   const blink = useSharedValue(0);
   const mouthOpen = useSharedValue(0);
   const bubbleOpacity = useSharedValue(0);
-  const bubbleScale = useSharedValue(0.8);
+  const bubbleScale = useSharedValue(0.95);
+  const bubbleTranslateY = useSharedValue(10);
 
   useEffect(() => {
     scale.value = withSpring(1, { damping: 10, stiffness: 80 });
     
-    // Constant float
     float.value = withRepeat(
       withSequence(
         withTiming(-6, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
@@ -218,7 +217,6 @@ export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "
       true
     );
 
-    // Random blinking
     const blinkInterval = setInterval(() => {
       if (Math.random() > 0.6) {
         blink.value = withSequence(
@@ -228,16 +226,48 @@ export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "
       }
     }, 3000);
 
-    // Show bubble
     setTimeout(() => {
-      bubbleOpacity.value = withSpring(1);
-      bubbleScale.value = withSpring(1, { damping: 12 });
-    }, 600);
+      bubbleOpacity.value = withTiming(1, { duration: 800 });
+      bubbleTranslateY.value = withTiming(0, { duration: 800, easing: Easing.out(Easing.cubic) });
+      bubbleScale.value = withTiming(1, { duration: 800 }, () => {
+        bubbleScale.value = withRepeat(
+          withSequence(
+            withTiming(1.02, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+            withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) })
+          ),
+          -1,
+          true
+        );
+      });
+    }, 300);
 
     return () => clearInterval(blinkInterval);
   }, []);
 
-  // React to mood/trigger changes
+  useEffect(() => {
+    if (isMeSpeaking) {
+      mouthOpen.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 150 }),
+          withTiming(0, { duration: 150 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      mouthOpen.value = withTiming(0);
+    }
+  }, [isMeSpeaking]);
+  
+  // Keep msg in sync with the message prop if it changes
+  useEffect(() => {
+    if (message) {
+      setMsg(message);
+    } else {
+      setMsg(getDynamicMessage(todayDoses || [], new Date(), user?.name));
+    }
+  }, [message, todayDoses, user?.name]);
+
   useEffect(() => {
     if (trigger === undefined) return;
     
@@ -245,14 +275,13 @@ export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "
     setMood(targetMood);
     
     if (!message) {
-      setMsg(t("takeNow", language));
+      setMsg(getDynamicMessage(todayDoses || [], new Date(), user?.name));
     } else {
       setMsg(message);
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Jump animation
     scale.value = withSequence(
       withTiming(0.85, { duration: 80 }),
       withSpring(1.25, { damping: 6, stiffness: 200 }),
@@ -264,13 +293,16 @@ export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "
       withDelay(1500, withTiming(0, { duration: 300 }))
     );
 
-    // Reset mood after a while
     const timer = setTimeout(() => {
       setMood("HAPPY");
     }, 4000);
 
     return () => clearTimeout(timer);
   }, [trigger]);
+
+  const handleSpeak = async () => {
+    await speakNeural(msg, "mascot_beary");
+  };
 
   const bearStyle = useAnimatedStyle(() => ({
     transform: [
@@ -281,16 +313,32 @@ export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "
 
   const bubbleStyle = useAnimatedStyle(() => ({
     opacity: bubbleOpacity.value,
-    transform: [{ scale: bubbleScale.value }],
+    transform: [
+      { scale: bubbleScale.value },
+      { translateY: bubbleTranslateY.value }
+    ],
   }));
 
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.bubbleContainer, bubbleStyle]}>
-        <View style={styles.bubble}>
-          <Text style={styles.bubbleText}>{msg}</Text>
-        </View>
-        <View style={styles.bubbleTail} />
+        <TouchableOpacity 
+          style={styles.solidCard} 
+          onPress={handleSpeak}
+          activeOpacity={0.8}
+        >
+          <View style={styles.bubbleHeader}>
+            <Text style={styles.bubbleText}>{msg || "Hello! 💜"}</Text>
+            <View style={styles.voiceIcon}>
+              <Feather name={isMeSpeaking ? "pause" : "volume-2"} size={14} color="#7C3AED" />
+            </View>
+          </View>
+          {isMeSpeaking && (
+            <View style={styles.orbMini}>
+              <NeuralOrb isSpeaking={true} isProcessing={false} />
+            </View>
+          )}
+        </TouchableOpacity>
       </Animated.View>
 
       <Animated.View style={[styles.bearWrapper, bearStyle]}>
@@ -309,42 +357,50 @@ const styles = StyleSheet.create({
   },
   bubbleContainer: {
     flex: 1,
-    marginRight: 8,
-    marginBottom: 20,
+    marginRight: 16,
+    marginBottom: 24,
     alignItems: "flex-end",
   },
-  bubble: {
-    backgroundColor: "#fff",
-    padding: 14,
+  solidCard: {
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 20,
-    borderBottomRightRadius: 4,
     shadowColor: "#7C3AED",
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowRadius: 20,
     elevation: 6,
     maxWidth: 240,
-    minWidth: 120,
   },
   bubbleText: {
     color: "#1E1B4B",
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: "Inter_500Medium",
-    lineHeight: 20,
+    lineHeight: 22,
+    letterSpacing: -0.2,
+    textAlign: "left",
+    flexShrink: 1,
   },
-  bubbleTail: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderTopWidth: 12,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: "#fff",
-    marginRight: 20,
-    marginTop: -1,
+  bubbleHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  voiceIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#F5F3FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  orbMini: {
+    position: 'absolute',
+    bottom: -15,
+    right: -10,
+    transform: [{ scale: 0.4 }],
   },
   bearWrapper: {
     alignItems: "center",

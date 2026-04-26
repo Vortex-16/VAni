@@ -46,7 +46,7 @@ const SLIDES = [
     gradientColors: ["#3B1FA3", "#6C47FF"] as [string, string],
     title: "Your Recovery,\nSimplified",
     subtitle: "Turns hospital discharge papers into a clear daily plan — just for you.",
-    mascotMessage: "Hi! I'm Beary. I'll guide your recovery! 🐾",
+    mascotMessage: "Hi! I'm Mr. Meddy. I'll guide your recovery! 🐾",
     accentColor: "#A78BFA",
   },
   {
@@ -439,10 +439,10 @@ export default function OnboardingScreen() {
         </View>
 
         {/* Next / Get Started */}
-        <TouchableOpacity onPress={goNext} activeOpacity={1}>
+        <TouchableOpacity onPress={goNext} activeOpacity={0.7} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
           <Animated.View style={[styles.nextBtn, btnStyle]}>
             <Text style={styles.nextBtnText}>
-              {current === SLIDES.length - 1 ? "Get Started 🚀" : "Next"}
+              {current === SLIDES.length - 1 ? "Get Started" : "Next"}
             </Text>
             <View style={styles.nextArrow}>
               <Feather name="arrow-right" size={17} color={PURPLE} />

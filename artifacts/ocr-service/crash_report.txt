@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "C:\Users\SRINJOYEE\Desktop\d-buddy\Discharge-Buddy\artifacts\ocr-service\main.py", line 59, in generate_report
+    from report_generator import RecoveryReportGenerator
+  File "C:\Users\SRINJOYEE\Desktop\d-buddy\Discharge-Buddy\artifacts\ocr-service\report_generator.py", line 1, in <module>
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Frame, KeepInFrame
+ModuleNotFoundError: No module named 'reportlab'

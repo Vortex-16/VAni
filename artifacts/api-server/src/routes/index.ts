@@ -11,7 +11,9 @@ import followupRouter from "./followup";
 import languageSimplifierRouter from "./languageSimplifier";
 import recoveryRouter from "./recovery";
 import storageRouter from "./storage";
-import ocrRouter from "./ocr";
+import supportRouter from "./support";
+import dischargeRouter from "./discharge";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -30,6 +32,8 @@ router.use("/followups", followupRouter);
 router.use("/language", languageSimplifierRouter);
 router.use("/recovery", recoveryRouter);
 router.use("/storage", storageRouter);
-router.use("/ocr", ocrRouter);
+router.use("/support", supportRouter);
+router.use("/discharge", dischargeRouter);
+router.use("/ai", aiRouter);
 
 export default router;

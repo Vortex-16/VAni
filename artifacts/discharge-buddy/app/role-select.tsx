@@ -56,7 +56,8 @@ export default function RoleSelectScreen() {
         <TouchableOpacity
           onPress={() => handleSelect("patient")}
           style={[styles.roleCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          activeOpacity={0.85}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <View style={[styles.iconBox, { backgroundColor: `${colors.primary}15` }]}>
             <Feather name="user" size={36} color={colors.primary} />
@@ -74,7 +75,8 @@ export default function RoleSelectScreen() {
         <TouchableOpacity
           onPress={() => handleSelect("caregiver")}
           style={[styles.roleCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          activeOpacity={0.85}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <View style={[styles.iconBox, { backgroundColor: `${colors.accent}15` }]}>
             <Feather name="users" size={36} color={colors.accent} />

@@ -2,7 +2,7 @@ import { pgTable, text, integer, timestamp, boolean, pgEnum, uuid, varchar, date
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const userRoleEnum = pgEnum("user_role", ["patient", "caregiver"]);
+export const userRoleEnum = pgEnum("user_role", ["patient", "caregiver", "family"]);
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
 export const doseStatusEnum = pgEnum("dose_status", ["taken", "missed", "pending", "snoozed"]);
 
@@ -16,12 +16,22 @@ export const users = pgTable("users", {
   allergies: text("allergies"),
   emergencyContactName: text("emergency_contact_name"),
   emergencyContactPhone: text("emergency_contact_phone"),
+  phone: text("phone"),
+  avatar: text("avatar"),
+  password: text("password"),
   pushToken: text("push_token"),
+  anchorTimes: jsonb("anchor_times").default({
+    morning: "08:00",
+    afternoon: "14:00",
+    evening: "20:00",
+    night: "22:00"
+  }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const patients = pgTable("patients", {
   id: uuid("id").primaryKey().defaultRandom(),
+  caregiverId: uuid("caregiver_id").references(() => users.id), // Added to link to caregiver
   name: text("name").notNull(),
   age: integer("age").notNull(),
   condition: text("condition").notNull(),
@@ -43,6 +53,8 @@ export const medicines = pgTable("medicines", {
   endDate: timestamp("end_date"),
   color: text("color").default("#0891b2"),
   totalPills: integer("total_pills"),
+  status: text("status", { enum: ["active", "archived"] }).default("active").notNull(),
+  planId: uuid("plan_id"), // Optional link to a specific discharge plan
 });
 
 export const doseLogs = pgTable("dose_logs", {
@@ -53,6 +65,8 @@ export const doseLogs = pgTable("dose_logs", {
   status: doseStatusEnum("status").default("pending").notNull(),
   date: text("date").notNull(), // YYYY-MM-DD
   snoozedUntil: timestamp("snoozed_until"),
+  lastNotifiedAt: timestamp("last_notified_at"),
+  escalatedToCaregiver: boolean("escalated_to_caregiver").default(false),
 });
 
 export const symptomLogs = pgTable("symptom_logs", {
@@ -92,11 +106,7 @@ export const emergencyAlerts = pgTable("emergency_alerts", {
   status: text("status").default("active").notNull(),
 });
 
-// ──────────────────────────────────────────────
-// NEW FEATURE TABLES (integrated from secondary codebase)
-// ──────────────────────────────────────────────
-
-// Follow-up Manager: User-level follow-up appointment tracking with reminders
+// Follow-up Manager
 export const followups = pgTable("followups", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => users.id).notNull(),
@@ -109,7 +119,7 @@ export const followups = pgTable("followups", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Language Simplifier: Medical abbreviation dictionary
+// Language Simplifier
 export const medicalTermsDictionary = pgTable("medical_terms_dictionary", {
   id: uuid("id").primaryKey().defaultRandom(),
   abbreviation: varchar("abbreviation", { length: 50 }).notNull().unique(),
@@ -118,7 +128,7 @@ export const medicalTermsDictionary = pgTable("medical_terms_dictionary", {
   category: varchar("category", { length: 50 }),
 });
 
-// Recovery Tracker: Daily recovery vitals logging
+// Recovery Tracker
 export const recoveryLogs = pgTable("recovery_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => users.id).notNull(),
@@ -133,7 +143,7 @@ export const recoveryLogs = pgTable("recovery_logs", {
   unq: unique().on(t.userId, t.logDate),
 }));
 
-// Data Storage: Prescription storage with extracted data
+// Data Storage
 export const prescriptions = pgTable("prescriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => users.id).notNull(),
@@ -143,9 +153,29 @@ export const prescriptions = pgTable("prescriptions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// ──────────────────────────────────────────────
+// Feedback & Support
+export const feedback = pgTable("feedback", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Discharge Plans & Versioning
+export const dischargePlans = pgTable("discharge_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  hospitalName: text("hospital_name"),
+  data: jsonb("data").notNull(), // The raw plan JSON
+  version: integer("version").default(1).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  isUsed: boolean("is_used").default(false).notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Zod schemas for validation
-// ──────────────────────────────────────────────
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const insertPatientSchema = createInsertSchema(patients);
@@ -158,3 +188,5 @@ export const insertEmergencyAlertSchema = createInsertSchema(emergencyAlerts);
 export const insertFollowupSchema = createInsertSchema(followups);
 export const insertRecoveryLogSchema = createInsertSchema(recoveryLogs);
 export const insertPrescriptionSchema = createInsertSchema(prescriptions);
+export const insertFeedbackSchema = createInsertSchema(feedback);
+export const insertDischargePlanSchema = createInsertSchema(dischargePlans);
