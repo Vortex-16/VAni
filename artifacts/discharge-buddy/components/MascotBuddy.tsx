@@ -25,7 +25,6 @@ import { t } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
 import { getDynamicMessage } from "@/utils/MessageEngine";
 import { Feather } from "@expo/vector-icons";
-import { NeuralOrb } from "./NeuralOrb";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -333,11 +332,6 @@ export function MascotBuddy({ message, size = 90, trigger, mood: initialMood = "
               <Feather name={isMeSpeaking ? "pause" : "volume-2"} size={14} color="#7C3AED" />
             </View>
           </View>
-          {isMeSpeaking && (
-            <View style={styles.orbMini}>
-              <NeuralOrb isSpeaking={true} isProcessing={false} />
-            </View>
-          )}
         </TouchableOpacity>
       </Animated.View>
 
@@ -395,12 +389,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
-  },
-  orbMini: {
-    position: 'absolute',
-    bottom: -15,
-    right: -10,
-    transform: [{ scale: 0.4 }],
   },
   bearWrapper: {
     alignItems: "center",

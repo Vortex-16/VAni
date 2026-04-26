@@ -18,7 +18,7 @@ export default function ScanQR() {
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
-  const { addMedicine, api } = useApp();
+  const { addMedicine, api, refreshData } = useApp();
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -83,8 +83,8 @@ export default function ScanQR() {
       if (plan.id) {
         // Backend Flow
         await api.importDischargePlan(plan.id, "merge");
-        // We should refresh patient data to load the new meds
-        await api.getMedicines(); // Force cache update if any
+        // Pull latest medicines/logs into global state
+        await refreshData();
       } else {
         // Legacy mock flow
         const freqToTimes: Record<string, string[]> = {

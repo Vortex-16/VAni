@@ -72,7 +72,7 @@ router.post("/oauth", async (req, res) => {
     // Generate our JWT Session Token
     const token = jwt.sign(
       { sub: user.id }, 
-      process.env.JWT_SECRET || "super_secret_dev_jwt_key", 
+      process.env.JWT_SECRET!, 
       { expiresIn: "7d" }
     );
 
@@ -115,7 +115,7 @@ router.post("/register", async (req, res) => {
 
     const token = jwt.sign(
       { sub: user.id }, 
-      process.env.JWT_SECRET || "super_secret_dev_jwt_key", 
+      process.env.JWT_SECRET!, 
       { expiresIn: "7d" }
     );
 
@@ -142,7 +142,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { sub: user.id }, 
-      process.env.JWT_SECRET || "super_secret_dev_jwt_key", 
+      process.env.JWT_SECRET!, 
       { expiresIn: "7d" }
     );
 
@@ -233,7 +233,7 @@ router.get("/dev-session", async (req, res) => {
     // 3. Generate token
     const token = jwt.sign(
       { sub: user.id }, 
-      process.env.JWT_SECRET || "super_secret_dev_jwt_key", 
+      process.env.JWT_SECRET!, 
       { expiresIn: "7d" }
     );
 

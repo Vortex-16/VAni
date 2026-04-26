@@ -24,22 +24,22 @@ export class DischargeService {
    */
   private static mapFrequencyToAnchors(frequency: string): string[] {
     const f = frequency.toLowerCase();
-    
+
     // Daily / OD
     if (f.includes("od") || f.includes("once") || f.includes("daily")) {
       return ["morning"];
     }
-    
+
     // BID / Twice Daily
     if (f.includes("bid") || f.includes("twice") || f.includes("bd")) {
       return ["morning", "evening"];
     }
-    
+
     // TID / Thrice Daily
     if (f.includes("tid") || f.includes("thrice") || f.includes("three")) {
       return ["morning", "afternoon", "evening"];
     }
-    
+
     // QID / Four times
     if (f.includes("qid") || f.includes("four")) {
       return ["morning", "afternoon", "evening", "night"];
@@ -54,7 +54,7 @@ export class DischargeService {
    */
   static async normalizePlan(userId: string, rawData: DischargePlanData) {
     if (!rawData) throw new Error("No plan data provided for normalization");
-    
+
     const [user] = await db.select().from(users).where(eq(users.id, userId));
     const anchors: any = user?.anchorTimes || {
       morning: "08:00",
@@ -69,7 +69,7 @@ export class DischargeService {
     const normalizedMeds = (actualData.medicines || []).map((m: any) => {
       const anchorKeys = this.mapFrequencyToAnchors(m.frequency);
       const times = anchorKeys.map(key => anchors[key] || "08:00");
-      
+
       // DEBUB LOGGING: Normalization Trace
       logger.info({
         inputFrequency: m.frequency,
@@ -109,7 +109,7 @@ export class DischargeService {
 
     const [plan] = await db.select().from(dischargePlans).where(eq(dischargePlans.id, planId));
     if (!plan) throw new Error("Plan not found");
-    
+
     // SECURITY CHECKS
     if (plan.isUsed) throw new Error("This discharge plan has already been imported.");
     if (plan.expiresAt && new Date() > new Date(plan.expiresAt)) {
@@ -135,7 +135,7 @@ export class DischargeService {
           eq(medicines.patientId, patientId),
           eq(medicines.status, "active")
         ));
-      
+
       // Deactivate other plans
       await db.update(dischargePlans)
         .set({ isActive: false })
@@ -144,7 +144,7 @@ export class DischargeService {
 
     // 2. Normalize and Create Medicines
     const { normalizedMeds } = await this.normalizePlan(userId, planData);
-    
+
     const createdMeds = [];
     for (const med of normalizedMeds) {
       const created = await MedicineService.addMedicine(patientId, {
@@ -183,7 +183,7 @@ export class DischargeService {
       .where(eq(dischargePlans.patientId, patientId))
       .orderBy(desc(dischargePlans.version))
       .limit(1);
-    
+
     const nextVersion = existing.length > 0 ? existing[0].version + 1 : 1;
 
     const [newPlan] = await db.insert(dischargePlans)

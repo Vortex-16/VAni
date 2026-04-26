@@ -11,7 +11,7 @@ import { scheduleMedicineNotifications, requestNotificationPermissions } from "@
 import { NotificationToast } from "@/components/NotificationToast";
 import { soundHelper } from "@/utils/SoundHelper";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import { cacheDirectory, writeAsStringAsync, EncodingType } from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 
@@ -265,6 +265,7 @@ interface AppContextType {
   speakingTargetId: string | null;
   speakNeural: (text: string, targetId?: string) => Promise<void>;
   stopSpeaking: () => Promise<void>;
+  isInitializing: boolean;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -437,10 +438,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       setStreak(currentStreak);
       // Handle setting trends state if added to context
-    } catch (err) {
+    } catch (err: any) {
       // Graceful handling of network failures to prevent "Red Screen of Death"
       if (err instanceof TypeError && err.message.includes("Network request failed")) {
         console.warn("Backend server unreachable. Using local cache if available.");
+      } else if (err?.status === 401 || err?.message?.includes("401")) {
+        console.warn("Session expired. Logging out automatically.");
+        logout();
       } else {
         console.error("Failed to load generic data", err);
       }
@@ -718,11 +722,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsSpeaking(true);
     if (targetId) setSpeakingTargetId(targetId);
     
-    // Filter out emojis and special symbols so they aren't read aloud literally
+    // Strip ALL emojis and special symbols so they aren't read aloud
     const cleanText = text
-      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2300}-\u{23FF}]/gu, '')
+      .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA9F}\u{1FAA0}-\u{1FAFF}\u{200D}\u{20E3}\u{FE0F}]/gu, '')
       .replace(/\s+/g, ' ')
       .trim();
+
+    const ELEVENLABS_CONFIGURED = !!(process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY);
+
+    if (!ELEVENLABS_CONFIGURED) {
+      // No ElevenLabs key — use device TTS directly (fast, no network call)
+      try {
+        Speech.speak(cleanText, {
+          language: language === 'hi' ? 'hi-IN' : 'en-US',
+          pitch: 1.0,
+          rate: 0.95,
+          onDone: () => { setIsSpeaking(false); setSpeakingTargetId(null); },
+          onError: () => { setIsSpeaking(false); setSpeakingTargetId(null); },
+        });
+      } catch {
+        setIsSpeaking(false);
+        setSpeakingTargetId(null);
+      }
+      return;
+    }
 
     try {
       // 1. Fetch with 1-retry logic
@@ -749,11 +772,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       const audioContent = await fetchWithRetry();
-      const uri = `data:audio/mpeg;base64,${audioContent}`;
+      console.log("✅ ElevenLabs TTS received. Playing premium voice...");
+      
+      // The legacy API must be imported from 'expo-file-system/legacy' in SDK 52
+      const fileUri = `${cacheDirectory}tts_${Date.now()}.mp3`;
+      await writeAsStringAsync(fileUri, audioContent, {
+        encoding: EncodingType.Base64,
+      });
       
       const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true, pitchCorrectionQuality: Audio.PitchCorrectionQuality.High }
+        { uri: fileUri },
+        { 
+          shouldPlay: true, 
+          pitchCorrectionQuality: Audio.PitchCorrectionQuality.High,
+          rate: 0.88,
+          shouldCorrectPitch: true 
+        }
       );
       
       audioRef.current = sound;
@@ -766,13 +800,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       });
     } catch (err) {
-      console.error("[TTS Error]", err);
+      console.warn("⚠️ ElevenLabs unavailable, falling back to device speech.", err);
       // Fallback: Use local device TTS if ElevenLabs fails
       try {
-        await Speech.speak(text, {
+        console.log("📢 Using device-native speech engine.");
+        await Speech.speak(cleanText, {
           language: language === 'hi' ? 'hi-IN' : 'en-US',
           pitch: 1.0,
-          rate: 1.0,
+          rate: 0.95,
           onDone: () => {
             setIsSpeaking(false);
             setSpeakingTargetId(null);
@@ -937,6 +972,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         speakingTargetId,
         speakNeural,
         stopSpeaking,
+        isInitializing,
       }}
     >
       {children}

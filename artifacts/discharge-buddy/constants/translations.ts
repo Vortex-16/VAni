@@ -3,6 +3,7 @@ export type Language = "en" | "hi" | "es" | "ur";
 export const translations: Record<Language, any> = {
   en: {
     dashboard: "Dashboard",
+    dashboard_hi: "Hello",
     hello: "Hello",
     morning: "Good Morning",
     afternoon: "Good Afternoon",
@@ -28,6 +29,7 @@ export const translations: Record<Language, any> = {
   },
   hi: {
     dashboard: "डैशबोर्ड",
+    dashboard_hi: "नमस्ते",
     hello: "नमस्ते",
     morning: "सुप्रभात",
     afternoon: "नमस्ते",
@@ -53,6 +55,7 @@ export const translations: Record<Language, any> = {
   },
   es: {
     dashboard: "Tablero",
+    dashboard_hi: "Hola",
     hello: "Hola",
     morning: "Buenos Días",
     afternoon: "Buenas Tardes",
@@ -78,6 +81,7 @@ export const translations: Record<Language, any> = {
   },
   ur: {
     dashboard: "ڈیش بورڈ",
+    dashboard_hi: "ہیلو",
     hello: "ہیلو",
     morning: "صبح بخیر",
     afternoon: "دوپہر بخیر",

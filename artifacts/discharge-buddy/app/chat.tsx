@@ -74,7 +74,9 @@ export default function ChatScreen() {
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    // Initialize Web Speech API for STT
+    // Initialize Web Speech API for STT (Only works on Web)
+    if (Platform.OS !== 'web') return;
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognitionRef.current = new SpeechRecognition();
@@ -339,25 +341,9 @@ export default function ChatScreen() {
 
 const VoiceButton = ({ text, msgId, isSpeaking, speakingTargetId, speakNeural }: any) => {
   const isActive = isSpeaking && speakingTargetId === msgId;
-  const pulse = useSharedValue(isActive ? 1 : 0);
-
-  useEffect(() => {
-    if (isActive) {
-      pulse.value = withRepeat(withSequence(withTiming(1, { duration: 500 }), withTiming(0.4, { duration: 500 })), -1, true);
-    } else {
-      pulse.value = withTiming(0, { duration: 300 });
-    }
-  }, [isActive]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: pulse.value,
-    transform: [{ scale: 1 + (pulse.value * 0.2) }]
-  }));
-
   return (
     <TouchableOpacity onPress={() => speakNeural(text, msgId)} style={styles.voiceBtnContainer}>
-      {isActive && <Animated.View style={[styles.pulsingBall, animatedStyle]} />}
-      <Feather name={isActive ? "volume-2" : "volume-1"} size={13} color={isActive ? PURPLE : "#94A3B8"} style={{ zIndex: 2 }} />
+      <Feather name={isActive ? "volume-2" : "volume-1"} size={13} color={isActive ? PURPLE : "#94A3B8"} />
     </TouchableOpacity>
   );
 };
@@ -524,13 +510,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 6,
-  },
-  pulsingBall: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(108,71,255,0.2)",
-    zIndex: 1
   },
 });

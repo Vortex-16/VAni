@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
+import { useSidebar } from '@/context/SidebarContext';
 import type { Patient } from '@/context/AppContext';
 
 const PURPLE = '#6C47FF';
@@ -165,6 +166,7 @@ function PatientCard({ patient }: { patient: Patient }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function CaregiverDashboard() {
   const { linkedPatients, user, refreshData } = useApp();
+  const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
 
   React.useEffect(() => {
@@ -191,6 +193,17 @@ export default function CaregiverDashboard() {
     <View style={styles.container}>
       {/* Header */}
       <LinearGradient colors={['#4B26C8', PURPLE]} style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        {/* Header Top Bar */}
+        <View style={styles.headerTopBar}>
+          <TouchableOpacity onPress={openSidebar} style={styles.headerIconBtn}>
+            <Feather name="menu" size={22} color={WHITE} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.headerIconBtn}>
+            <Feather name="settings" size={20} color={WHITE} />
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerGreeting}>Care Control Center</Text>
@@ -284,6 +297,8 @@ const styles = StyleSheet.create({
 
   // Header
   header: { paddingHorizontal: 20, paddingBottom: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+  headerTopBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginTop: 4 },
+  headerIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   headerGreeting: { fontSize: 20, fontFamily: 'Inter_700Bold', color: WHITE },
   headerSub: { fontSize: 13, fontFamily: 'Inter_400Regular', color: 'rgba(255,255,255,0.75)', marginTop: 2 },

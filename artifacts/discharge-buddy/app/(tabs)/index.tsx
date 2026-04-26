@@ -21,7 +21,6 @@ import { t } from "@/constants/translations";
 
 import { MascotBuddy } from "@/components/MascotBuddy";
 import { AnimPressable } from "@/components/AnimPressable";
-import { NeuralOrb } from "@/components/NeuralOrb";
 import colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { useSidebar } from "@/context/SidebarContext";
@@ -280,15 +279,9 @@ function PatientDashboard({ topInset }: { topInset: number }) {
                 activeOpacity={0.7}
               >
                 <Text style={styles.nameText} numberOfLines={1}>{user?.name} 👋</Text>
-                {isGreetingSpeaking ? (
-                  <View style={styles.greetingOrb}>
-                    <NeuralOrb isSpeaking={true} isProcessing={false} />
-                  </View>
-                ) : (
-                  <View style={styles.voiceSmallBtn}>
-                    <Feather name="volume-2" size={14} color="#fff" />
-                  </View>
-                )}
+                <View style={[styles.voiceSmallBtn, isGreetingSpeaking && { backgroundColor: 'rgba(255,255,255,0.35)' }]}>
+                  <Feather name={isGreetingSpeaking ? "volume-x" : "volume-2"} size={14} color="#fff" />
+                </View>
               </TouchableOpacity>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -356,14 +349,19 @@ function PatientDashboard({ topInset }: { topInset: number }) {
         <View style={styles.quickSection}>
           <Text style={styles.sectionTitle}>{t("reminders", language)}</Text>
           <View style={styles.quickRow}>
-            <QuickAction icon="activity" label="Symptoms" color="#EF4444" delay={0}
+            <QuickAction icon="calendar" label="Schedule" color="#8B5CF6" delay={0}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/schedule" as any); }} />
+            <QuickAction icon="activity" label="Symptoms" color="#EF4444" delay={40}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/symptoms" as any); }} />
-            <QuickAction icon="wind" label="Meditation" color="#A21CAF" delay={60}
+            <QuickAction icon="wind" label="Meditation" color="#A21CAF" delay={80}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/meditation" as any); }} />
-
+          </View>
+          <View style={[styles.quickRow, { marginTop: 18 }]}>
             <QuickAction icon="message-circle" label="AI Help" color="#06B6D4" delay={120}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/chat" as any); }} />
-            <QuickAction icon="alert-triangle" label="Emergency" color="#F59E0B" delay={160}
+            <QuickAction icon="book" label="Journal" color="#10B981" delay={160}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/journal" as any); }} />
+            <QuickAction icon="alert-triangle" label="Emergency" color="#F59E0B" delay={200}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); router.push("/emergency" as any); }} />
           </View>
         </View>
@@ -609,7 +607,9 @@ function CaregiverPatientCard({ patient }: { patient: any }) {
           style={styles.neuralContainer}
         >
           {isMeSpeaking ? (
-            <NeuralOrb isSpeaking={true} isProcessing={false} />
+            <View style={styles.volumeCircle}>
+               <Feather name="volume-x" size={18} color={PURPLE} />
+            </View>
           ) : isLoading ? (
             <ActivityIndicator size="small" color={PURPLE} />
           ) : (
@@ -725,7 +725,6 @@ const styles = StyleSheet.create({
   headerInfo: { flex: 1, paddingHorizontal: 8 },
   greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   voiceSmallBtn: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  greetingOrb: { width: 40, height: 40, transform: [{ scale: 0.5 }], marginTop: -5 },
   welcomeText: { fontSize: 16, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_500Medium" },
   greetBlock: { alignItems: "center", flex: 1, paddingHorizontal: 8 },
   greetText: { color: "rgba(255,255,255,0.72)", fontSize: 12, fontFamily: "Inter_400Regular" },

@@ -38,7 +38,7 @@ Example of a BAD response (DO NOT USE):
 `;
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wPnE1V9WfO5tQ3w6D0Xh"; 
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wPnE1V9WfO5tQ3w6D0Xh";
 
 /**
  * @route POST /api/ai/tts
@@ -71,9 +71,9 @@ router.post("/tts", async (req: any, res: any) => {
         },
         body: JSON.stringify({
           text: cleanText,
-          model_id: "eleven_monolingual_v1",
+          model_id: "eleven_multilingual_v2",
           voice_settings: {
-            stability: 0.5,
+            stability: 0.7,
             similarity_boost: 0.75,
           },
         }),
@@ -99,7 +99,7 @@ router.post("/tts", async (req: any, res: any) => {
     const audioBuffer = await generateAudio();
     const audioBase64 = audioBuffer.toString('base64');
 
-    return res.json({ 
+    return res.json({
       audioContent: audioBase64,
       format: "mp3",
       voiceId: VOICE_ID
@@ -116,7 +116,7 @@ router.post("/tts", async (req: any, res: any) => {
  */
 router.post("/chat", optionalAuth, async (req: any, res: any) => {
   const { userQuery } = req.body;
-  const user = req.user; 
+  const user = req.user;
   console.log(`[AI Chat] Request received. User: ${user?.name || "Guest"}, Query: ${userQuery}`);
 
   if (!userQuery) {
@@ -146,7 +146,7 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
             .orderBy(desc(symptomLogs.date))
             .limit(5),
         ]);
-        
+
         userMeds = meds;
         userSymptoms = symptoms;
 
@@ -197,7 +197,8 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `
+        {
+          role: "user", content: `
           CURRENT_TIME: ${new Date().toISOString()}
           USER_QUERY: "${userQuery}"
           
@@ -223,7 +224,7 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
     return res.json(result);
   } catch (error: any) {
     console.error("[Chat Error]", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: "I'm sorry, I'm having trouble connecting right now. Please rest and try again in a moment. 💜",
       actions: [{ type: "RETRY", label: "Try Again" }]
     });

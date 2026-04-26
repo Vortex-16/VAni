@@ -156,7 +156,7 @@ export default function LoginScreen() {
     setIsSuccess(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Play custom success sound
+    // Play custom success sound with thread safety
     try {
       const { sound } = await Audio.Sound.createAsync(
         require("../assets/sounds/universfield-new-notification-057-494255.mp3.mpeg")
@@ -165,20 +165,24 @@ export default function LoginScreen() {
       // Unload sound after playing
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
+          sound.unloadAsync().catch(() => {});
         }
       });
     } catch (error) {
       console.log("Error playing success sound:", error);
     }
 
+    // Get role from AppContext state (which was updated by login/setUser)
+    // We need to check it here before redirecting
     setTimeout(() => {
       sheetY.value = withTiming(SCREEN_HEIGHT, {
         duration: 600,
         easing: Easing.in(Easing.exp),
       }, (finished) => {
         if (finished) {
-          runOnJS(router.replace)("/(tabs)");
+          // Use the component's local role state or fetch from context
+          const targetPath = role === "caregiver" ? "/caregiver/dashboard" : "/(tabs)";
+          runOnJS(router.replace)(targetPath);
         }
       });
     }, 1000);

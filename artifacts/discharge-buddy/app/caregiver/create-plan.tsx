@@ -296,9 +296,11 @@ export default function CreatePlan() {
 
         {/* ── Scan Prescription — FIRST thing visible ── */}
         <View style={styles.scanCard}>
-          <View style={styles.scanCardLeft}>
-            <Feather name="file-text" size={20} color={PURPLE} />
-            <View>
+          <View style={styles.scanCardTop}>
+            <View style={styles.scanCardIconWrap}>
+              <Feather name="file-text" size={20} color={PURPLE} />
+            </View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.scanCardTitle}>Scan Prescription</Text>
               <Text style={styles.scanCardSub}>Auto-fill all medicine details from a photo</Text>
             </View>
@@ -507,13 +509,14 @@ const styles = StyleSheet.create({
   tagTextActive: { color: WHITE },
 
   // Medications — Scan Card
-  scanCard: { backgroundColor: '#EDE9FE', borderRadius: 18, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#DDD6FE' },
-  scanCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  scanCardTitle: { fontSize: 14, fontFamily: 'Inter_700Bold', color: '#1e1b4b' },
-  scanCardSub: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#64748b', marginTop: 1 },
-  scanCardBtns: { flexDirection: 'row', gap: 6 },
-  scanOptBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: PURPLE, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
-  scanOptBtnText: { color: WHITE, fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  scanCard: { backgroundColor: '#EDE9FE', borderRadius: 20, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#DDD6FE' },
+  scanCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  scanCardIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  scanCardTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#1e1b4b' },
+  scanCardSub: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#64748b', marginTop: 1, lineHeight: 16 },
+  scanCardBtns: { flexDirection: 'row', gap: 8 },
+  scanOptBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: PURPLE, paddingVertical: 10, borderRadius: 12 },
+  scanOptBtnText: { color: WHITE, fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   scanningCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#EDE9FE', padding: 14, borderRadius: 14, marginBottom: 12 },
   scanningCardText: { color: PURPLE, fontFamily: 'Inter_500Medium', fontSize: 13 },
   scanSuccessBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#86efac', borderRadius: 12, padding: 12, marginBottom: 12 },

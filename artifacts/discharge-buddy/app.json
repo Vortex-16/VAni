@@ -48,6 +48,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0834dffa-6eb3-40b3-8ad3-85ad52aaf9d3"
+      }
+    },
+    "owner": "srinzzs-organization"
   }
 }

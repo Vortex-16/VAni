@@ -7,6 +7,26 @@ export interface AuthRequest extends Request {
   user?: typeof users.$inferSelect;
 }
 
+export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return next(); // Guest — no token, continue anyway
+  }
+
+  const token = authHeader.split(" ")[1];
+  if (!token) return next();
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { sub: string };
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.sub));
+    if (user) req.user = user;
+  } catch {
+    // Invalid token — treat as guest, don't block
+  }
+
+  next();
+};
+
 export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -19,7 +39,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "super_secret_dev_jwt_key") as { sub: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { sub: string };
     const [user] = await db.select().from(users).where(eq(users.id, decoded.sub));
 
     if (!user) {
