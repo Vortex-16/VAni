@@ -308,7 +308,7 @@ export class MockProvider implements IDataProvider {
   async getChatResponse(query: string): Promise<{ message: string; actions: { type: string; label: string }[] }> {
     await new Promise(r => setTimeout(r, 1000));
     return {
-      message: "I'm your recovery assistant. How are you feeling today?",
+      message: "I'm Mr. Meddy (Mock Fallback). It looks like I'm not connected to the live server right now, but I can still help you with demo features!",
       actions: [
         { type: "LOG_SYMPTOM", label: "Log Symptom" },
         { type: "START_MEDITATION", label: "Start Calm Session" }

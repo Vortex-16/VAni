@@ -13,6 +13,7 @@ import { soundHelper } from "@/utils/SoundHelper";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
 
 export type UserRole = "patient" | "caregiver" | "family" | null;
 // Language type imported from translations.ts
@@ -301,7 +302,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [speakingTargetId, setSpeakingTargetId] = useState<string | null>(null);
   const audioRef = useRef<Audio.Sound | null>(null);
 
-  const [dataProvider, setDataProvider] = useState<IDataProvider>(new MockProvider());
+  const [dataProvider, setDataProvider] = useState<IDataProvider>(new ApiProvider());
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
@@ -316,6 +317,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       apiUrl = "http://localhost:3000";
     }
     setBaseUrl(apiUrl);
+    console.log("[AppContext] Base URL set to:", apiUrl);
     setAuthTokenGetter(async () => await AsyncStorage.getItem("discharge_buddy_token"));
     initApp();
   }, []);
@@ -331,7 +333,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const token = await AsyncStorage.getItem("discharge_buddy_token");
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       
-      if (token && dataProvider instanceof MockProvider) {
+      if (dataProvider instanceof MockProvider) {
           setDataProvider(new ApiProvider());
       }
 
@@ -765,7 +767,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (err) {
       console.error("[TTS Error]", err);
-      // Fallback: Just show text (logic is already showing text in UI)
+      // Fallback: Use local device TTS if ElevenLabs fails
+      try {
+        await Speech.speak(text, {
+          language: language === 'hi' ? 'hi-IN' : 'en-US',
+          pitch: 1.0,
+          rate: 1.0,
+          onDone: () => {
+            setIsSpeaking(false);
+            setSpeakingTargetId(null);
+          },
+          onError: () => {
+            setIsSpeaking(false);
+            setSpeakingTargetId(null);
+          }
+        });
+        return; // Success with fallback
+      } catch (speechErr) {
+        console.error("[Local Speech Error]", speechErr);
+      }
       setIsSpeaking(false);
       setSpeakingTargetId(null);
     }

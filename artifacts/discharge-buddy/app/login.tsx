@@ -237,7 +237,7 @@ export default function LoginScreen() {
     startLoginAnimation();
 
     setTimeout(async () => {
-      switchProvider(new MockProvider());
+      // Stay on ApiProvider for guest too, so AI chat works
       setRole(role);
       setUser({
         id: Date.now().toString(),

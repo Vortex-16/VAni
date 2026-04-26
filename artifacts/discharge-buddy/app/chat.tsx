@@ -48,7 +48,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: `Hello ${user?.name?.split(" ")[0] || "there"}! I'm Mr. Meddy, your recovery companion. How are you feeling today? 💜`,
+      text: `Hello ${user?.name?.split(" ")[0] || "there"}! I'm Mr. Meddy (V2), your recovery companion. How are you feeling today? 💜`,
       sender: "ai",
       actions: [
         { type: "LOG_SYMPTOM", label: "Log Symptom" },
@@ -60,6 +60,7 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  /*
   useEffect(() => {
     // Speak the welcome message with a short delay
     const t = setTimeout(() => {
@@ -67,6 +68,7 @@ export default function ChatScreen() {
     }, 600);
     return () => clearTimeout(t);
   }, []);
+  */
 
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -113,23 +115,36 @@ export default function ChatScreen() {
     if (!input.trim() || isLoading) return;
 
     const userMsg: Message = { id: Date.now().toString(), text: input.trim(), sender: "user" };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => {
+      const next = [...prev, userMsg];
+      console.log("[ChatScreen] setMessages (User) -> count:", next.length);
+      return next;
+    });
     setInput("");
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addNotification({ title: "Debug", body: `Sending: ${userMsg.text.substring(0, 20)}`, icon: "message-square", color: "#6C47FF" });
 
+    console.log("[ChatScreen] handleSend triggered with input:", userMsg.text);
     try {
       const response = await api.getChatResponse(userMsg.text);
+      console.log("[ChatScreen] Got response from API:", response);
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         text: response.message,
         sender: "ai",
         actions: response.actions,
       };
-      setMessages(prev => [...prev, aiMsg]);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-      await speakNeural(response.message, aiMsg.id);
+      setMessages(prev => {
+        const next = [...prev, aiMsg];
+        console.log("[ChatScreen] setMessages (AI) -> count:", next.length);
+        return next;
+      });
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+      console.log("[ChatScreen] AI Message added to state. Now triggering TTS...");
+      speakNeural(response.message, aiMsg.id).catch(e => console.error("[ChatScreen] TTS Background Error:", e));
     } catch (err) {
+      console.error("[ChatScreen] handleSend error:", err);
       const errorMsg: Message = {
         id: "err_" + Date.now(),
         text: "I'm having a little trouble connecting. Please rest a bit and try again. 💜",
@@ -170,6 +185,7 @@ export default function ChatScreen() {
     }
   };
 
+  console.log("[ChatScreen] Rendering with messages:", messages.length);
   return (
     <View style={styles.container}>
       {/* Soft Pastel Gradient Background */}
@@ -201,8 +217,8 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={0}
+        style={{ flex: 1, borderStyle: 'solid', borderColor: 'red', borderWidth: 0 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
           ref={scrollRef}
@@ -224,11 +240,10 @@ export default function ChatScreen() {
 
           {/* Message Thread */}
           <View style={styles.messageList}>
+            <Text style={{ fontSize: 10, color: 'gray', textAlign: 'center' }}>[Debug: {messages.length} messages]</Text>
             {messages.map((msg, idx) => (
               <Animated.View
                 key={msg.id}
-                entering={FadeInUp.delay(Math.min(idx * 80, 400)).springify()}
-                layout={LinearTransition.springify()}
                 style={[
                   styles.messageWrapper,
                   msg.sender === "user" ? styles.userMsgWrapper : styles.aiMsgWrapper,
@@ -293,13 +308,20 @@ export default function ChatScreen() {
               placeholder={isListening ? "Listening..." : "How are you feeling?"}
               placeholderTextColor="#A0AEC0"
               value={input}
-              onChangeText={setInput}
+              onChangeText={(t) => {
+                console.log("[ChatScreen] Input changed:", t);
+                setInput(t);
+              }}
               onSubmitEditing={handleSend}
               multiline={false}
               returnKeyType="send"
             />
             <TouchableOpacity 
-              onPress={input.trim() ? handleSend : toggleListening} 
+              onPress={() => {
+                console.log("[ChatScreen] Button pressed. input:", input, "isListening:", isListening);
+                if (input.trim()) handleSend();
+                else toggleListening();
+              }} 
               style={[
                 styles.sendBtn, 
                 !input.trim() && !isListening && styles.sendBtnDisabled,
@@ -368,7 +390,7 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, alignItems: "center" },
   headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
   headerSub: { fontSize: 12, color: "#7C3AED", fontFamily: "Inter_500Medium", marginTop: 1 },
-  scrollContent: { paddingBottom: 20 },
+  scrollContent: { paddingBottom: 120 },
   orbSection: {
     alignItems: "center",
     paddingTop: 10,
