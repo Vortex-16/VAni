@@ -13,7 +13,7 @@ WORKDIR /app
 COPY . .
 
 # Install all dependencies (including devDependencies for building)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Build the api-server
 # This uses the workspace filter to only build the backend
