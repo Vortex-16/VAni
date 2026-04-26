@@ -1,0 +1,11 @@
+node_modules
+.expo
+venv
+__pycache__
+*.pyc
+dist
+web-build
+.git
+.npm
+.cache
+pnpm-lock.yaml
