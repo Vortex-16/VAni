@@ -230,5 +230,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="center">
   <b>Built with ❤️ by the Discharge Buddy Team</b><br/>
-  <i>For the Google Solution Challenge 2024</i>
+  <i>For the Google Solution Challenge 2026</i>
 </p>
