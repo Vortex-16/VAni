@@ -5,11 +5,18 @@
   },
   "build": {
     "preview": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://d-buddy-718686428495.asia-south1.run.app"
+      },
       "android": {
         "buildType": "apk"
       }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://d-buddy-718686428495.asia-south1.run.app"
+      }
+    }
   },
   "submit": {
     "production": {}
