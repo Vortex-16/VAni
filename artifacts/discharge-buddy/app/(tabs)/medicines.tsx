@@ -405,6 +405,25 @@ export default function MedicinesScreen() {
               <Feather name="camera" size={16} color={WHITE} />
               <Text style={styles.emptyBtnText}>Scan Prescription</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setEditingMed({
+                id: "",
+                name: "",
+                dosage: "",
+                frequency: "Daily",
+                times: ["08:00"],
+                instructions: "",
+                simplifiedInstructions: "",
+                startDate: new Date().toISOString(),
+                color: PURPLE
+              })}
+              style={[styles.manualAddBtn, { marginTop: 10, width: '80%', alignSelf: 'center' }]}
+              activeOpacity={0.7}
+            >
+              <Feather name="plus-circle" size={20} color={PURPLE} />
+              <Text style={styles.manualAddText}>Enter Manually</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.allGrid}>

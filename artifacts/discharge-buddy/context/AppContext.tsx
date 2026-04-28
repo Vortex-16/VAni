@@ -482,6 +482,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Failed to initialize app state", err);
     } finally {
+      // Ensure we have a default state if nothing was loaded
+      setNotifications(prev => prev.length === 0 ? [
+        {
+          group: "Today",
+          items: [
+            { id: "n1", icon: "check-circle", color: "#10b981", title: "Dose Taken", body: "Lisinopril 10mg — marked as taken", time: "8:03 AM", read: false },
+            { id: "n2", icon: "alert-triangle", color: "#f59e0b", title: "Missed Dose", body: "Aspirin 81mg — you missed your evening dose", time: "8:00 PM", read: false },
+          ],
+        }
+      ] : prev);
       setIsInitializing(false);
     }
   }
@@ -570,8 +580,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const existing = raw ? JSON.parse(raw) : {};
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, ...updates }));
-    } catch {}
+      const merged = { ...existing, ...updates };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    } catch (err) {
+      console.warn("[AppContext] Failed to save data:", err);
+    }
   }
 
   const [recoverySuggestion, setRecoverySuggestion] = useState<{ title: string; body: string; type: 'calm' | 'sleep' | 'reset' } | null>(null);
@@ -960,9 +973,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (userData: AppUser, token: string) => {
     await AsyncStorage.setItem("discharge_buddy_token", token);
-    setUser(userData);
-    setRole(userData.role);
+    
+    // Batch updates to state and storage to prevent race conditions
+    setUserState(userData);
+    setRoleState(userData.role);
+    setIsOnboardedState(true);
     setDataProvider(new ApiProvider());
+    
+    await saveData({ 
+      user: userData, 
+      role: userData.role,
+      isOnboarded: true 
+    });
+
+    // Register Push Token with Backend
 
     // Register Push Token with Backend
     try {

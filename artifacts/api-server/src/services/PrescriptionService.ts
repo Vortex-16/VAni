@@ -205,14 +205,14 @@ export class PrescriptionService {
     }
 
     // ─── Fallback: NVIDIA / Groq Pipeline ───
-    const nvidiaKey = process.env.NVIDIA_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
+    const nvidiaKey = process.env.NVIDIA_API_KEY || process.env.EXPO_PUBLIC_NVIDIA_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY || process.env.EXPO_PUBLIC_GROQ_API_KEY;
 
     if (!nvidiaKey) {
-      throw new Error("NVIDIA_API_KEY is not configured in .env");
+      throw new Error("NVIDIA_API_KEY is not configured in environment variables");
     }
     if (!groqKey) {
-      throw new Error("GROQ_API_KEY is not configured in .env");
+      throw new Error("GROQ_API_KEY is not configured in environment variables");
     }
 
     // Strip data URI prefix if present

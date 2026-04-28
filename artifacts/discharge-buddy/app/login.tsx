@@ -181,14 +181,12 @@ export default function LoginScreen() {
     }
 
     // Get role from AppContext state (which was updated by login/setUser)
-    // We need to check it here before redirecting
     setTimeout(() => {
       sheetY.value = withTiming(SCREEN_HEIGHT, {
-        duration: 600,
+        duration: 400,
         easing: Easing.in(Easing.exp),
       }, (finished) => {
         if (finished) {
-          // Use the component's local role state or fetch from context
           const targetPath = role === "caregiver"
             ? "/caregiver/dashboard"
             : role === "family"
@@ -197,7 +195,7 @@ export default function LoginScreen() {
           runOnJS(router.replace)(targetPath);
         }
       });
-    }, 1000);
+    }, 200);
   };
 
   const handleLogin = async () => {
