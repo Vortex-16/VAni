@@ -1,10 +1,16 @@
 import fs from 'fs';
 import path from 'path';
+const dirname = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 // Manual parser for a single .env file to avoid extra dependencies in the mobile app
 const loadRootEnv = () => {
   try {
-    const rootPath = path.resolve(__dirname, '../../.env');
+    const possiblePaths = [
+      path.resolve(process.cwd(), '.env'),
+      path.resolve(process.cwd(), 'artifacts/discharge-buddy/.env'),
+      path.resolve(process.cwd(), '../../.env'),
+    ];
+    let rootPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
     if (fs.existsSync(rootPath)) {
       const content = fs.readFileSync(rootPath, 'utf8');
       content.split(/\r?\n/).forEach((line) => {
@@ -30,6 +36,8 @@ const loadRootEnv = () => {
 };
 
 loadRootEnv();
+process.env.EXPO_ROUTER_APP_ROOT = path.resolve(dirname, 'app').replace(/\\/g, '/');
+process.env.EXPO_ROUTER_IMPORT_MODE = 'lazy';
 
 export default ({ config }) => {
   return {

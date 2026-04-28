@@ -389,6 +389,11 @@ export default function OnboardingScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         keyExtractor={(item) => item.id}
+        getItemLayout={(data, index) => ({
+          length: width,
+          offset: width * index,
+          index,
+        })}
         style={{ height: VISUAL_HEIGHT, flexGrow: 0, marginTop: topInset + 12 }}
         renderItem={({ item, index }) => {
           const Visual = VISUALS[index];

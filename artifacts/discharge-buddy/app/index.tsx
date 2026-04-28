@@ -1,24 +1,44 @@
-import { Redirect } from "expo-router";
+import { router } from "expo-router";
 import { useApp } from "@/context/AppContext";
+import { useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
 
 export default function EntryScreen() {
   const { isOnboarded, role, isInitializing } = useApp();
 
-  if (isInitializing) {
-    return null; // Or a splash screen component
-  }
+  useEffect(() => {
+    console.log("[EntryScreen] State:", { isInitializing, isOnboarded, role });
+    if (isInitializing) return;
 
-  if (!isOnboarded) {
-    return <Redirect href="/onboarding" />;
-  }
+    if (!isOnboarded) {
+      console.log("[EntryScreen] Redirecting to /onboarding");
+      router.replace("/onboarding");
+      return;
+    }
 
-  if (!role) {
-    return <Redirect href="/login" />;
-  }
+    if (!role) {
+      console.log("[EntryScreen] Redirecting to /login");
+      router.replace("/login");
+      return;
+    }
 
-  if (role === 'caregiver') {
-    return <Redirect href="/caregiver/dashboard" />;
-  }
+    console.log(`[EntryScreen] Redirecting to dashboard for role: ${role}`);
+    if (role === 'family') {
+      router.replace("/family/dashboard");
+      return;
+    }
 
-  return <Redirect href="/(tabs)" />;
+    if (role === 'caregiver') {
+      router.replace("/caregiver/dashboard");
+      return;
+    }
+
+    router.replace("/(tabs)");
+  }, [isInitializing, isOnboarded, role]);
+
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F4FB' }}>
+      <ActivityIndicator size="large" color="#6C47FF" />
+    </View>
+  );
 }

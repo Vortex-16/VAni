@@ -9,12 +9,18 @@ import os
 import json
 from fastapi.responses import Response
 
-# 📝 1. FASTAPI SETUP
-app = FastAPI(title="D-Buddy OCR & Report Service")
-
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# 📝 1. FASTAPI SETUP
+from dotenv import load_dotenv
+env_path = os.path.join(os.path.dirname(__file__), "../../.env")
+logger.info(f"Loading .env from: {os.path.abspath(env_path)}")
+load_dotenv(env_path) 
+logger.info(f"GOOGLE_API_KEY found: {'Yes' if os.getenv('GOOGLE_API_KEY') else 'No'}")
+
+app = FastAPI(title="D-Buddy OCR & Report Service")
 
 # Enable CORS
 app.add_middleware(
@@ -57,7 +63,7 @@ async def analyze_patient_data(data: dict):
             return None
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-flash-latest')
 
         prompt = f"""
         You are a healthcare AI assistant generating a personalized recovery report.
@@ -135,8 +141,113 @@ async def generate_report(request: ReportRequest):
 
 @app.post("/analyze")
 async def analyze_prescription(request: Request):
-    # (OCR logic remains same)
-    pass
+    """
+    Process a prescription image: Preprocess -> OCR -> AI Entity Extraction.
+    """
+    try:
+        import cv2
+        import numpy as np
+        import base64
+        from preprocessing import preprocess_for_ocr
+        from ocr_engine import run_ocr
+        
+        # 1. Parse Input
+        body = await request.json()
+        image_b64 = body.get("image")
+        logger.info(f"Received image_b64 type: {type(image_b64)}")
+        if not image_b64:
+            raise HTTPException(status_code=400, detail="No image data provided")
+
+        # 2. Decode Image
+        try:
+            # Handle potential data URI prefix
+            if "," in image_b64:
+                image_b64 = image_b64.split(",")[1]
+            
+            img_bytes = base64.b64decode(image_b64)
+            nparr = np.frombuffer(img_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if img is None:
+                raise ValueError("Failed to decode image")
+        except Exception as decode_err:
+            logger.error(f"Image decoding failed: {decode_err}")
+            raise HTTPException(status_code=400, detail="Invalid image format or corrupted data")
+
+        # 3. Preprocess
+        logger.info("Preprocessing image...")
+        processed_img = preprocess_for_ocr(img)
+
+        # 4. Run OCR Pipeline (docTR + TrOCR)
+        logger.info("Running OCR engine...")
+        ocr_result = run_ocr(processed_img)
+
+        # 5. AI Entity Extraction (Gemini)
+        logger.info("Extracting medical entities via AI...")
+        entities = await extract_medications_from_text(ocr_result.full_text)
+
+        # 6. Final Result
+        return {
+            "success": True,
+            "ocr": {
+                "full_text": ocr_result.full_text,
+                "confidence": ocr_result.overall_confidence,
+                "word_count": ocr_result.word_count,
+                "source": ocr_result.ocr_source
+            },
+            "entities": entities,
+            "metadata": {
+                "low_confidence_words": ocr_result.low_confidence_words
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Analysis failed: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def extract_medications_from_text(text: str):
+    """
+    Use Gemini to parse raw OCR text into structured medication data.
+    """
+    try:
+        import google.generativeai as genai
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            logger.warning("GOOGLE_API_KEY not set. Returning raw text only.")
+            return {"medications": [], "parsing_error": "API key missing"}
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-flash-latest')
+
+        prompt = f"""
+        You are a medical data extraction expert. 
+        Below is raw OCR text from a doctor's prescription or discharge summary.
+        
+        TASK:
+        1. Extract all medications listed.
+        2. For each medication, find: Name, Dosage (e.g. 500mg), Frequency (e.g. BD, TID, Once Daily), and Duration.
+        3. Translate medical shorthand (BD -> Twice Daily, OD -> Once Daily, TDS -> Thrice Daily, HS -> At Night).
+        4. If the text is messy, use your medical knowledge to infer the correct medicine name.
+        
+        RAW TEXT:
+        {text}
+        
+        FORMAT YOUR RESPONSE AS A VALID JSON ARRAY OF OBJECTS:
+        [
+            {{"name": "...", "dosage": "...", "frequency": "...", "duration": "...", "instructions": "..."}},
+            ...
+        ]
+        
+        Only return the JSON array. No preamble.
+        """
+        
+        response = model.generate_content(prompt)
+        # Clean up potential markdown formatting
+        clean_json = response.text.strip().replace('```json', '').replace('```', '')
+        return json.loads(clean_json)
+    except Exception as e:
+        logger.error(f"AI Extraction failed: {e}")
+        return {"medications": [], "error": str(e)}
 
 @app.get("/health")
 async def health_check():

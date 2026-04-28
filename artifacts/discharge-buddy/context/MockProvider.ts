@@ -215,6 +215,44 @@ export class MockProvider implements IDataProvider {
     return DEMO_PATIENTS;
   }
 
+  async getFamilyMembers(): Promise<Patient[]> {
+    const data = await this.getData();
+    return data.familyMembers || [];
+  }
+
+  async addFamilyMember(memberData: any): Promise<Patient> {
+    const members = await this.getFamilyMembers();
+    const newMember: Patient = {
+      id: `fm_${Date.now()}`,
+      name: memberData.name,
+      age: parseInt(memberData.age) || 0,
+      condition: memberData.condition || "Healthy",
+      dischargeDate: new Date().toISOString(),
+      emergencyContact: memberData.emergencyContact || "Unknown",
+      caregiverId: "local-family-user",
+      createdAt: new Date().toISOString(),
+    };
+    await this.saveData({ familyMembers: [...members, newMember] });
+    return newMember;
+  }
+
+  async linkFamilyMember(_email: string): Promise<Patient> {
+    // In mock mode, simulate a successful link
+    const mockLinked: Patient = {
+      id: `linked_${Date.now()}`,
+      name: "Linked Family Member",
+      age: 40,
+      condition: "Recovering",
+      dischargeDate: new Date().toISOString(),
+      emergencyContact: "Unknown",
+      caregiverId: "local-family-user",
+      createdAt: new Date().toISOString(),
+    };
+    const members = await this.getFamilyMembers();
+    await this.saveData({ familyMembers: [...members, mockLinked] });
+    return mockLinked;
+  }
+
   async scanPrescription(_imageBase64: string): Promise<PrescriptionAnalysisResult> {
     await new Promise(r => setTimeout(r, 1500));
     return {

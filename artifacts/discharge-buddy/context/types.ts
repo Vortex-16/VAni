@@ -22,6 +22,9 @@ export interface IDataProvider {
   triggerEmergency(): Promise<void>;
   registerPushToken(token: string): Promise<void>;
   getLinkedPatients(): Promise<Patient[]>;
+  getFamilyMembers(): Promise<Patient[]>;
+  addFamilyMember(data: any): Promise<Patient>;
+  linkFamilyMember(email: string): Promise<Patient>;
   scanPrescription(imageBase64: string): Promise<PrescriptionAnalysisResult>;
   addMedicine(medicine: Omit<Medicine, "id">): Promise<Medicine>;
   updateMedicine(id: string, updates: Partial<Medicine>): Promise<void>;

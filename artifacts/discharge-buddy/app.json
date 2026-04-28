@@ -24,12 +24,6 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://replit.com/"
-        }
-      ],
       "expo-font",
       "expo-web-browser",
       "expo-image-picker",
@@ -40,7 +34,7 @@
           "color": "#1E4D4E",
           "sounds": [
             "./assets/sounds/notification.mp3",
-            "./assets/sounds/universfield-new-notification-057-494255.mp3.mpeg"
+            "./assets/sounds/notification_custom.mp3"
           ]
         }
       ]
@@ -51,7 +45,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "8241e54a-baab-4273-a2e4-5e3b43b3d8fc"
+        "projectId": "a14b7a0e-1e2a-4da7-86ac-59fa0d4fe738"
       }
     }
   }

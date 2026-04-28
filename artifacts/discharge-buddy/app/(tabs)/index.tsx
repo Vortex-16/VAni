@@ -180,13 +180,47 @@ function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; la
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user, role } = useApp();
+  const { user, role, activePatientId, familyMembers, setActivePatientId } = useApp();
 
   if (!user) return <Redirect href="/login" />;
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+
   if (role === "caregiver") {
     return <Redirect href="/caregiver/dashboard" />;
   }
+
+  // Family member viewing a specific patient's dashboard
+  if (role === "family") {
+    if (!activePatientId) {
+      // No member selected — go back to family dashboard
+      return <Redirect href="/family/dashboard" />;
+    }
+    const activeMember = familyMembers.find(m => m.id === activePatientId);
+    return (
+      <View style={{ flex: 1 }}>
+        {/* "Back to Family" top bar */}
+        <View style={[styles.familyBar, { paddingTop: topInset + 8 }]}>
+          <TouchableOpacity
+            style={styles.familyBackBtn}
+            onPress={() => {
+              setActivePatientId(null);
+              router.replace("/family/dashboard");
+            }}
+          >
+            <Feather name="arrow-left" size={16} color="#6C47FF" />
+            <Text style={styles.familyBackText}>Family Dashboard</Text>
+          </TouchableOpacity>
+          {activeMember && (
+            <Text style={styles.familyViewingText} numberOfLines={1}>
+              Viewing: {activeMember.name}
+            </Text>
+          )}
+        </View>
+        <PatientDashboard topInset={0} />
+      </View>
+    );
+  }
+
   return <PatientDashboard topInset={topInset} />;
 }
 
@@ -491,7 +525,7 @@ function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
 }
 
 function CaregiverDashboard({ topInset }: { topInset: number }) {
-  const { user, linkedPatients } = useApp();
+  const { user, linkedPatients, isSpeaking, speakingTargetId, speakNeural } = useApp();
   const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -501,6 +535,33 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
   useEffect(() => {
     Animated.timing(heroFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   }, []);
+
+  const isBriefingSpeaking = isSpeaking && speakingTargetId === "caregiver_briefing";
+
+  const handleGlobalBriefing = async () => {
+    if (isBriefingSpeaking) {
+      await speakNeural("");
+      return;
+    }
+
+    const highRiskCount = (linkedPatients || []).filter(p => p.riskLevel === 'High').length;
+    const modRiskCount = (linkedPatients || []).filter(p => p.riskLevel === 'Moderate').length;
+    const totalPatients = (linkedPatients || []).length;
+
+    let briefing = `Hello ${user?.name || 'Caregiver'}. You have ${totalPatients} patients under your care. `;
+    if (highRiskCount > 0) {
+      briefing += `${highRiskCount} patients are at high risk and require immediate attention. `;
+    }
+    if (modRiskCount > 0) {
+      briefing += `${modRiskCount} patients are at moderate risk with some missed doses or deteriorating symptoms. `;
+    }
+    if (highRiskCount === 0 && modRiskCount === 0) {
+      briefing += `All patients are currently stable and on track with their recovery plans. `;
+    }
+    briefing += `You can tap on any patient for a detailed clinical handover.`;
+
+    await speakNeural(briefing, "caregiver_briefing");
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
@@ -519,7 +580,16 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
             </AnimPressable>
             <View style={styles.greetBlock}>
               <Text style={styles.greetText}>Caregiver Mode</Text>
-              <Text style={styles.nameText} numberOfLines={1}>{(user?.name ?? "Caregiver").split(" ")[0]} 💜</Text>
+              <TouchableOpacity 
+                onPress={handleGlobalBriefing}
+                style={styles.greetingRow}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.nameText} numberOfLines={1}>{(user?.name ?? "Caregiver").split(" ")[0]} 💜</Text>
+                <View style={[styles.voiceSmallBtn, isBriefingSpeaking && { backgroundColor: 'rgba(255,255,255,0.35)' }]}>
+                  <Feather name={isBriefingSpeaking ? "volume-x" : "volume-2"} size={14} color="#fff" />
+                </View>
+              </TouchableOpacity>
             </View>
             <AnimPressable onPress={() => {}} style={styles.iconBtn}>
               <Feather name="settings" size={19} color="#fff" />
@@ -786,6 +856,16 @@ const styles = StyleSheet.create({
   patientBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, flexShrink: 0 },
   patientBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   scrollContent: { paddingHorizontal: 0 },
+
+  // Family viewing bar
+  familyBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingBottom: 10,
+    backgroundColor: '#EDE9FE', borderBottomWidth: 1, borderBottomColor: '#DDD6FE',
+  },
+  familyBackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  familyBackText: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#6C47FF' },
+  familyViewingText: { fontSize: 13, fontFamily: 'Inter_500Medium', color: '#7C3AED', flex: 1, textAlign: 'right' },
 
   // Recovery Support Styles
   supportBanner: { marginHorizontal: 16, marginTop: -20, borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, zIndex: 100 },

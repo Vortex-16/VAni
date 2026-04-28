@@ -41,7 +41,15 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
-  const { login } = useApp();
+  const { login, isOnboarded } = useApp();
+  
+  useEffect(() => {
+    if (isOnboarded === false) {
+      router.replace('/onboarding');
+    }
+  }, [isOnboarded]);
+  
+  if (isOnboarded === false) return null;
   
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -52,6 +60,10 @@ export default function RegisterScreen() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Family-specific fields
+  const [familyMemberName, setFamilyMemberName] = useState("");
+  const [familyMemberEmail, setFamilyMemberEmail] = useState("");
 
   const [fullNameFocused, setFullNameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
@@ -128,14 +140,25 @@ export default function RegisterScreen() {
 
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      const body: any = { email, name: fullName, role, password };
+
+      // For family role, include first member data
+      if (role === 'family' && familyMemberName.trim()) {
+        body.familyMember = {
+          name: familyMemberName.trim(),
+          email: familyMemberEmail.trim() || null,
+        };
+      }
+
       const res = await fetch(`${apiUrl}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name: fullName, role, password })
+        body: JSON.stringify(body)
       });
 
       if (!res.ok) {
-        throw new Error("Registration failed");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Registration failed");
       }
 
       const data = await res.json();
@@ -163,11 +186,16 @@ export default function RegisterScreen() {
       }
       
       setTimeout(() => {
+        const destination = 
+          role === 'caregiver' ? '/caregiver/dashboard' : 
+          role === 'family' ? '/family/dashboard' : 
+          '/(tabs)';
+          
         sheetY.value = withTiming(SCREEN_HEIGHT, {
           duration: 600,
           easing: Easing.in(Easing.exp),
         }, (finished) => {
-          if (finished) runOnJS(router.replace)("/(tabs)");
+          if (finished) runOnJS(router.replace)(destination as any);
         });
       }, 1000);
     } catch (err: any) {
@@ -315,6 +343,45 @@ export default function RegisterScreen() {
                   </View>
                 </Animated.View>
 
+                {/* Extra step for Family role */}
+                {role === 'family' && (
+                  <Animated.View style={animatedInputs}>
+                    <View style={styles.familyCard}>
+                      <View style={styles.familyCardHeader}>
+                        <Feather name="heart" size={16} color={PRIMARY} />
+                        <Text style={styles.familyCardTitle}>Who are you managing?</Text>
+                      </View>
+                      <Text style={styles.familyCardSub}>
+                        Add a family member so your dashboard is ready on first launch.
+                      </Text>
+                      <View style={[styles.inputContainer, { marginTop: 10 }]}>
+                        <Feather name="user" size={18} color={MUTED} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Member's Full Name *"
+                          value={familyMemberName}
+                          onChangeText={setFamilyMemberName}
+                          autoCorrect={false}
+                          spellCheck={false}
+                        />
+                      </View>
+                      <View style={[styles.inputContainer, { marginTop: 10 }]}>
+                        <Feather name="mail" size={18} color={MUTED} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Their Email (optional, links their app)"
+                          value={familyMemberEmail}
+                          onChangeText={setFamilyMemberEmail}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          spellCheck={false}
+                        />
+                      </View>
+                    </View>
+                  </Animated.View>
+                )}
+
                 <Animated.View style={[styles.form, animatedButtons]}>
                   <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <LinearGradient
@@ -343,10 +410,10 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    height: SCREEN_HEIGHT * 0.42,
+    minHeight: SCREEN_HEIGHT * 0.42,
     paddingHorizontal: 30,
     justifyContent: "center",
-    paddingTop: 40,
+    paddingBottom: 50,
   },
   mascotContainer: {
     marginBottom: 10,
@@ -436,4 +503,27 @@ const styles = StyleSheet.create({
   animationContainer: { alignItems: "center", justifyContent: "center", paddingVertical: 40, gap: 20 },
   loadingTitle: { fontSize: 22, fontWeight: "700", color: PRIMARY, textAlign: "center" },
   loadingSub: { fontSize: 14, color: MUTED, textAlign: "center", maxWidth: "80%" },
+  familyCard: {
+    backgroundColor: PRIMARY_SOFT,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: `${PRIMARY}33`,
+    padding: 16,
+    gap: 8,
+  },
+  familyCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  familyCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: PRIMARY,
+  },
+  familyCardSub: {
+    fontSize: 13,
+    color: `${PRIMARY}99`,
+    lineHeight: 18,
+  },
 });

@@ -113,10 +113,10 @@ export default function ChatScreen() {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (textToSend: string) => {
+    if (!textToSend.trim() || isLoading) return;
 
-    const userMsg: Message = { id: Date.now().toString(), text: input.trim(), sender: "user" };
+    const userMsg: Message = { id: Date.now().toString(), text: textToSend.trim(), sender: "user" };
     setMessages(prev => {
       const next = [...prev, userMsg];
       console.log("[ChatScreen] setMessages (User) -> count:", next.length);
@@ -159,6 +159,8 @@ export default function ChatScreen() {
     }
   };
 
+  const handleSend = () => sendMessage(input);
+
   const handleAction = (action: { type: string; label: string }) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     switch (action.type) {
@@ -183,6 +185,10 @@ export default function ChatScreen() {
             setInput(lastUserMsg.text);
           }
         }
+        break;
+      default:
+        // Act as a quick reply for dynamically generated AI actions
+        sendMessage(action.label);
         break;
     }
   };

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Platform,
   StyleSheet,
@@ -17,7 +17,15 @@ import { useColors } from "@/hooks/useColors";
 export default function RoleSelectScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { setRole, setUser } = useApp();
+  const { setRole, setUser, isOnboarded } = useApp();
+
+  useEffect(() => {
+    if (isOnboarded === false) {
+      router.replace('/onboarding');
+    }
+  }, [isOnboarded]);
+
+  if (isOnboarded === false) return null;
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -32,7 +40,11 @@ export default function RoleSelectScreen() {
       role,
       linkedPatientId: role === "caregiver" ? "p1" : undefined,
     });
-    router.replace("/(tabs)");
+    if (role === "caregiver") {
+      router.replace("/caregiver/dashboard");
+    } else {
+      router.replace("/(tabs)");
+    }
   };
 
   return (

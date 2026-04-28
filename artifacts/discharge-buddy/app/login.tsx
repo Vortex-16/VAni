@@ -49,7 +49,15 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login, setRole, setUser, switchProvider } = useApp();
+  const { login, setRole, setUser, switchProvider, isOnboarded } = useApp();
+
+  useEffect(() => {
+    if (isOnboarded === false) {
+      router.replace('/onboarding');
+    }
+  }, [isOnboarded]);
+
+  if (isOnboarded === false) return null;
 
   // Form State
   const [email, setEmail] = useState("");
@@ -181,7 +189,11 @@ export default function LoginScreen() {
       }, (finished) => {
         if (finished) {
           // Use the component's local role state or fetch from context
-          const targetPath = role === "caregiver" ? "/caregiver/dashboard" : "/(tabs)";
+          const targetPath = role === "caregiver"
+            ? "/caregiver/dashboard"
+            : role === "family"
+            ? "/family/dashboard"
+            : "/(tabs)";
           runOnJS(router.replace)(targetPath);
         }
       });

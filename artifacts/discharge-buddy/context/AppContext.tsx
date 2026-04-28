@@ -67,14 +67,107 @@ export interface Patient {
   age: number;
   condition: string;
   dischargeDate: string;
-  medicines: Medicine[];
-  doseLogs: DoseLog[];
-  symptomLogs: SymptomLog[];
-  followUps: FollowUp[];
+  medicines?: Medicine[];
+  doseLogs?: DoseLog[];
+  symptomLogs?: SymptomLog[];
+  followUps?: FollowUp[];
   emergencyContact: string;
   riskScore?: number;
   riskLevel?: "Low" | "Moderate" | "High";
+  caregiverId?: string;
+  createdAt?: string;
+  // Extended family mock fields
+  relation?: string;
+  bloodGroup?: string;
+  weight?: string;
+  height?: string;
+  doctor?: string;
+  lastVisit?: string;
+  nextVisit?: string;
+  healthLogs?: { bp?: string; sugar?: string; weight?: string; date: string };
 }
+
+// ─── Rich mock data used when family API is unavailable ───────────────────────
+export const MOCK_FAMILY_MEMBERS: Patient[] = [
+  {
+    id: "mock-1",
+    name: "Rajesh Sharma",
+    age: 58,
+    relation: "Father",
+    condition: "Diabetes, Hypertension",
+    dischargeDate: "2024-05-01",
+    emergencyContact: "9876543210",
+    bloodGroup: "A+",
+    weight: "70 kg",
+    height: "5'8\"",
+    doctor: "Dr. Vivek Mehta",
+    lastVisit: "20 May 2024",
+    nextVisit: "30 May 2024",
+    riskScore: 42,
+    riskLevel: "Moderate",
+    healthLogs: { bp: "128/80", sugar: "110 mg/dL", weight: "70 kg", date: "18 May 2024" },
+    medicines: [
+      { id: "m1", name: "Metformin 500mg", dosage: "500mg", frequency: "daily", times: ["09:00"], instructions: "After Breakfast", simplifiedInstructions: "After Breakfast", startDate: "2024-05-01", color: "#6C47FF" },
+      { id: "m2", name: "Amlodipine 5mg",  dosage: "5mg",   frequency: "daily", times: ["14:00"], instructions: "After Lunch",     simplifiedInstructions: "After Lunch",     startDate: "2024-05-01", color: "#3B82F6" },
+      { id: "m3", name: "Atorvastatin 10mg",dosage: "10mg", frequency: "daily", times: ["21:00"], instructions: "After Dinner",    simplifiedInstructions: "After Dinner",    startDate: "2024-05-01", color: "#EC4899" },
+    ],
+    doseLogs: [
+      { id: "d1", medicineId: "m1", medicineName: "Metformin 500mg",  scheduledTime: "9:00 AM",  status: "taken",   date: new Date().toISOString().split("T")[0] },
+      { id: "d2", medicineId: "m2", medicineName: "Amlodipine 5mg",   scheduledTime: "2:00 PM",  status: "pending", date: new Date().toISOString().split("T")[0] },
+      { id: "d3", medicineId: "m3", medicineName: "Atorvastatin 10mg",scheduledTime: "9:00 PM",  status: "pending", date: new Date().toISOString().split("T")[0] },
+    ],
+  },
+  {
+    id: "mock-2",
+    name: "Sunita Sharma",
+    age: 52,
+    relation: "Mother",
+    condition: "Thyroid, Vitamin D Deficiency",
+    dischargeDate: "2024-04-15",
+    emergencyContact: "9876543210",
+    bloodGroup: "B+",
+    weight: "62 kg",
+    height: "5'4\"",
+    doctor: "Dr. Priya Nair",
+    lastVisit: "15 May 2024",
+    nextVisit: "15 Jun 2024",
+    riskScore: 22,
+    riskLevel: "Low",
+    healthLogs: { bp: "118/76", sugar: "95 mg/dL", weight: "62 kg", date: "18 May 2024" },
+    medicines: [
+      { id: "m4", name: "Thyroxine 50mcg", dosage: "50mcg", frequency: "daily", times: ["07:00"], instructions: "Before Breakfast", simplifiedInstructions: "Before Breakfast", startDate: "2024-04-15", color: "#10B981" },
+      { id: "m5", name: "Vitamin D3 60K",  dosage: "60K",   frequency: "weekly",times: ["08:30"], instructions: "After Breakfast",  simplifiedInstructions: "After Breakfast",  startDate: "2024-04-15", color: "#F59E0B" },
+    ],
+    doseLogs: [
+      { id: "d4", medicineId: "m4", medicineName: "Thyroxine 50mcg", scheduledTime: "7:00 AM",  status: "taken",   date: new Date().toISOString().split("T")[0] },
+      { id: "d5", medicineId: "m5", medicineName: "Vitamin D3 60K",  scheduledTime: "8:30 AM",  status: "pending", date: new Date().toISOString().split("T")[0] },
+    ],
+  },
+  {
+    id: "mock-3",
+    name: "Aarav Sharma",
+    age: 16,
+    relation: "Son",
+    condition: "Seasonal Allergies",
+    dischargeDate: "2024-05-10",
+    emergencyContact: "9876543210",
+    bloodGroup: "O+",
+    weight: "55 kg",
+    height: "5'7\"",
+    doctor: "Dr. Suresh Rao",
+    lastVisit: "10 May 2024",
+    nextVisit: "10 Jun 2024",
+    riskScore: 12,
+    riskLevel: "Low",
+    healthLogs: { bp: "110/70", sugar: "90 mg/dL", weight: "55 kg", date: "18 May 2024" },
+    medicines: [
+      { id: "m6", name: "Cetirizine 10mg", dosage: "10mg", frequency: "daily", times: ["22:00"], instructions: "Before Bed", simplifiedInstructions: "Before Bed", startDate: "2024-05-10", color: "#8B5CF6" },
+    ],
+    doseLogs: [
+      { id: "d6", medicineId: "m6", medicineName: "Cetirizine 10mg", scheduledTime: "10:00 PM", status: "pending", date: new Date().toISOString().split("T")[0] },
+    ],
+  },
+];
 
 export interface AppUser {
   id: string;
@@ -212,6 +305,8 @@ interface AppContextType {
   isOnboarded: boolean;
   language: Language;
   linkedPatients: Patient[];
+  familyMembers: Patient[];
+  activePatientId: string | null;
   isProcessingPrescription: boolean;
   hapticsEnabled: boolean;
   // Gamification
@@ -257,6 +352,9 @@ interface AppContextType {
   switchProvider: (provider: IDataProvider) => void;
   clearRecoverySuggestion: () => void;
   refreshData: () => Promise<void>;
+  addFamilyMember: (data: any) => Promise<void>;
+  linkFamilyMember: (email: string) => Promise<void>;
+  setActivePatientId: (id: string | null) => void;
   api: IDataProvider;
   showToast: (title: string, body: string) => void;
   addNotification: (item: Omit<NotifItem, "id" | "read" | "time">) => void;
@@ -292,6 +390,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [doseHistory, setDoseHistory] = useState<DoseHistoryDay[]>([]);
   const [lastXPGain, setLastXPGain] = useState(0);
   const [linkedPatients, setLinkedPatients] = useState<Patient[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<Patient[]>([]);
+  const [activePatientId, setActivePatientIdState] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotifGroup[]>([]);
   const [toast, setToast] = useState<{ visible: boolean; title: string; body: string }>({
     visible: false,
@@ -324,9 +424,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isInitializing) {
-      loadData();
-    }
+    const checkTokenAndLoad = async () => {
+      const token = await AsyncStorage.getItem("discharge_buddy_token");
+      if (!isInitializing && (token || dataProvider instanceof MockProvider)) {
+        loadData();
+      }
+    };
+    checkTokenAndLoad();
   }, [dataProvider, isInitializing]);
 
   async function initApp() {
@@ -341,8 +445,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Request notification permission on native (local notifications work in Expo Go, remote push does not)
       if (Platform.OS !== "web") {
         await requestNotificationPermissions();
-        // Note: getExpoPushTokenAsync() is not supported in Expo Go SDK 53+.
-        // Push tokens are registered when running a development build or production build.
       }
 
       if (raw) {
@@ -403,6 +505,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const dbPatients = await dataProvider.getLinkedPatients();
       setLinkedPatients(dbPatients);
+
+      // For family role, also fetch family members
+      if (role === 'family') {
+        try {
+          const dbFamilyMembers = await dataProvider.getFamilyMembers();
+          // If API returns empty and we're in demo mode, use mock data
+          setFamilyMembers(dbFamilyMembers.length > 0 ? dbFamilyMembers : MOCK_FAMILY_MEMBERS);
+        } catch (e) {
+          // API unavailable (404, network error, etc.) → use rich mock data for demo
+          console.warn("Family API unavailable, using mock data:", (e as any)?.message ?? e);
+          setFamilyMembers(MOCK_FAMILY_MEMBERS);
+        }
+      }
 
       const dbTrends = await dataProvider.getRecoveryTrends();
       
@@ -560,65 +675,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateDoseStatus = async (doseId: string, status: DoseLog["status"], snoozeMinutes?: number) => {
     await dataProvider.updateDoseStatus(doseId, status, snoozeMinutes);
     
-    // Optimistic UI update
-    setTodayDoses((prev) => {
-      const updated = prev.map((d) =>
-        d.id === doseId ? { ...d, status, takenAt: status === "taken" ? new Date().toISOString() : undefined } : d
-      );
-      if (status === "taken") {
-        soundHelper.playTing();
-        awardXP(10);
-        unlockAchievement("first_dose");
-        const allTaken = updated.filter((d) => d.date === new Date().toISOString().split("T")[0]).every((d) => d.status === "taken");
-        if (allTaken) {
-          awardXP(40);
-          unlockAchievement("full_day");
-        }
-
-        // Update dose history for today and recalculate streak
-        setDoseHistory(prevHistory => {
-          const todayStr = new Date().toISOString().split("T")[0];
-          const newHistory = prevHistory.map(h => {
-            if (h.date === todayStr) {
-              const newTaken = h.taken + 1;
-              return { ...h, taken: newTaken, percentage: h.total > 0 ? Math.round((newTaken / h.total) * 100) : 0 };
-            }
-            return h;
-          });
-
-          // Recalculate streak
-          let currentStreak = 0;
-          const sortedHistory = [...newHistory].sort((a, b) => b.date.localeCompare(a.date));
-          let streakIndex = 0;
-          if (sortedHistory[0]?.date === todayStr) {
-            if (sortedHistory[0].taken > 0) currentStreak++;
-            streakIndex = 1;
-          }
-          for (; streakIndex < sortedHistory.length; streakIndex++) {
-            const day = sortedHistory[streakIndex];
-            if (day.taken > 0) currentStreak++;
-            else if (day.total > 0 && day.taken === 0) break;
-          }
-          
-          // Avoid a React warning by setting state outside of another set state call if possible, 
-          // but since this is inside setDoseHistory it's okay, React batches it.
-          setStreak(currentStreak);
-          return newHistory;
-        });
-
-        // Add to notification log
-        const med = medicines.find(m => m.id === doseId) || updated.find(d => d.id === doseId);
-        const name = med ? ('name' in med ? med.name : med.medicineName) : "Medicine";
+    // Execute side effects outside of the setState callback
+    if (status === "taken") {
+      soundHelper.playTing();
+      awardXP(10);
+      unlockAchievement("first_dose");
+      
+      const todayStr = new Date().toISOString().split("T")[0];
+      const allTaken = todayDoses.map(d => d.id === doseId ? { ...d, status } : d)
+        .filter(d => d.date === todayStr)
+        .every(d => d.status === "taken");
         
-        addNotification({
-          title: "Dose Taken",
-          body: `${name} — marked as taken`,
-          icon: "check-circle",
-          color: "#10b981"
-        });
+      if (allTaken) {
+        awardXP(40);
+        unlockAchievement("full_day");
       }
-      return updated;
-    });
+
+      setDoseHistory(prevHistory => {
+        const newHistory = prevHistory.map(h => {
+          if (h.date === todayStr) {
+            const newTaken = h.taken + 1;
+            return { ...h, taken: newTaken, percentage: h.total > 0 ? Math.round((newTaken / h.total) * 100) : 0 };
+          }
+          return h;
+        });
+
+        let currentStreak = 0;
+        const sortedHistory = [...newHistory].sort((a, b) => b.date.localeCompare(a.date));
+        let streakIndex = 0;
+        if (sortedHistory[0]?.date === todayStr) {
+          if (sortedHistory[0].taken > 0) currentStreak++;
+          streakIndex = 1;
+        }
+        for (; streakIndex < sortedHistory.length; streakIndex++) {
+          const day = sortedHistory[streakIndex];
+          if (day.taken > 0) currentStreak++;
+          else if (day.total > 0 && day.taken === 0) break;
+        }
+        setStreak(currentStreak);
+        return newHistory;
+      });
+
+      const med = medicines.find(m => m.id === doseId) || todayDoses.find(d => d.id === doseId);
+      const name = med ? ('name' in med ? med.name : (med as any).medicineName) : "Medicine";
+      
+      addNotification({
+        title: "Dose Taken",
+        body: `${name} — marked as taken`,
+        icon: "check-circle",
+        color: "#10b981"
+      });
+    }
+
+    setTodayDoses((prev) => 
+      prev.map((d) => d.id === doseId ? { ...d, status, takenAt: status === "taken" ? new Date().toISOString() : undefined } : d)
+    );
   };
 
   const addSymptomLog = async (log: SymptomLog) => {
@@ -879,8 +990,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.removeItem(STORAGE_KEY);
     setUserState(null);
     setRoleState(null);
+    setIsOnboardedState(false);
     setDataProvider(new MockProvider());
-    router.replace("/login");
+    router.replace("/");
   };
 
   const updateProfile = async (updates: Partial<AppUser>) => {
@@ -949,11 +1061,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDataProvider(provider);
   };
 
+  const addFamilyMember = async (data: any) => {
+    try {
+      const newMember = await dataProvider.addFamilyMember(data);
+      setFamilyMembers(prev => [...prev, newMember]);
+      showToast("Member Added", `${newMember.name} has been added to your family.`);
+    } catch (e: any) {
+      console.warn("API addFamilyMember failed:", e);
+      // Fallback to mock update so the UI still works
+      const mockMember: Patient = {
+        id: `mock-added-${Date.now()}`,
+        name: data.name,
+        age: data.age ? parseInt(data.age) : 0,
+        condition: data.condition || "Healthy",
+        dischargeDate: new Date().toISOString(),
+        emergencyContact: "N/A",
+        medicines: [],
+        doseLogs: [],
+      };
+      setFamilyMembers(prev => [...prev, mockMember]);
+      showToast("Member Added (Offline Mode)", `${mockMember.name} was added locally.`);
+    }
+  };
+
+  const linkFamilyMember = async (email: string) => {
+    try {
+      const linkedMember = await dataProvider.linkFamilyMember(email);
+      setFamilyMembers(prev => [...prev, linkedMember]);
+      showToast("Account Linked", `${linkedMember.name}'s account has been linked.`);
+    } catch (e: any) {
+      console.warn("API linkFamilyMember failed:", e);
+      throw e; // Rethrow to let the UI show the 'Not Found' alert
+    }
+  };
+
+  const setActivePatientId = (id: string | null) => {
+    setActivePatientIdState(id);
+  };
+
   return (
     <AppContext.Provider
       value={{
         user, role, patient: null, medicines, todayDoses, symptomLogs, followUps,
-        isOnboarded, language, linkedPatients, isProcessingPrescription,
+        isOnboarded, language, linkedPatients, familyMembers, activePatientId, isProcessingPrescription,
         hapticsEnabled,
         streak, xp, achievements, doseHistory, lastXPGain, journalEntries,
         drugInteractions: checkInteractions(medicines),
@@ -965,6 +1115,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         notifications, clearAllNotifications, markNotificationRead, addNotification,
         clearRecoverySuggestion,
         refreshData: loadData,
+        addFamilyMember, linkFamilyMember, setActivePatientId,
         api: dataProvider,
         showToast,
         fetchBriefing,

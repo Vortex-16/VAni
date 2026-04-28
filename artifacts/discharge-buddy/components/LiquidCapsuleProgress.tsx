@@ -125,7 +125,7 @@ export const LiquidCapsuleProgress: React.FC<LiquidCapsuleProps> = ({
           <AnimatedPath
             animatedProps={animatedWaveProps}
             fill="rgba(255,255,255,0.2)"
-            translateY={-2}
+            transform="translate(0, -2)"
           />
         </G>
 

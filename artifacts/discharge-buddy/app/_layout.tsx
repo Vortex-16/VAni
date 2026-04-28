@@ -45,6 +45,7 @@ function RootLayoutNav() {
       <Stack.Screen name="caregiver/create-plan" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="caregiver/dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="caregiver/patient-detail" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="family" options={{ headerShown: false }} />
       <Stack.Screen name="emergency" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="notifications" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="profile" options={{ presentation: "modal", headerShown: false }} />

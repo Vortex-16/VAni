@@ -20,12 +20,13 @@ type RiskLevel = 'high' | 'medium' | 'stable';
 function computeRisk(patient: Patient): { level: RiskLevel; reasons: string[] } {
   const reasons: string[] = [];
   const today = new Date().toISOString().split('T')[0];
-  const todayLogs = patient.doseLogs.filter((l: any) => l.date === today);
+  const todayLogs = (patient.doseLogs || []).filter((l: any) => l.date === today);
   const taken = todayLogs.filter((l: any) => l.status === 'taken').length;
-  const total = patient.medicines.reduce((acc, m) => acc + (m.times?.length || 1), 0);
+  const total = (patient.medicines || []).reduce((acc, m) => acc + (m.times?.length || 1), 0);
   const adherence = total > 0 ? (taken / total) * 100 : 100;
 
-  const latestSymptom = patient.symptomLogs[patient.symptomLogs.length - 1];
+  const sLogs = patient.symptomLogs || [];
+  const latestSymptom = sLogs[sLogs.length - 1];
   const missed = todayLogs.filter((l: any) => l.status === 'missed').length;
 
   if (latestSymptom?.riskLevel === 'high' || adherence < 40) {
@@ -43,9 +44,9 @@ function computeRisk(patient: Patient): { level: RiskLevel; reasons: string[] } 
 
 function computeAdherence(patient: Patient): number {
   const today = new Date().toISOString().split('T')[0];
-  const todayLogs = patient.doseLogs.filter((l: any) => l.date === today);
+  const todayLogs = (patient.doseLogs || []).filter((l: any) => l.date === today);
   const taken = todayLogs.filter((l: any) => l.status === 'taken').length;
-  const total = patient.medicines.reduce((acc, m) => acc + (m.times?.length || 1), 0);
+  const total = (patient.medicines || []).reduce((acc, m) => acc + (m.times?.length || 1), 0);
   return total > 0 ? Math.round((taken / total) * 100) : 100;
 }
 
@@ -53,14 +54,15 @@ function generateAlerts(patients: Patient[]): string[] {
   const alerts: string[] = [];
   const today = new Date().toISOString().split('T')[0];
   patients.forEach(p => {
-    const todayLogs = p.doseLogs.filter((l: any) => l.date === today);
+    const todayLogs = (p.doseLogs || []).filter((l: any) => l.date === today);
     const missed = todayLogs.filter((l: any) => l.status === 'missed').length;
     if (missed >= 2) alerts.push(`⚠️ ${p.name} missed ${missed} doses today`);
     else if (missed === 1) alerts.push(`⚠️ ${p.name} missed 1 dose today`);
-    if (todayLogs.length === 0 && p.medicines.length > 0) alerts.push(`📵 No activity logged for ${p.name} today`);
-    const latest = p.symptomLogs[p.symptomLogs.length - 1];
+    if (todayLogs.length === 0 && (p.medicines?.length || 0) > 0) alerts.push(`📵 No activity logged for ${p.name} today`);
+    const sLogs = p.symptomLogs || [];
+    const latest = sLogs[sLogs.length - 1];
     if (latest?.riskLevel === 'high') alerts.push(`🚨 ${p.name} reported high-risk symptoms`);
-    const upcoming = p.followUps.find(f => {
+    const upcoming = (p.followUps || []).find(f => {
       const hoursLeft = (new Date(f.dateTime).getTime() - Date.now()) / 3600000;
       return hoursLeft > 0 && hoursLeft < 24 && !f.completed;
     });
@@ -88,9 +90,9 @@ function PatientCard({ patient }: { patient: Patient }) {
   const { level, reasons } = computeRisk(patient);
   const adherence = computeAdherence(patient);
   const today = new Date().toISOString().split('T')[0];
-  const todayLogs = patient.doseLogs.filter((l: any) => l.date === today);
+  const todayLogs = (patient.doseLogs || []).filter((l: any) => l.date === today);
   const taken = todayLogs.filter((l: any) => l.status === 'taken').length;
-  const total = patient.medicines.reduce((acc, m) => acc + (m.times?.length || 1), 0);
+  const total = (patient.medicines || []).reduce((acc, m) => acc + (m.times?.length || 1), 0);
   const lastActivity = todayLogs.length > 0
     ? new Date(Math.max(...todayLogs.map((l: any) => new Date(l.takenAt || l.date).getTime()))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'No activity today';
@@ -165,7 +167,7 @@ function PatientCard({ patient }: { patient: Patient }) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function CaregiverDashboard() {
-  const { linkedPatients, user, refreshData } = useApp();
+  const { linkedPatients, user, refreshData, speakNeural, isSpeaking, speakingTargetId } = useApp();
   const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
 
@@ -188,6 +190,18 @@ export default function CaregiverDashboard() {
   const highCount = sorted.filter(p => computeRisk(p).level === 'high').length;
   const medCount  = sorted.filter(p => computeRisk(p).level === 'medium').length;
   const stableCount = sorted.filter(p => computeRisk(p).level === 'stable').length;
+
+  React.useEffect(() => {
+    // Announce dashboard summary once on mount
+    const timer = setTimeout(() => {
+      const greeting = `Welcome to Care Control Center. You are currently monitoring ${linkedPatients.length} patients. `;
+      const highAlert = highCount > 0 ? `Attention: ${highCount} patient${highCount > 1 ? 's are' : ' is'} currently at high risk. ` : 'No patients are at high risk. ';
+      const activeAlerts = alerts.length > 0 ? `You have ${alerts.length} new smart alert${alerts.length > 1 ? 's' : ''} to review.` : 'All systems are stable.';
+      
+      speakNeural(greeting + highAlert + activeAlerts, "caregiver_greeting");
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [linkedPatients.length, highCount, alerts.length]);
 
   return (
     <View style={styles.container}>

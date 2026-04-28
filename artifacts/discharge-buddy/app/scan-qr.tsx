@@ -250,8 +250,12 @@ export default function ScanQR() {
                  <Text style={styles.warningText}>⚠️ Old medicines are safely archived, not deleted.</Text>
                )}
 
-               <TouchableOpacity style={styles.importBtn} onPress={handleImport}>
-                  <Text style={styles.importBtnText}>Confirm Import</Text>
+               <TouchableOpacity 
+                 style={[styles.importBtn, loading && { opacity: 0.7 }]} 
+                 onPress={handleImport}
+                 disabled={loading}
+               >
+                  <Text style={styles.importBtnText}>{loading ? "Importing..." : "Confirm Import"}</Text>
                </TouchableOpacity>
                
                <TouchableOpacity style={styles.cancelBtn} onPress={() => { setPlan(null); setScanned(false); }}>

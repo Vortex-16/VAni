@@ -168,6 +168,43 @@ export class PrescriptionService {
    * @returns Structured prescription data with confidence scores
    */
   static async analyzePrescription(imageBase64: string): Promise<PrescriptionAnalysisResult> {
+    const ocrServiceUrl = process.env.OCR_SERVICE_URL;
+
+    // ─── Use Local OCR Service if configured ───
+    if (ocrServiceUrl) {
+      console.log(`[Pipeline] Redirecting to local OCR Service: ${ocrServiceUrl}`);
+      try {
+        const response = await fetch(`${ocrServiceUrl}/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageBase64 }),
+        });
+
+        if (response.ok) {
+          const result = (await response.json()) as any;
+          // Map local service format to PrescriptionAnalysisResult
+          return {
+            medicines: result.entities.map((m: any) => ({
+              ...m,
+              confidence: result.ocr.confidence * 100,
+              low_confidence: result.ocr.confidence < 0.7,
+              schedule: { morning: false, afternoon: false, evening: false, night: false }, // Placeholder
+            })),
+            general_instructions: result.ocr.full_text,
+            explanation: "Processed via local ensemble OCR.",
+            warnings: result.metadata?.low_confidence_words > 5 ? ["Some text was hard to read."] : [],
+            overall_confidence: result.ocr.confidence * 100,
+            ocr_source: result.ocr.source,
+            processing_note: `Local Service: ${result.ocr.word_count} words detected.`,
+          };
+        }
+        console.warn("[Pipeline] Local OCR service failed, falling back to NVIDIA...");
+      } catch (err: any) {
+        console.error(`[Pipeline] Local OCR connection error: ${err.message}`);
+      }
+    }
+
+    // ─── Fallback: NVIDIA / Groq Pipeline ───
     const nvidiaKey = process.env.NVIDIA_API_KEY;
     const groqKey = process.env.GROQ_API_KEY;
 

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import fetch from "node-fetch";
 import { Groq } from "groq-sdk";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
 import { db, patients, medicines, doseLogs, symptomLogs, eq, inArray, desc } from "@workspace/db";
@@ -105,8 +104,15 @@ router.post("/tts", async (req: any, res: any) => {
       voiceId: VOICE_ID
     });
   } catch (error: any) {
-    console.error("[TTS Final Failure]", error.message);
-    return res.status(500).json({ error: "Failed to generate voice. Please check API quota/connection." });
+    console.error("[TTS Final Failure Detail]", {
+      message: error.message,
+      stack: error.stack,
+      voiceId: VOICE_ID
+    });
+    return res.status(500).json({ 
+      error: "Failed to generate voice.",
+      details: error.message 
+    });
   }
 });
 
@@ -228,6 +234,36 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
       message: "I'm sorry, I'm having trouble connecting right now. Please rest and try again in a moment. 💜",
       actions: [{ type: "RETRY", label: "Try Again" }]
     });
+  }
+});
+
+/**
+ * @route POST /api/ai/test-push
+ * @desc Manually trigger a push notification to the logged-in user
+ */
+import { sendPushNotification } from "../services/notificationService";
+
+router.post("/test-push", requireAuth, async (req: any, res: any) => {
+  const user = req.user;
+  const { title, body } = req.body;
+
+  if (!user.pushToken) {
+    return res.status(400).json({ error: "You haven't registered a push token yet. Call /api/auth/push-token first." });
+  }
+
+  try {
+    const result = await sendPushNotification(user.pushToken, {
+      title: title || "Test Notification 🔔",
+      body: body || "This is a test notification from Discharge Buddy!",
+    });
+
+    if (result) {
+      return res.json({ success: true, message: "Notification sent!", response: result });
+    } else {
+      return res.status(500).json({ error: "Failed to send notification. Check server logs." });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
   }
 });
 

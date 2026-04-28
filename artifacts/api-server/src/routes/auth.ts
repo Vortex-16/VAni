@@ -85,46 +85,100 @@ router.post("/oauth", async (req, res) => {
 
 router.post("/register", async (req, res) => {
   try {
-    const { email, name, role } = req.body;
+    const { email, name, role, password, familyMember } = req.body;
 
     if (!email || !name) {
       return res.status(400).json({ error: "Email and name are required" });
     }
 
-    let [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
-    
-    if (user) {
+    let [existingUser] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    if (existingUser) {
       return res.status(400).json({ error: "User already exists" });
     }
 
-    // Create a patient profile linked to this user
-    const [newPatient] = await db.insert(patients).values({
-      name,
-      age: 0, 
-      condition: "New Patient",
-      dischargeDate: new Date(),
-      emergencyContact: "None",
-    }).returning();
+    let newUser;
 
-    [user] = await db.insert(users).values({
-      email: email.toLowerCase(),
-      name,
-      role: role || "patient",
-      linkedPatientId: newPatient.id,
-    }).returning();
+    if (role === "family") {
+      // Family users manage others — they do NOT get their own patient profile.
+      // Create the family account first.
+      [newUser] = await db.insert(users).values({
+        email: email.toLowerCase(),
+        name,
+        role: "family",
+        password: password || null,
+        linkedPatientId: null, // Family users have no self-patient
+      }).returning();
+
+      // If a family member was provided, create/link their patient record.
+      if (familyMember?.name) {
+        if (familyMember.email) {
+          // Option 2: Try to link an existing patient account by email
+          const [patientUser] = await db.select().from(users)
+            .where(eq(users.email, familyMember.email.toLowerCase()));
+
+          if (patientUser?.linkedPatientId) {
+            // Link that patient record's caregiverId to the new family user
+            await db.update(patients)
+              .set({ caregiverId: newUser.id })
+              .where(eq(patients.id, patientUser.linkedPatientId));
+            logger.info({ familyUserId: newUser.id, patientId: patientUser.linkedPatientId }, "Family user linked to existing patient");
+          } else {
+            // Email provided but no matching patient found — create a profile anyway
+            await db.insert(patients).values({
+              name: familyMember.name,
+              age: 0,
+              condition: "Healthy",
+              dischargeDate: new Date(),
+              emergencyContact: "None",
+              caregiverId: newUser.id,
+            });
+            logger.info({ familyUserId: newUser.id }, "Created new patient profile (email not found)");
+          }
+        } else {
+          // Option 1: Create a new patient profile for the family member
+          await db.insert(patients).values({
+            name: familyMember.name,
+            age: 0,
+            condition: "Healthy",
+            dischargeDate: new Date(),
+            emergencyContact: "None",
+            caregiverId: newUser.id,
+          });
+          logger.info({ familyUserId: newUser.id, memberName: familyMember.name }, "Created family member patient profile");
+        }
+      }
+    } else {
+      // Patient or Caregiver: create a self-patient profile as before
+      const [newPatient] = await db.insert(patients).values({
+        name,
+        age: 0,
+        condition: "New Patient",
+        dischargeDate: new Date(),
+        emergencyContact: "None",
+      }).returning();
+
+      [newUser] = await db.insert(users).values({
+        email: email.toLowerCase(),
+        name,
+        role: role || "patient",
+        password: password || null,
+        linkedPatientId: newPatient.id,
+      }).returning();
+    }
 
     const token = jwt.sign(
-      { sub: user.id }, 
-      process.env.JWT_SECRET!, 
+      { sub: newUser.id },
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user });
+    res.json({ token, user: newUser });
   } catch (error) {
     logger.error({ err: error }, "Register Error");
     res.status(500).json({ error: "Registration failed" });
   }
 });
+
 
 router.post("/login", async (req, res) => {
   try {

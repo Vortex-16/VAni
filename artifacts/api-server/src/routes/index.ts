@@ -14,6 +14,7 @@ import storageRouter from "./storage";
 import supportRouter from "./support";
 import dischargeRouter from "./discharge";
 import aiRouter from "./ai";
+import familyRouter from "./family";
 
 const router: IRouter = Router();
 
@@ -35,5 +36,6 @@ router.use("/storage", storageRouter);
 router.use("/support", supportRouter);
 router.use("/discharge", dischargeRouter);
 router.use("/ai", aiRouter);
+router.use("/family", familyRouter);
 
 export default router;
