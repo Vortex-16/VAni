@@ -28,6 +28,7 @@ import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
 import { getFriendlyErrorMessage } from '@/utils/errorUtils';
 import { BlurView } from 'expo-blur';
 import { getApiUrl } from '@/utils/apiUrl';
+import { RoleSelectModal, type AppRole } from '@/components/RoleSelectModal';
 
 // Required for web OAuth redirect handling
 WebBrowser.maybeCompleteAuthSession();
@@ -37,7 +38,7 @@ WebBrowser.maybeCompleteAuthSession();
 // ──────────────────────────────────────────────────────────────────────────────
 const isExpoGo = Constants.appOwnership === 'expo';
 
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1053496091346-rdlu90avmpelr3rsugdq07civngjtl1h.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '294320272880-n69lce6o1nas43m16bkdk7kipj67sgfr.apps.googleusercontent.com';
 const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
@@ -164,6 +165,12 @@ export default function LoginScreen() {
   const [loginProgress, setLoginProgress] = useState(0);
   const [isSuccess,     setIsSuccess]     = useState(false);
 
+  // First-time Google sign-in role selection
+  const [showRoleModal,  setShowRoleModal]  = useState(false);
+  const [pendingToken,   setPendingToken]   = useState<string | null>(null);
+  const [pendingEmail,   setPendingEmail]   = useState<string | undefined>(undefined);
+  const [suggestedRole,  setSuggestedRole]  = useState<AppRole>('patient');
+
   const passwordRef = React.useRef<TextInput>(null);
 
   // ── Real Google OAuth via expo-auth-session ──
@@ -198,7 +205,7 @@ export default function LoginScreen() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
   };
 
-  const handleTransitionToSuccess = async () => {
+  const handleTransitionToSuccess = async (navRole: AppRole = role) => {
     setIsSuccess(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
@@ -207,7 +214,7 @@ export default function LoginScreen() {
       sound.setOnPlaybackStatusUpdate((s) => { if (s.isLoaded && s.didJustFinish) sound.unloadAsync().catch(() => {}); });
     } catch {}
     setTimeout(() => {
-      const path = role === "caregiver" ? "/caregiver/dashboard" : role === "family" ? "/family/dashboard" : "/(tabs)";
+      const path = navRole === "caregiver" ? "/caregiver/dashboard" : navRole === "family" ? "/family/dashboard" : "/(tabs)";
       router.replace(path as any);
     }, 600);
   };
@@ -240,7 +247,7 @@ export default function LoginScreen() {
       const data = await res.json();
       await login(data.user, data.token);
       setLoginProgress(1);
-      setTimeout(handleTransitionToSuccess, 100);
+      setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
     } catch (err: any) {
       setError(getFriendlyErrorMessage(err, 'auth'));
       setIsLoggingIn(false); setLoginProgress(0);
@@ -268,47 +275,83 @@ export default function LoginScreen() {
     }
   };
 
-  // Called with a real Google accessToken — fetches user info then signs in
+  // POST to /oauth. The backend decides "new vs existing" — a brand-new user
+  // comes back with { needsRoleSelection } so we can ask for the role first.
+  const postOAuth = async (accessToken: string, opts?: { role?: AppRole; confirmRole?: boolean }) => {
+    const apiUrl = getApiUrl();
+    const res = await fetch(`${apiUrl}/api/auth/oauth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'google',
+        accessToken,
+        ...(opts?.role ? { role: opts.role } : {}),
+        ...(opts?.confirmRole ? { confirmRole: true } : {}),
+      }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || 'Google sign-in failed');
+    }
+    return res.json();
+  };
+
+  // Called with a real Google accessToken — signs in, or prompts for a role
+  // if this is a first-time sign-in.
   const executeGoogleOAuth = async (accessToken: string) => {
     setIsLoggingIn(true);
-    setLoginProgress(0.6);
+    setLoginProgress(0.7);
     setError(null);
     try {
-      // Fetch real user info from Google
-      const userInfoRes = await fetch('https://www.googleapis.com/userinfo/v2/me', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!userInfoRes.ok) throw new Error('Failed to fetch Google user info');
-      const userInfo = await userInfoRes.json() as { email: string; name: string; picture?: string };
+      const data = await postOAuth(accessToken);
 
-      const apiUrl = getApiUrl();
-      setLoginProgress(0.8);
-
-      const res = await fetch(`${apiUrl}/api/auth/oauth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: 'google',
-          accessToken,
-          role,
-        }),
-      });
-
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Google sign-in failed');
+      if (data.needsRoleSelection) {
+        // First-time user — pause and ask which role to register as (no OTP).
+        setPendingToken(accessToken);
+        setPendingEmail(data.pendingProfile?.email);
+        setSuggestedRole((data.suggestedRole as AppRole) ?? 'patient');
+        setIsLoggingIn(false);
+        setLoginProgress(0);
+        setShowRoleModal(true);
+        return;
       }
 
-      const data = await res.json();
       await login(data.user, data.token);
       setLoginProgress(1);
-      setTimeout(handleTransitionToSuccess, 100);
+      setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
       setIsLoggingIn(false);
       setLoginProgress(0);
       shake();
     }
+  };
+
+  // User picked a role in the modal — confirm account creation.
+  const handleRoleConfirm = async (chosen: AppRole) => {
+    setShowRoleModal(false);
+    if (!pendingToken) return;
+    setIsLoggingIn(true);
+    setLoginProgress(0.8);
+    setError(null);
+    try {
+      const data = await postOAuth(pendingToken, { role: chosen, confirmRole: true });
+      await login(data.user, data.token);
+      setPendingToken(null);
+      setLoginProgress(1);
+      setTimeout(() => handleTransitionToSuccess((data.user?.role as AppRole) ?? chosen), 100);
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed');
+      setIsLoggingIn(false);
+      setLoginProgress(0);
+      shake();
+    }
+  };
+
+  const handleRoleCancel = () => {
+    setShowRoleModal(false);
+    setPendingToken(null);
+    setPendingEmail(undefined);
   };
 
   const handleGuestLogin = async () => {
@@ -518,7 +561,14 @@ export default function LoginScreen() {
         </BlurView>
       </Modal>
 
-      {/* Real Google OAuth handled via expo-auth-session — no modal needed */}
+      {/* First-time Google sign-in role selection */}
+      <RoleSelectModal
+        visible={showRoleModal}
+        email={pendingEmail}
+        suggestedRole={suggestedRole}
+        onConfirm={handleRoleConfirm}
+        onCancel={handleRoleCancel}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { db, users, patients, medicines, doseLogs } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import type { AuthRequest } from "../middlewares/auth";
@@ -11,14 +12,46 @@ import { sendVerificationEmail } from "../lib/email";
 const router = Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const BCRYPT_ROUNDS = 10;
+
 // Helper to generate a 6-digit OTP code
 function generateOTPCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Soft heuristic: suggest "caregiver" when the email domain looks clinical.
+// Configured via CAREGIVER_DOMAIN_HINTS (comma-separated). This is ONLY a
+// suggestion for the role-selection modal — it never grants any privilege.
+const CAREGIVER_DOMAIN_HINTS = (process.env.CAREGIVER_DOMAIN_HINTS ?? "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+function suggestRole(email: string): "caregiver" | "patient" {
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  if (!domain) return "patient";
+  const looksClinical = CAREGIVER_DOMAIN_HINTS.some((hint) => domain.includes(hint));
+  return looksClinical ? "caregiver" : "patient";
+}
+
+// Verify a plaintext password against a stored value. Supports a one-time
+// upgrade path for legacy plaintext passwords (re-hashed on first success).
+async function verifyPassword(plain: string, stored: string, userId: string): Promise<boolean> {
+  if (stored.startsWith("$2")) {
+    return bcrypt.compare(plain, stored);
+  }
+  // Legacy plaintext password — compare directly, then upgrade to a hash.
+  if (plain === stored) {
+    const hashed = await bcrypt.hash(plain, BCRYPT_ROUNDS);
+    await db.update(users).set({ password: hashed }).where(eq(users.id, userId));
+    return true;
+  }
+  return false;
+}
+
 router.post("/oauth", async (req, res) => {
   try {
-    const { provider, idToken, accessToken, role, familyMember, professionalDetails } = req.body;
+    const { provider, idToken, accessToken, role, confirmRole, familyMember, professionalDetails } = req.body;
     
     if (provider !== "google") {
       return res.status(400).json({ error: "Unsupported provider" });
@@ -67,7 +100,17 @@ router.post("/oauth", async (req, res) => {
 
     // Upsert User
     let [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
-    
+
+    // First-time Google sign-in: ask the client to choose a role before we
+    // create the account. The role is only honoured on the confirming call.
+    if (!user && !confirmRole) {
+      return res.json({
+        needsRoleSelection: true,
+        pendingProfile: { email, name },
+        suggestedRole: suggestRole(email),
+      });
+    }
+
     if (!user) {
       const selectedRole = role || "patient";
 
@@ -170,6 +213,7 @@ router.post("/register", async (req, res) => {
 
     const verificationCode = generateOTPCode();
     const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+    const hashedPassword = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : null;
 
     let newUser;
 
@@ -179,7 +223,7 @@ router.post("/register", async (req, res) => {
         email: email.toLowerCase(),
         name,
         role: "family",
-        password: password || null,
+        password: hashedPassword,
         linkedPatientId: null,
         isEmailVerified: false,
         emailVerificationCode: verificationCode,
@@ -231,7 +275,7 @@ router.post("/register", async (req, res) => {
         email: email.toLowerCase(),
         name,
         role: role || "patient",
-        password: password || null,
+        password: hashedPassword,
         linkedPatientId: newPatient.id,
         isEmailVerified: false,
         emailVerificationCode: verificationCode,
@@ -255,16 +299,30 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
     const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
-    
+
     if (!user) {
       return res.status(404).json({ error: "User not found. Please register first." });
+    }
+
+    // Accounts created via Google have no password — guide them to OAuth.
+    if (!user.password) {
+      return res.status(401).json({
+        error: "USE_GOOGLE_SIGNIN",
+        message: "This account uses Google Sign-In. Please continue with Google.",
+      });
+    }
+
+    // Verify the password before doing anything else (prevents OTP-resend abuse).
+    const passwordOk = await verifyPassword(password, user.password, user.id);
+    if (!passwordOk) {
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     // If user is not verified, block login and resend a verification code
