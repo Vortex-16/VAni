@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Medicine, useApp, PrescriptionAnalysisResult, ExtractedMedicine } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { getApiUrl } from '@/utils/apiUrl';
 
 const { width, height } = Dimensions.get("window");
 const isSmall = width < 360;
@@ -169,7 +170,7 @@ export default function ScanScreen() {
 
       setProcessingStage("🔍 Extracting medicines...");
       
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      const apiUrl = getApiUrl();
       const token = await (await import("@react-native-async-storage/async-storage")).default.getItem("discharge_buddy_token");
       
       const response = await fetch(`${apiUrl}/api/ocr/scan`, {

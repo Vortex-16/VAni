@@ -7,13 +7,14 @@ import { ApiProvider } from "./ApiProvider";
 import type { IDataProvider } from "./types";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { router } from "expo-router";
-import { scheduleMedicineNotifications, requestNotificationPermissions } from "@/utils/NotificationHelper";
+import { scheduleMedicineNotifications, requestNotificationPermissions, getDevicePushToken } from "@/utils/NotificationHelper";
 import { NotificationToast } from "@/components/NotificationToast";
 import { soundHelper } from "@/utils/SoundHelper";
 import { Audio } from "expo-av";
 import { cacheDirectory, writeAsStringAsync, EncodingType } from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
+import { getApiUrl } from "@/utils/apiUrl";
 
 export type UserRole = "patient" | "caregiver" | "family" | null;
 // Language type imported from translations.ts
@@ -409,15 +410,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Shared initialization of base URL and token getter
-    // On physical devices (Expo Go), localhost won't work. 
-    // You should set EXPO_PUBLIC_API_URL to your machine's local IP (e.g., http://192.168.1.5:3000)
-    let apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:3000"; // Default for Android Emulator
-    if (Platform.OS === "ios") {
-      apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-    }
-    if (Platform.OS === "web") {
-      apiUrl = "http://localhost:3000";
-    }
+    const apiUrl = getApiUrl();
     setBaseUrl(apiUrl);
     console.log("[AppContext] Base URL set to:", apiUrl);
     setAuthTokenGetter(async () => await AsyncStorage.getItem("discharge_buddy_token"));
@@ -682,7 +675,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setRole = (r: UserRole) => { setRoleState(r); saveData({ role: r }); };
   const setUser = (u: AppUser) => { setUserState(u); saveData({ user: u }); };
-  const setOnboarded = (val: boolean) => { setIsOnboardedState(val); saveData({ isOnboarded: val }); };
   const setHapticsEnabled = (val: boolean) => { setHapticsEnabledState(val); saveData({ hapticsEnabled: val }); };
   const setLanguage = (lang: Language) => { setLanguageState(lang); saveData({ language: lang }); };
 
@@ -942,7 +934,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Register Push Token with Backend
     try {
-      const { getDevicePushToken } = await import("@/utils/NotificationHelper");
       const pushToken = await getDevicePushToken();
       if (pushToken) {
         const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
@@ -1031,6 +1022,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const resetOnboarding = () => {
     setIsOnboardedState(false);
     saveData({ isOnboarded: false });
+  };
+
+  const setOnboarded = (val: boolean) => {
+    setIsOnboardedState(val);
+    saveData({ isOnboarded: val });
   };
 
   const switchProvider = (provider: IDataProvider) => {

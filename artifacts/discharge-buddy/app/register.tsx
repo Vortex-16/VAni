@@ -20,6 +20,7 @@ import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
+import { getApiUrl } from '@/utils/apiUrl';
 
 const PRIMARY      = "#7C3AED";
 const PRIMARY_DARK = "#5B21B6";
@@ -135,7 +136,7 @@ export default function RegisterScreen() {
     setIsRegistering(true);
     setProgress(0.8);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = getApiUrl();
       const body: any = { email, name: fullName, role, password };
       if (role === 'family' && familyMemberName.trim()) {
         body.familyMember = { name: familyMemberName.trim(), email: familyMemberEmail.trim() || null };

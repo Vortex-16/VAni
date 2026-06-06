@@ -27,6 +27,7 @@ import { MockProvider } from "@/context/MockProvider";
 import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
 import { getFriendlyErrorMessage } from '@/utils/errorUtils';
 import { BlurView } from 'expo-blur';
+import { getApiUrl } from '@/utils/apiUrl';
 
 // Required for web OAuth redirect handling
 WebBrowser.maybeCompleteAuthSession();
@@ -218,7 +219,7 @@ export default function LoginScreen() {
     setIsLoggingIn(true);
     setLoginProgress(0.8);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -262,7 +263,9 @@ export default function LoginScreen() {
       return;
     }
     
-    promptGoogleAsync();
+    if (promptGoogleAsync) {
+      promptGoogleAsync();
+    }
   };
 
   // Called with a real Google accessToken — fetches user info then signs in
@@ -278,7 +281,7 @@ export default function LoginScreen() {
       if (!userInfoRes.ok) throw new Error('Failed to fetch Google user info');
       const userInfo = await userInfoRes.json() as { email: string; name: string; picture?: string };
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = getApiUrl();
       setLoginProgress(0.8);
 
       const res = await fetch(`${apiUrl}/api/auth/oauth`, {

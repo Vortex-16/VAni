@@ -11,12 +11,13 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '@/context/AppContext';
 import { getFriendlyErrorMessage } from '@/utils/errorUtils';
+import { getApiUrl } from '@/utils/apiUrl';
 
 const PURPLE = '#6C47FF';
 const WHITE = '#FFFFFF';
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const ACTIVITY_LEVELS = ['Complete Rest', 'Light Activity', 'Normal'];
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = getApiUrl();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MedEntry { name: string; dosage: string; frequency: string; duration: string; instructions: string; }

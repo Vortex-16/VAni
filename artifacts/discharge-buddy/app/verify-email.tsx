@@ -17,6 +17,7 @@ import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
+import { getApiUrl } from '@/utils/apiUrl';
 
 const PRIMARY = "#7C3AED";
 const PRIMARY_DARK = "#6D28D9";
@@ -75,7 +76,7 @@ export default function VerifyEmailScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/auth/verify-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -116,7 +117,7 @@ export default function VerifyEmailScreen() {
     setIsResending(true);
     setError(null);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/auth/resend-verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
