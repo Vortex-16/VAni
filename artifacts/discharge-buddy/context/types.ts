@@ -25,6 +25,9 @@ export interface IDataProvider {
   getFamilyMembers(): Promise<Patient[]>;
   addFamilyMember(data: any): Promise<Patient>;
   linkFamilyMember(email: string): Promise<Patient>;
+  linkPatientByCode(code: string): Promise<Patient>;
+  getMyLinkCode(): Promise<string>;
+  resetMyLinkCode(): Promise<string>;
   scanPrescription(imageBase64: string): Promise<PrescriptionAnalysisResult>;
   addMedicine(medicine: Omit<Medicine, "id">): Promise<Medicine>;
   updateMedicine(id: string, updates: Partial<Medicine>): Promise<void>;

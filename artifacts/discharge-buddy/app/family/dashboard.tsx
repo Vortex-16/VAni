@@ -29,29 +29,34 @@ const QUICK_ACTIONS = [
 
 // ── Add Member Modal ─────────────────────────────────────────────────────────
 function AddMemberModal({
-  visible, onClose, onAdd, onLink, loading,
+  visible, onClose, onAdd, onLink, onLinkCode, loading,
 }: {
   visible: boolean;
   onClose: () => void;
   onAdd: (data: any) => Promise<void>;
   onLink: (email: string) => Promise<void>;
+  onLinkCode: (code: string) => Promise<void>;
   loading: boolean;
 }) {
-  const [tab, setTab] = useState<'manual' | 'link'>('manual');
+  const [tab, setTab] = useState<'manual' | 'link' | 'code'>('code');
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [condition, setCondition] = useState('');
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
 
-  const reset = () => { setName(''); setAge(''); setCondition(''); setEmail(''); };
+  const reset = () => { setName(''); setAge(''); setCondition(''); setEmail(''); setCode(''); };
 
   const handleSubmit = async () => {
     if (tab === 'manual') {
       if (!name.trim()) { Alert.alert('Required', 'Please enter a name.'); return; }
       await onAdd({ name: name.trim(), age, condition: condition.trim() });
-    } else {
+    } else if (tab === 'link') {
       if (!email.trim()) { Alert.alert('Required', 'Please enter an email address.'); return; }
       await onLink(email.trim());
+    } else {
+      if (!code.trim()) { Alert.alert('Required', 'Please enter a patient code.'); return; }
+      await onLinkCode(code.trim());
     }
     reset();
     onClose();
@@ -70,21 +75,25 @@ function AddMemberModal({
           </View>
 
           <View style={styles.tabRow}>
-            {(['manual', 'link'] as const).map(t => (
+            {([
+              { key: 'code',   icon: 'hash',      label: 'By Code' },
+              { key: 'link',   icon: 'mail',      label: 'By Email' },
+              { key: 'manual', icon: 'user-plus', label: 'Create' },
+            ] as const).map(t => (
               <TouchableOpacity
-                key={t}
-                style={[styles.tab, tab === t && styles.tabActive]}
-                onPress={() => setTab(t)}
+                key={t.key}
+                style={[styles.tab, tab === t.key && styles.tabActive]}
+                onPress={() => setTab(t.key)}
               >
-                <Feather name={t === 'manual' ? 'user-plus' : 'link'} size={13} color={tab === t ? '#fff' : TEXT_MUTED} />
-                <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                  {t === 'manual' ? 'Create Profile' : 'Link Account'}
+                <Feather name={t.icon} size={13} color={tab === t.key ? '#fff' : TEXT_MUTED} />
+                <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
+                  {t.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {tab === 'manual' ? (
+          {tab === 'manual' && (
             <>
               <Text style={styles.fieldLabel}>Full Name *</Text>
               <TextInput style={styles.field} placeholder="e.g. Rajesh Kumar" value={name} onChangeText={setName} placeholderTextColor={TEXT_MUTED} />
@@ -93,7 +102,9 @@ function AddMemberModal({
               <Text style={styles.fieldLabel}>Condition / Notes</Text>
               <TextInput style={styles.field} placeholder="e.g. Diabetes, Hypertension" value={condition} onChangeText={setCondition} placeholderTextColor={TEXT_MUTED} />
             </>
-          ) : (
+          )}
+
+          {tab === 'link' && (
             <>
               <View style={styles.linkNote}>
                 <Feather name="info" size={13} color={PURPLE} />
@@ -106,9 +117,32 @@ function AddMemberModal({
             </>
           )}
 
+          {tab === 'code' && (
+            <>
+              <View style={styles.linkNote}>
+                <Feather name="info" size={13} color={PURPLE} />
+                <Text style={styles.linkNoteText}>
+                  Ask the patient for their care code (e.g. DB-7G4K2P), shown on their profile.
+                </Text>
+              </View>
+              <Text style={styles.fieldLabel}>Patient Code *</Text>
+              <TextInput
+                style={[styles.field, { letterSpacing: 2 }]}
+                placeholder="DB-XXXXXX"
+                value={code}
+                onChangeText={setCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                placeholderTextColor={TEXT_MUTED}
+              />
+            </>
+          )}
+
           <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={handleSubmit} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : (
-              <Text style={styles.submitBtnText}>{tab === 'manual' ? '+ Add Member' : 'Link Account'}</Text>
+              <Text style={styles.submitBtnText}>
+                {tab === 'manual' ? '+ Add Member' : tab === 'link' ? 'Link Account' : 'Link Patient'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -121,7 +155,7 @@ function AddMemberModal({
 export default function FamilyDashboard() {
   const insets = useSafeAreaInsets();
   const {
-    user, familyMembers, addFamilyMember, linkFamilyMember,
+    user, familyMembers, addFamilyMember, linkFamilyMember, linkPatientByCode,
     setActivePatientId, activePatientId, logout, speakNeural, isOnboarded
   } = useApp();
   const { open: openSidebar } = useSidebar();
@@ -168,6 +202,21 @@ export default function FamilyDashboard() {
     setActionLoading(true);
     try { await linkFamilyMember(email); }
     catch (e: any) { Alert.alert('Not Found', e.message || 'No patient found with this email.'); }
+    finally { setActionLoading(false); setModalVisible(false); }
+  };
+
+  const handleLinkCode = async (code: string) => {
+    setActionLoading(true);
+    try { await linkPatientByCode(code); }
+    catch (e: any) {
+      const msg = String(e?.message || '');
+      Alert.alert(
+        'Invalid Code',
+        msg.includes('INVALID_CODE')
+          ? "We couldn't find a patient with that code. Please double-check and try again."
+          : (msg || 'Failed to link patient.'),
+      );
+    }
     finally { setActionLoading(false); setModalVisible(false); }
   };
 
@@ -383,6 +432,7 @@ export default function FamilyDashboard() {
         onClose={() => setModalVisible(false)}
         onAdd={handleAdd}
         onLink={handleLink}
+        onLinkCode={handleLinkCode}
         loading={actionLoading}
       />
       <Sidebar />

@@ -14,7 +14,8 @@
       "backgroundColor": "#f0f9ff"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.dischargebuddy.app"
     },
     "android": {
       "package": "com.dischargebuddy.app",

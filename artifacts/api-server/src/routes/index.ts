@@ -15,6 +15,7 @@ import supportRouter from "./support";
 import dischargeRouter from "./discharge";
 import aiRouter from "./ai";
 import familyRouter from "./family";
+import linksRouter from "./links";
 
 const router: IRouter = Router();
 
@@ -37,5 +38,6 @@ router.use("/support", supportRouter);
 router.use("/discharge", dischargeRouter);
 router.use("/ai", aiRouter);
 router.use("/family", familyRouter);
+router.use("/links", linksRouter);
 
 export default router;

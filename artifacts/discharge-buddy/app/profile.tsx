@@ -9,6 +9,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
 import { useApp } from "@/context/AppContext";
+import { MyLinkCodeCard } from "@/components/MyLinkCodeCard";
 
 const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
@@ -214,6 +215,12 @@ export default function ProfileScreen() {
             </View>
           ))}
         </View>
+
+        {role === "patient" && (
+          <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+            <MyLinkCodeCard />
+          </View>
+        )}
 
         <View style={styles.actions}>
           <TouchableOpacity 

@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
 import { useSidebar } from '@/context/SidebarContext';
 import { Sidebar } from '@/components/Sidebar';
+import { LinkByCodeModal } from '@/components/LinkByCodeModal';
 import type { Patient } from '@/context/AppContext';
 
 const PURPLE = '#6C47FF';
@@ -169,6 +170,7 @@ export default function CaregiverDashboard() {
   const { linkedPatients, user, refreshData, speakNeural, isSpeaking, speakingTargetId } = useApp();
   const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
+  const [showLinkModal, setShowLinkModal] = React.useState(false);
 
   React.useEffect(() => {
     // Poll for real-time patient updates every 5 seconds
@@ -212,6 +214,9 @@ export default function CaregiverDashboard() {
             <Feather name="menu" size={22} color={WHITE} />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={() => setShowLinkModal(true)} style={[styles.headerIconBtn, { marginRight: 10 }]}>
+            <Feather name="user-plus" size={20} color={WHITE} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.headerIconBtn}>
             <Feather name="settings" size={20} color={WHITE} />
           </TouchableOpacity>
@@ -300,6 +305,11 @@ export default function CaregiverDashboard() {
           <Feather name="chevron-right" size={20} color="#94a3b8" />
         </TouchableOpacity>
       </ScrollView>
+      <LinkByCodeModal
+        visible={showLinkModal}
+        onClose={() => setShowLinkModal(false)}
+        onLinked={refreshData}
+      />
       <Sidebar />
     </View>
   );

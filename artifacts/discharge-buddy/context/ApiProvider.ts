@@ -128,6 +128,26 @@ export class ApiProvider implements IDataProvider {
     return res.member;
   }
 
+  async linkPatientByCode(code: string): Promise<Patient> {
+    const res = await customFetch<{ patient: Patient }>("/api/links", {
+      method: "POST",
+      body: JSON.stringify({ linkCode: code })
+    });
+    return res.patient;
+  }
+
+  async getMyLinkCode(): Promise<string> {
+    const res = await customFetch<{ code: string }>("/api/links/my-code");
+    return res.code;
+  }
+
+  async resetMyLinkCode(): Promise<string> {
+    const res = await customFetch<{ code: string }>("/api/links/my-code/reset", {
+      method: "POST"
+    });
+    return res.code;
+  }
+
   async createDischargePlan(payload: any): Promise<{ planId: string }> {
     return await customFetch<{ planId: string }>("/api/caregiver/create-plan", {
       method: "POST",

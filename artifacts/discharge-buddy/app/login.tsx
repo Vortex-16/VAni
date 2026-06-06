@@ -79,23 +79,19 @@ const getGoogleAuthConfig = () => {
     return config;
   }
 
-  // For Android production builds (not Expo Go)
+  // For Android dev/production builds (not Expo Go).
+  // Always include webClientId so the provider can also return a backend-verifiable
+  // idToken; add the native androidClientId when configured.
   if (Platform.OS === 'android') {
-    if (GOOGLE_ANDROID_CLIENT_ID) {
-      config.androidClientId = GOOGLE_ANDROID_CLIENT_ID;
-    } else {
-      config.webClientId = GOOGLE_WEB_CLIENT_ID;
-    }
+    config.webClientId = GOOGLE_WEB_CLIENT_ID;
+    if (GOOGLE_ANDROID_CLIENT_ID) config.androidClientId = GOOGLE_ANDROID_CLIENT_ID;
     return config;
   }
 
-  // For iOS production builds (not Expo Go)
+  // For iOS dev/production builds (not Expo Go)
   if (Platform.OS === 'ios') {
-    if (GOOGLE_IOS_CLIENT_ID) {
-      config.iosClientId = GOOGLE_IOS_CLIENT_ID;
-    } else {
-      config.webClientId = GOOGLE_WEB_CLIENT_ID;
-    }
+    config.webClientId = GOOGLE_WEB_CLIENT_ID;
+    if (GOOGLE_IOS_CLIENT_ID) config.iosClientId = GOOGLE_IOS_CLIENT_ID;
     return config;
   }
 

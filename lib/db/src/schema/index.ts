@@ -5,6 +5,8 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["patient", "caregiver", "family"]);
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
 export const doseStatusEnum = pgEnum("dose_status", ["taken", "missed", "pending", "snoozed"]);
+export const linkRelationshipEnum = pgEnum("link_relationship", ["family", "caregiver"]);
+export const linkStatusEnum = pgEnum("link_status", ["active", "revoked"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -34,14 +36,28 @@ export const users = pgTable("users", {
 
 export const patients = pgTable("patients", {
   id: uuid("id").primaryKey().defaultRandom(),
-  caregiverId: uuid("caregiver_id").references(() => users.id), // Added to link to caregiver
+  caregiverId: uuid("caregiver_id").references(() => users.id), // Legacy single-manager link (kept for notifications)
   name: text("name").notNull(),
   age: integer("age").notNull(),
   condition: text("condition").notNull(),
   dischargeDate: timestamp("discharge_date").notNull(),
   emergencyContact: text("emergency_contact").notNull(),
+  linkCode: varchar("link_code", { length: 12 }).unique(), // Shareable code (e.g. DB-7G4K2P)
+  linkCodeIssuedAt: timestamp("link_code_issued_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Many-to-many: which managers (family / caregiver users) are linked to a patient.
+export const careLinks = pgTable("care_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  managerId: uuid("manager_id").references(() => users.id).notNull(),
+  relationship: linkRelationshipEnum("relationship").notNull(),
+  status: linkStatusEnum("status").default("active").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+  uniqPatientManager: unique("care_links_patient_manager_unique").on(t.patientId, t.managerId),
+}));
 
 export const medicines = pgTable("medicines", {
   id: uuid("id").primaryKey().defaultRandom(),

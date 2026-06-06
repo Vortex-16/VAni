@@ -253,6 +253,19 @@ export class MockProvider implements IDataProvider {
     return mockLinked;
   }
 
+  async linkPatientByCode(_code: string): Promise<Patient> {
+    // In mock mode, reuse the simulated link behaviour.
+    return this.linkFamilyMember("mock@demo");
+  }
+
+  async getMyLinkCode(): Promise<string> {
+    return "DB-DEMO12";
+  }
+
+  async resetMyLinkCode(): Promise<string> {
+    return "DB-DEMO34";
+  }
+
   async scanPrescription(_imageBase64: string): Promise<PrescriptionAnalysisResult> {
     await new Promise(r => setTimeout(r, 1500));
     return {

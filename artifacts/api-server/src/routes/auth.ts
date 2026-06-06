@@ -8,6 +8,7 @@ import type { AuthRequest } from "../middlewares/auth";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { sendVerificationEmail } from "../lib/email";
+import { generateUniqueLinkCode } from "../lib/linkCode";
 
 const router = Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -164,6 +165,8 @@ router.post("/oauth", async (req, res) => {
           condition: selectedRole === "caregiver" ? "General Caregiver" : "General Checkup",
           dischargeDate: new Date(),
           emergencyContact: "911",
+          linkCode: await generateUniqueLinkCode(),
+          linkCodeIssuedAt: new Date(),
         }).returning();
 
         [user] = await db.insert(users).values({
@@ -269,6 +272,8 @@ router.post("/register", async (req, res) => {
         condition: "New Patient",
         dischargeDate: new Date(),
         emergencyContact: "None",
+        linkCode: await generateUniqueLinkCode(),
+        linkCodeIssuedAt: new Date(),
       }).returning();
 
       [newUser] = await db.insert(users).values({

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth";
 import { db, patients, medicines, doseLogs, symptomLogs, followUps, eq, inArray } from "@workspace/db";
+import { getManagedPatients } from "../lib/managedPatients";
 import { DischargeService } from "../services/dischargeService";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -25,7 +26,7 @@ router.get("/patients", requireAuth, async (req: any, res) => {
     if (isStaff) {
       linkedPatients = await db.select().from(patients);
     } else {
-      linkedPatients = await db.select().from(patients).where(eq(patients.caregiverId, userId));
+      linkedPatients = await getManagedPatients(userId);
     }
     
     if (linkedPatients.length === 0) {

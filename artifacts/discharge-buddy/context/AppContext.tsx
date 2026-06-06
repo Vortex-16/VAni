@@ -356,6 +356,7 @@ interface AppContextType {
   refreshData: () => Promise<void>;
   addFamilyMember: (data: any) => Promise<void>;
   linkFamilyMember: (email: string) => Promise<void>;
+  linkPatientByCode: (code: string) => Promise<void>;
   setActivePatientId: (id: string | null) => void;
   api: IDataProvider;
   showToast: (title: string, body: string) => void;
@@ -1067,6 +1068,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const linkPatientByCode = async (code: string) => {
+    try {
+      const linkedMember = await dataProvider.linkPatientByCode(code);
+      setFamilyMembers(prev => {
+        if (prev.some(m => m.id === linkedMember.id)) return prev; // avoid duplicates
+        return [...prev, linkedMember];
+      });
+      showToast("Patient Linked", `${linkedMember.name} has been linked to your account.`);
+    } catch (e: any) {
+      console.warn("API linkPatientByCode failed:", e);
+      throw e; // Rethrow so the UI can show a friendly message
+    }
+  };
+
   const setActivePatientId = (id: string | null) => {
     setActivePatientIdState(id);
   };
@@ -1087,7 +1102,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         notifications, clearAllNotifications, markNotificationRead, addNotification,
         clearRecoverySuggestion,
         refreshData: loadData,
-        addFamilyMember, linkFamilyMember, setActivePatientId,
+        addFamilyMember, linkFamilyMember, linkPatientByCode, setActivePatientId,
         api: dataProvider,
         showToast,
         fetchBriefing,

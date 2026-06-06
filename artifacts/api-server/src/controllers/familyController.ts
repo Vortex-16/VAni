@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db, patients, users, eq } from "@workspace/db";
 import type { AuthRequest } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { getManagedPatients } from "../lib/managedPatients";
 
 export class FamilyController {
   /**
@@ -12,9 +13,7 @@ export class FamilyController {
     try {
       if (!req.user) return res.status(401).json({ error: "Unauthorized" });
 
-      const members = await db.select()
-        .from(patients)
-        .where(eq(patients.caregiverId, req.user.id));
+      const members = await getManagedPatients(req.user.id);
 
       return res.json({ members });
     } catch (error: any) {
