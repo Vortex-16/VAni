@@ -1,8 +1,6 @@
 import React, { useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, Alert, ActivityIndicator, Image, Modal,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Image, Modal,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -95,6 +93,7 @@ export default function CreatePlan() {
   // ── Output
   const [loading, setLoading] = useState(false);
   const [qrData, setQrData] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // ─── Medicine helpers ──────────────────────────────────────────────────────
   const addMed = () => setMeds(p => [...p, { name: '', dosage: '', frequency: 'OD', duration: '7', instructions: '' }]);
@@ -190,6 +189,12 @@ export default function CreatePlan() {
       );
       return;
     }
+    // Show confirmation before generating
+    setShowConfirmation(true);
+  };
+
+  // ─── Confirm and actually generate ───────────────────────────────────
+  const handleConfirmGenerate = async () => {
     setLoading(true);
     try {
       const payload = {
@@ -213,8 +218,101 @@ export default function CreatePlan() {
       Alert.alert('Generation Failed', getFriendlyErrorMessage(err, 'general'));
     } finally {
       setLoading(false);
+      setShowConfirmation(false);
     }
   };
+
+  // ─── Confirmation Screen ─────────────────────────────────────────
+  if (showConfirmation) {
+    const validMeds = meds.filter(m => m.name.trim());
+    return (
+      <View style={styles.qrScreen}>
+        <LinearGradient colors={['#4B26C8', PURPLE]} style={styles.qrHeader}>
+          <TouchableOpacity onPress={() => setShowConfirmation(false)} style={{ marginBottom: 12 }}>
+            <Feather name="arrow-left" size={22} color={WHITE} />
+          </TouchableOpacity>
+          <Text style={styles.qrHeaderTitle}>Review Discharge Plan</Text>
+          <Text style={styles.qrHeaderSub}>Please verify all details before issuing</Text>
+        </LinearGradient>
+
+        <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+          {/* Patient Summary */}
+          <View style={styles.confirmSection}>
+            <View style={styles.confirmSectionHeader}>
+              <Feather name="user" size={16} color={PURPLE} />
+              <Text style={styles.confirmSectionTitle}>Patient</Text>
+            </View>
+            <View style={styles.confirmRow}><Text style={styles.confirmKey}>Name</Text><Text style={styles.confirmVal}>{patientName}</Text></View>
+            <View style={styles.confirmRow}><Text style={styles.confirmKey}>Blood Group</Text><Text style={styles.confirmVal}>{bloodGroup}</Text></View>
+            {age ? <View style={styles.confirmRow}><Text style={styles.confirmKey}>Age</Text><Text style={styles.confirmVal}>{age} yrs</Text></View> : null}
+            <View style={styles.confirmRow}><Text style={styles.confirmKey}>Emergency Contact</Text><Text style={styles.confirmVal} numberOfLines={1}>{emergencyContact}</Text></View>
+            {allergies ? <View style={[styles.confirmRow, { backgroundColor: '#fef2f2', borderRadius: 10, padding: 8 }]}><Feather name="alert-triangle" size={13} color="#ef4444" /><Text style={[styles.confirmVal, { color: '#ef4444', flex: 1, marginLeft: 8 }]}>Allergy: {allergies}</Text></View> : null}
+          </View>
+
+          {/* Discharge Details */}
+          <View style={styles.confirmSection}>
+            <View style={styles.confirmSectionHeader}>
+              <Feather name="activity" size={16} color={PURPLE} />
+              <Text style={styles.confirmSectionTitle}>Discharge Details</Text>
+            </View>
+            <View style={styles.confirmRow}><Text style={styles.confirmKey}>Diagnosis</Text><Text style={styles.confirmVal} numberOfLines={2}>{diagnosis}</Text></View>
+            <View style={styles.confirmRow}><Text style={styles.confirmKey}>Doctor</Text><Text style={styles.confirmVal}>Dr. {doctorName}</Text></View>
+            {hospitalName ? <View style={styles.confirmRow}><Text style={styles.confirmKey}>Hospital</Text><Text style={styles.confirmVal}>{hospitalName}</Text></View> : null}
+            <View style={styles.confirmRow}><Text style={styles.confirmKey}>Discharge Date</Text><Text style={styles.confirmVal}>{dischargeDate}</Text></View>
+            {followUpDate ? <View style={styles.confirmRow}><Text style={styles.confirmKey}>Follow-up</Text><Text style={styles.confirmVal}>{followUpDate}</Text></View> : null}
+          </View>
+
+          {/* Medications */}
+          <View style={styles.confirmSection}>
+            <View style={styles.confirmSectionHeader}>
+              <Feather name="package" size={16} color={PURPLE} />
+              <Text style={styles.confirmSectionTitle}>Medications ({validMeds.length})</Text>
+            </View>
+            {validMeds.map((med, idx) => (
+              <View key={idx} style={styles.confirmMedRow}>
+                <View style={styles.confirmMedDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.confirmMedName}>{med.name} {med.dosage}</Text>
+                  <Text style={styles.confirmMedSub}>{med.frequency} · {med.duration} days{med.instructions ? ` · ${med.instructions}` : ''}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Recovery */}
+          {(warningSigns || diet) && (
+            <View style={[styles.confirmSection, { backgroundColor: '#fef9c3', borderColor: '#fde047' }]}>
+              <View style={styles.confirmSectionHeader}>
+                <Feather name="alert-circle" size={16} color="#ca8a04" />
+                <Text style={[styles.confirmSectionTitle, { color: '#92400e' }]}>Warning Signs</Text>
+              </View>
+              {warningSigns ? <Text style={[styles.confirmVal, { color: '#78350f', lineHeight: 20 }]}>{warningSigns}</Text> : null}
+              {diet ? <View style={styles.confirmRow}><Text style={styles.confirmKey}>Diet</Text><Text style={styles.confirmVal} numberOfLines={2}>{diet}</Text></View> : null}
+            </View>
+          )}
+
+          {/* Confirm Button */}
+          <TouchableOpacity
+            style={[styles.genBtn, { marginTop: 24 }]}
+            onPress={handleConfirmGenerate}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={WHITE} />
+              : <>
+                <Feather name="maximize" size={18} color={WHITE} />
+                <Text style={styles.genBtnText}>Confirm & Generate QR</Text>
+              </>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.editBtn} onPress={() => setShowConfirmation(false)}>
+            <Text style={styles.editBtnText}>← Edit Plan</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
 
   // ─── QR Screen ─────────────────────────────────────────────────────────────
   if (qrData) {
@@ -559,5 +657,17 @@ const styles = StyleSheet.create({
   doneBtn: { backgroundColor: PURPLE, paddingVertical: 16, paddingHorizontal: 32, borderRadius: 16, marginTop: 28, flexDirection: 'row', alignItems: 'center', gap: 8 },
   doneBtnText: { color: WHITE, fontSize: 16, fontFamily: 'Inter_700Bold' },
   editBtn: { paddingVertical: 12, marginTop: 8 },
-  editBtnText: { color: '#94a3b8', fontFamily: 'Inter_500Medium', fontSize: 14 },
+  editBtnText: { color: '#94a3b8', fontFamily: 'Inter_500Medium', fontSize: 14, textAlign: 'center' },
+
+  // Confirmation screen styles
+  confirmSection: { backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0' },
+  confirmSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  confirmSectionTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#1e1b4b', flex: 1 },
+  confirmRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 6, gap: 12 },
+  confirmKey: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#94a3b8', flex: 0.45, textTransform: 'uppercase', letterSpacing: 0.3, paddingTop: 1 },
+  confirmVal: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#1e1b4b', flex: 0.55, textAlign: 'right' },
+  confirmMedRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  confirmMedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: PURPLE, marginTop: 6, flexShrink: 0 },
+  confirmMedName: { fontSize: 14, fontFamily: 'Inter_700Bold', color: '#1e1b4b' },
+  confirmMedSub: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#64748b', marginTop: 2 },
 });

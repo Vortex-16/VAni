@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 
 import { DoseLog, Medicine } from "@/context/AppContext";
 

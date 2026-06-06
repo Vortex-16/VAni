@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Platform, Alert, ActivityIndicator, KeyboardAvoidingView
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

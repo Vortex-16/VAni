@@ -12,8 +12,8 @@ import { db, users, patients, medicines, doseLogs, eq } from "@workspace/db";
 const firebaseConfig = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  // Private key needs to handle escaped newlines
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  // Private key needs to handle escaped newlines and sometimes leftover quotes from dotenv parsers
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/"/g, ''),
 };
 
 export class NotificationService {

@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Modal, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Pressable } from "react-native";
+import { Modal, Platform, ScrollView, StyleSheet, Switch, TouchableOpacity, View, Pressable } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -23,6 +24,17 @@ export default function SettingsScreen() {
   const languages = [
     { label: "English", value: "en", flag: "🇺🇸" },
     { label: "हिंदी (Hindi)", value: "hi", flag: "🇮🇳" },
+    { label: "বাংলা (Bengali)", value: "bn", flag: "🇮🇳" },
+    { label: "తెలుగు (Telugu)", value: "te", flag: "🇮🇳" },
+    { label: "मराठी (Marathi)", value: "mr", flag: "🇮🇳" },
+    { label: "தமிழ் (Tamil)", value: "ta", flag: "🇮🇳" },
+    { label: "اردو (Urdu)", value: "ur", flag: "🇮🇳" },
+    { label: "ગુજરાતી (Gujarati)", value: "gu", flag: "🇮🇳" },
+    { label: "ಕನ್ನಡ (Kannada)", value: "kn", flag: "🇮🇳" },
+    { label: "മലയാളം (Malayalam)", value: "ml", flag: "🇮🇳" },
+    { label: "ଓଡ଼ିଆ (Odia)", value: "or", flag: "🇮🇳" },
+    { label: "ਪੰਜਾਬੀ (Punjabi)", value: "pa", flag: "🇮🇳" },
+    { label: "অসমীয়া (Assamese)", value: "as", flag: "🇮🇳" },
     { label: "Español (Spanish)", value: "es", flag: "🇪🇸" },
   ];
 
@@ -201,36 +213,42 @@ export default function SettingsScreen() {
           onRequestClose={() => setShowLangModal(false)}
         >
           <Pressable style={styles.modalOverlay} onPress={() => setShowLangModal(false)}>
-            <View style={styles.modalContent}>
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Select Language</Text>
                 <TouchableOpacity onPress={() => setShowLangModal(false)}>
                   <Feather name="x" size={24} color="#64748b" />
                 </TouchableOpacity>
               </View>
-              {languages.map((lang) => (
-                <TouchableOpacity
-                  key={lang.value}
-                  style={[
-                    styles.langItem,
-                    language === lang.value && styles.langItemActive
-                  ]}
-                  onPress={() => {
-                    setLanguage(lang.value as any);
-                    setShowLangModal(false);
-                  }}
-                >
-                  <Text style={styles.langFlag}>{lang.flag}</Text>
-                  <Text style={[
-                    styles.langLabel,
-                    language === lang.value && styles.langLabelActive
-                  ]}>{lang.label}</Text>
-                  {language === lang.value && (
-                    <Feather name="check" size={20} color="#0891b2" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+              <ScrollView
+                showsVerticalScrollIndicator={true}
+                bounces={true}
+                style={{ maxHeight: 420 }}
+              >
+                {languages.map((lang) => (
+                  <TouchableOpacity
+                    key={lang.value}
+                    style={[
+                      styles.langItem,
+                      language === lang.value && styles.langItemActive
+                    ]}
+                    onPress={() => {
+                      setLanguage(lang.value as any);
+                      setShowLangModal(false);
+                    }}
+                  >
+                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                    <Text style={[
+                      styles.langLabel,
+                      language === lang.value && styles.langLabelActive
+                    ]}>{lang.label}</Text>
+                    {language === lang.value && (
+                      <Feather name="check" size={20} color="#0891b2" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Pressable>
           </Pressable>
         </Modal>
       </ScrollView>

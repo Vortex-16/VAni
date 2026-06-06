@@ -9,521 +9,359 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
-  Dimensions,
-} from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  withDelay,
-  Easing,
-  runOnJS,
-} from "react-native-reanimated";
+  StatusBar,
+} from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
+import { useSharedValue, useAnimatedStyle, withSequence, withRepeat, withTiming } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
-import { MascotBuddy } from "@/components/MascotBuddy";
 
-const PRIMARY = "#6C47FF";
-const PRIMARY_LIGHT = "#4B26C8";
-const PRIMARY_SOFT = "#EDE9FE";
-const WHITE = "#ffffff";
-const MUTED = "#94a3b8";
-const BACKGROUND = "#F5F4FB";
-const INPUT_BORDER = "#E2E8F0";
+const PRIMARY      = "#7C3AED";
+const PRIMARY_DARK = "#5B21B6";
+const WHITE        = "#FFFFFF";
+const MUTED        = "#94A3B8";
+const SOFT_BG      = "#F5F3FF";
+const INPUT_BG     = "#F8FAFC";
+const TEXT_DARK    = "#1E1B4B";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+// ── Decorative Rx header ──────────────────────────────────────────────────────
+function RxDecor() {
+  return (
+    <View style={decor.wrap} pointerEvents="none">
+      <Text style={decor.rx}>℞</Text>
+      <View style={decor.capsuleRow}>
+        <View style={[decor.capsule, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
+        <View style={[decor.capsule, { backgroundColor: 'rgba(255,255,255,0.07)', width: 32 }]} />
+      </View>
+      <View style={[decor.cross, { top: 24, right: 28 }]}>
+        <Feather name="plus" size={28} color="rgba(255,255,255,0.1)" />
+      </View>
+      <View style={[decor.cross, { bottom: 30, left: 20 }]}>
+        <Feather name="plus" size={16} color="rgba(255,255,255,0.08)" />
+      </View>
+      <View style={decor.pulse}>
+        <Feather name="activity" size={48} color="rgba(255,255,255,0.06)" />
+      </View>
+    </View>
+  );
+}
+const decor = StyleSheet.create({
+  wrap:      { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  rx:        { position: 'absolute', top: 18, left: 24, fontSize: 52, color: 'rgba(255,255,255,0.08)', fontWeight: '900' },
+  capsuleRow:{ position: 'absolute', bottom: 24, right: 16, flexDirection: 'row', gap: 6 },
+  capsule:   { width: 52, height: 22, borderRadius: 11 },
+  cross:     { position: 'absolute' },
+  pulse:     { position: 'absolute', bottom: 16, left: '38%' },
+});
+
+// ── Input row helper ──────────────────────────────────────────────────────────
+function Field({ icon, placeholder, value, onChangeText, secureTextEntry, keyboardType, returnKeyType, onSubmitEditing, innerRef, rightEl, onFocus, onBlur, focused }: any) {
+  return (
+    <View style={[styles.inputWrap, focused && styles.inputFocused]}>
+      <Feather name={icon} size={18} color={focused ? PRIMARY : MUTED} />
+      <TextInput
+        ref={innerRef}
+        style={styles.input}
+        placeholder={placeholder}
+        placeholderTextColor={MUTED}
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      {rightEl}
+    </View>
+  );
+}
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const { login, isOnboarded } = useApp();
-  
-  useEffect(() => {
-    if (isOnboarded === false) {
-      router.replace('/onboarding');
-    }
-  }, [isOnboarded]);
-  
+
+  useEffect(() => { if (isOnboarded === false) router.replace('/onboarding'); }, [isOnboarded]);
   if (isOnboarded === false) return null;
-  
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [role, setRoleState] = useState<"patient" | "caregiver" | "family">("patient");
-  
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [isSuccess, setIsSuccess] = useState(false);
 
-  // Family-specific fields
-  const [familyMemberName, setFamilyMemberName] = useState("");
-  const [familyMemberEmail, setFamilyMemberEmail] = useState("");
+  const [fullName,    setFullName]    = useState("");
+  const [email,       setEmail]       = useState("");
+  const [password,    setPassword]    = useState("");
+  const [showPwd,     setShowPwd]     = useState(false);
+  const [role,        setRoleState]   = useState<"patient" | "caregiver" | "family">("patient");
 
-  const [fullNameFocused, setFullNameFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [pwdFocused,   setPwdFocused]   = useState(false);
 
-  const emailRef = React.useRef<TextInput>(null);
+  // Role-specific
+  const [familyMemberName,  setFamilyMemberName]  = useState("");
+  const [familyMemberEmail, setFamilyMemberEmail] = useState("");
+  const [hospitalName,      setHospitalName]      = useState("");
+  const [licenseNumber,     setLicenseNumber]     = useState("");
+
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [progress,      setProgress]      = useState(0);
+  const [isSuccess,     setIsSuccess]     = useState(false);
+  const [error,         setError]         = useState<string | null>(null);
+
+  const emailRef    = React.useRef<TextInput>(null);
   const passwordRef = React.useRef<TextInput>(null);
 
-  // Stagger values
-  const welcomeY = useSharedValue(20);
-  const welcomeAlpha = useSharedValue(0);
-  const inputAlpha = useSharedValue(0);
-  const inputY = useSharedValue(15);
-  const btnAlpha = useSharedValue(0);
-  const btnScale = useSharedValue(0.95);
-
-  const sheetY = useSharedValue(SCREEN_HEIGHT);
-  const opacity = useSharedValue(1);
-
-  useEffect(() => {
-    // 1. Slide up bottom sheet with a bouncy spring
-    sheetY.value = withSpring(0, {
-      damping: 14,
-      stiffness: 70,
-    });
-
-    // 2. Staggered entry for content
-    welcomeAlpha.value = withDelay(400, withTiming(1, { duration: 600 }));
-    welcomeY.value = withDelay(400, withSpring(0));
-
-    inputAlpha.value = withDelay(600, withTiming(1, { duration: 600 }));
-    inputY.value = withDelay(600, withSpring(0));
-
-    btnAlpha.value = withDelay(800, withTiming(1, { duration: 600 }));
-    btnScale.value = withDelay(800, withSpring(1));
-  }, []);
-
-  const animatedSheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetY.value }],
-  }));
-
-  const animatedFormStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    display: opacity.value === 0 ? "none" : "flex",
-  }));
-
-  const animatedWelcome = useAnimatedStyle(() => ({
-    opacity: welcomeAlpha.value,
-    transform: [{ translateY: welcomeY.value }],
-  }));
-
-  const animatedInputs = useAnimatedStyle(() => ({
-    opacity: inputAlpha.value,
-    transform: [{ translateY: inputY.value }],
-  }));
-
-  const animatedButtons = useAnimatedStyle(() => ({
-    opacity: btnAlpha.value,
-    transform: [{ scale: btnScale.value }],
-  }));
+  const shakeX = useSharedValue(0);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+  const shake = () => {
+    shakeX.value = withSequence(
+      withTiming(-8, { duration: 45 }),
+      withRepeat(withTiming(8, { duration: 45 }), 4, true),
+      withTiming(0, { duration: 45 })
+    );
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+  };
 
   const handleRegister = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!fullName || !email || !password) {
-      alert("Please fill in all fields");
-      return;
-    }
+    setError(null);
+    if (!fullName || !email || !password) { setError("Please fill in all required fields"); shake(); return; }
 
-    opacity.value = withTiming(0, { duration: 200 });
     setIsRegistering(true);
-
-    // Progress simulation
-    setProgress(0.8); // Optimistically fill 80% while waiting for network
-
+    setProgress(0.8);
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
       const body: any = { email, name: fullName, role, password };
-
-      // For family role, include first member data
       if (role === 'family' && familyMemberName.trim()) {
-        body.familyMember = {
-          name: familyMemberName.trim(),
-          email: familyMemberEmail.trim() || null,
-        };
+        body.familyMember = { name: familyMemberName.trim(), email: familyMemberEmail.trim() || null };
       }
-
+      if (role === 'caregiver') {
+        body.professionalDetails = { hospitalName: hospitalName.trim(), licenseNumber: licenseNumber.trim() };
+      }
       const res = await fetch(`${apiUrl}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Registration failed");
-      }
-
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Registration failed"); }
       const data = await res.json();
       await login(data.user, data.token);
-
-      // Success! Immediately fill to 100% and transition
-      setProgress(1);
-      
-      setIsSuccess(true);
+      setProgress(1); setIsSuccess(true);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      // Play custom success sound
       try {
-        const { sound } = await Audio.Sound.createAsync(
-          require("../assets/sounds/universfield-new-notification-057-494255.mp3.mpeg")
-        );
+        const { sound } = await Audio.Sound.createAsync(require("../assets/sounds/notification.mp3"));
         await sound.playAsync();
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            sound.unloadAsync();
-          }
-        });
-      } catch (error) {
-        console.log("Error playing success sound:", error);
-      }
-      
+        sound.setOnPlaybackStatusUpdate((s) => { if (s.isLoaded && s.didJustFinish) sound.unloadAsync(); });
+      } catch {}
       setTimeout(() => {
-        const destination = 
-          role === 'caregiver' ? '/caregiver/dashboard' : 
-          role === 'family' ? '/family/dashboard' : 
-          '/(tabs)';
-          
-        sheetY.value = withTiming(SCREEN_HEIGHT, {
-          duration: 600,
-          easing: Easing.in(Easing.exp),
-        }, (finished) => {
-          if (finished) runOnJS(router.replace)(destination as any);
-        });
-      }, 1000);
+        const dest = role === 'caregiver' ? '/caregiver/dashboard' : role === 'family' ? '/family/dashboard' : '/(tabs)';
+        router.replace(dest as any);
+      }, 700);
     } catch (err: any) {
-      console.error(err);
-      setIsRegistering(false);
-      setProgress(0);
-      opacity.value = withTiming(1, { duration: 200 });
-      alert(err.message || "Failed to register");
+      setIsRegistering(false); setProgress(0);
+      setError(err.message || "Failed to register"); shake();
     }
   };
 
-  const topInset = Platform.OS === "web" ? 0 : insets.top;
-  const bottomInset = Platform.OS === "web" ? 24 : insets.bottom;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
+  const botPad = Platform.OS === "web" ? 24 : insets.bottom;
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: BACKGROUND }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView 
-        contentContainerStyle={{ flexGrow: 1 }} 
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <StatusBar barStyle="light-content" />
+
+      {/* ── Purple Header Block ── */}
+      <LinearGradient
+        colors={[PRIMARY_DARK, PRIMARY]}
+        start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }}
+        style={[styles.header, { paddingTop: topPad + 20 }]}
+      >
+        <RxDecor />
+        <TouchableOpacity onPress={() => router.replace("/login")} style={styles.backBtn}>
+          <Feather name="arrow-left" size={20} color={WHITE} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Create Account</Text>
+        <Text style={styles.headerSub}>Join DischargeBuddy — your care, simplified.</Text>
+      </LinearGradient>
+
+      {/* ── White Card ── */}
+      <ScrollView
+        style={styles.scrollWrap}
+        contentContainerStyle={[styles.card, { paddingBottom: botPad + 24 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <View style={{ flex: 1 }}>
-          <LinearGradient
-            colors={[PRIMARY_LIGHT, PRIMARY]}
-            style={[styles.header, { paddingTop: topInset + 40 }]}
-          >
-            <TouchableOpacity 
-              onPress={() => router.replace("/login")}
-              style={styles.backBtn}
-            >
-              <Feather name="arrow-left" size={24} color={WHITE} />
-            </TouchableOpacity>
-            
-            <View style={styles.mascotContainer}>
-              <MascotBuddy 
-                size={70} 
-                message="Welcome! I'm Mr. Meddy, and I'm honored to be part of your recovery. You're special to us! 🐾"
-              />
+        {isRegistering ? (
+          <View style={styles.loadingWrap}>
+            <Text style={styles.loadingTitle}>{isSuccess ? "Welcome aboard!" : "Setting up your profile…"}</Text>
+            <LiquidCapsuleProgress progress={progress} colorStart={PRIMARY} colorEnd="#EDE9FE" size={200} />
+            <Text style={styles.loadingSub}>Securing your medical recovery space</Text>
+          </View>
+        ) : (
+          <Animated.View style={shakeStyle}>
+            {/* Role selector */}
+            <Text style={styles.sectionLabel}>I am a</Text>
+            <View style={styles.roleRow}>
+              {(["patient", "family", "caregiver"] as const).map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setRoleState(r)}
+                  style={[styles.roleChip, role === r && styles.roleChipActive]}
+                >
+                  <Feather name={r === "patient" ? "user" : r === "family" ? "heart" : "users"} size={13} color={role === r ? WHITE : PRIMARY} />
+                  <Text style={[styles.roleChipText, { color: role === r ? WHITE : PRIMARY }]}>
+                    {r.charAt(0).toUpperCase() + r.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            
-            <Text style={styles.headerTitle}>Create Account</Text>
-            <Text style={styles.headerSubtitle}>Join the DischargeBuddy community</Text>
-          </LinearGradient>
 
-          <Animated.View style={[styles.sheet, animatedSheetStyle, { paddingBottom: bottomInset + 20, zIndex: 10 }]}>
-            
-            {isRegistering && (
-              <View style={styles.animationContainer}>
-                <Text style={styles.loadingTitle}>
-                  {isSuccess ? "Welcome to the family!" : "Creating your profile..."}
-                </Text>
-                <LiquidCapsuleProgress 
-                  progress={progress} 
-                  colorStart={PRIMARY} 
-                  colorEnd={PRIMARY_SOFT} 
-                  size={240}
-                />
-                <Text style={styles.loadingSub}>
-                  Setting up your secure medical recovery space
-                </Text>
+            {!!error && (
+              <View style={styles.errorBox}>
+                <Feather name="alert-circle" size={14} color="#EF4444" />
+                <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
 
-            {!isRegistering && (
-              <Animated.View style={[styles.form, animatedFormStyle]}>
-                <Animated.View style={animatedWelcome}>
-                  <View style={styles.roleToggle}>
-                    {(["patient", "family", "caregiver"] as const).map((r) => (
-                      <TouchableOpacity
-                        key={r}
-                        onPress={() => setRoleState(r)}
-                        style={[styles.roleBtn, role === r && styles.roleBtnActive]}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <Feather name={r === "patient" ? "user" : r === "family" ? "heart" : "users"} size={14} color={role === r ? WHITE : PRIMARY} />
-                        <Text style={[styles.roleBtnText, { color: role === r ? WHITE : PRIMARY }]}>
-                          {r.charAt(0).toUpperCase() + r.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </Animated.View>
+            {/* Core fields */}
+            <Text style={styles.sectionLabel}>Your details</Text>
+            <Field icon="user" placeholder="Full Name" value={fullName} onChangeText={setFullName}
+              focused={nameFocused} onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)}
+              returnKeyType="next" onSubmitEditing={() => emailRef.current?.focus()} />
+            <Field icon="mail" placeholder="Email address" value={email} onChangeText={setEmail}
+              focused={emailFocused} onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
+              keyboardType="email-address" innerRef={emailRef}
+              returnKeyType="next" onSubmitEditing={() => passwordRef.current?.focus()} />
+            <Field icon="lock" placeholder="Password" value={password} onChangeText={setPassword}
+              focused={pwdFocused} onFocus={() => setPwdFocused(true)} onBlur={() => setPwdFocused(false)}
+              secureTextEntry={!showPwd} innerRef={passwordRef}
+              returnKeyType="done" onSubmitEditing={handleRegister}
+              rightEl={
+                <TouchableOpacity onPress={() => setShowPwd(!showPwd)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Feather name={showPwd ? "eye" : "eye-off"} size={18} color={MUTED} />
+                </TouchableOpacity>
+              }
+            />
 
-                <Animated.View style={[styles.form, animatedInputs]}>
-                  <View style={[styles.inputContainer, fullNameFocused && styles.inputFocused]}>
-                    <Feather name="user" size={20} color={MUTED} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Full Name"
-                      value={fullName}
-                      onChangeText={setFullName}
-                      onFocus={() => setFullNameFocused(true)}
-                      onBlur={() => setFullNameFocused(false)}
-                      returnKeyType="next"
-                      onSubmitEditing={() => emailRef.current?.focus()}
-                      submitBehavior="submit"
-                      autoCorrect={false}
-                      spellCheck={false}
-                    />
-                  </View>
-
-                  <View style={[styles.inputContainer, emailFocused && styles.inputFocused]}>
-                    <Feather name="mail" size={20} color={MUTED} />
-                    <TextInput
-                      ref={emailRef}
-                      style={styles.input}
-                      placeholder="Email Address"
-                      value={email}
-                      onChangeText={setEmail}
-                      onFocus={() => setEmailFocused(true)}
-                      onBlur={() => setEmailFocused(false)}
-                      autoCapitalize="none"
-                      keyboardType="email-address"
-                      returnKeyType="next"
-                      onSubmitEditing={() => passwordRef.current?.focus()}
-                      submitBehavior="submit"
-                      autoCorrect={false}
-                      spellCheck={false}
-                    />
-                  </View>
-
-                  <View style={[styles.inputContainer, passwordFocused && styles.inputFocused]}>
-                    <Feather name="lock" size={20} color={MUTED} />
-                    <TextInput
-                      ref={passwordRef}
-                      style={styles.input}
-                      placeholder="Password"
-                      value={password}
-                      onChangeText={setPassword}
-                      onFocus={() => setPasswordFocused(true)}
-                      onBlur={() => setPasswordFocused(false)}
-                      secureTextEntry={!showPassword}
-                      returnKeyType="done"
-                      onSubmitEditing={handleRegister}
-                      autoCorrect={false}
-                      spellCheck={false}
-                    />
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                      <Feather name={showPassword ? "eye" : "eye-off"} size={20} color={MUTED} />
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-
-                {/* Extra step for Family role */}
-                {role === 'family' && (
-                  <Animated.View style={animatedInputs}>
-                    <View style={styles.familyCard}>
-                      <View style={styles.familyCardHeader}>
-                        <Feather name="heart" size={16} color={PRIMARY} />
-                        <Text style={styles.familyCardTitle}>Who are you managing?</Text>
-                      </View>
-                      <Text style={styles.familyCardSub}>
-                        Add a family member so your dashboard is ready on first launch.
-                      </Text>
-                      <View style={[styles.inputContainer, { marginTop: 10 }]}>
-                        <Feather name="user" size={18} color={MUTED} />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Member's Full Name *"
-                          value={familyMemberName}
-                          onChangeText={setFamilyMemberName}
-                          autoCorrect={false}
-                          spellCheck={false}
-                        />
-                      </View>
-                      <View style={[styles.inputContainer, { marginTop: 10 }]}>
-                        <Feather name="mail" size={18} color={MUTED} />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Their Email (optional, links their app)"
-                          value={familyMemberEmail}
-                          onChangeText={setFamilyMemberEmail}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          spellCheck={false}
-                        />
-                      </View>
-                    </View>
-                  </Animated.View>
-                )}
-
-                <Animated.View style={[styles.form, animatedButtons]}>
-                  <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <LinearGradient
-                      colors={[PRIMARY, PRIMARY_LIGHT]}
-                      style={styles.gradientBtn}
-                    >
-                      <Text style={styles.registerBtnText}>GET STARTED</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <View style={styles.footer}>
-                    <Text style={styles.footerText}>Already have an account? </Text>
-                    <TouchableOpacity onPress={() => router.replace("/login")}>
-                      <Text style={styles.footerLink}>Login</Text>
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-              </Animated.View>
+            {/* Family extra fields */}
+            {role === 'family' && (
+              <View style={styles.extraCard}>
+                <View style={styles.extraCardHeader}>
+                  <Feather name="heart" size={15} color={PRIMARY} />
+                  <Text style={styles.extraCardTitle}>Who are you managing?</Text>
+                </View>
+                <Text style={styles.extraCardSub}>Add a family member's details (optional)</Text>
+                <Field icon="user" placeholder="Member's full name" value={familyMemberName} onChangeText={setFamilyMemberName}
+                  focused={false} onFocus={() => {}} onBlur={() => {}} />
+                <Field icon="mail" placeholder="Their email (optional)" value={familyMemberEmail} onChangeText={setFamilyMemberEmail}
+                  keyboardType="email-address" focused={false} onFocus={() => {}} onBlur={() => {}} />
+              </View>
             )}
+
+            {/* Caregiver extra fields */}
+            {role === 'caregiver' && (
+              <View style={styles.extraCard}>
+                <View style={styles.extraCardHeader}>
+                  <Feather name="briefcase" size={15} color={PRIMARY} />
+                  <Text style={styles.extraCardTitle}>Professional Details</Text>
+                </View>
+                <Text style={styles.extraCardSub}>Required for caregiver verification</Text>
+                <Field icon="home" placeholder="Hospital / Clinic name" value={hospitalName} onChangeText={setHospitalName}
+                  focused={false} onFocus={() => {}} onBlur={() => {}} />
+                <Field icon="award" placeholder="Medical license number" value={licenseNumber} onChangeText={setLicenseNumber}
+                  focused={false} onFocus={() => {}} onBlur={() => {}} />
+              </View>
+            )}
+
+            {/* Submit */}
+            <TouchableOpacity onPress={handleRegister} activeOpacity={0.85} style={styles.primaryBtn}>
+              <LinearGradient colors={[PRIMARY, PRIMARY_DARK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtnGrad}>
+                <Text style={styles.primaryBtnText}>GET STARTED</Text>
+                <Feather name="arrow-right" size={18} color={WHITE} />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.replace("/login")}>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
-        </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: WHITE },
+
+  // ── Header ──
   header: {
-    minHeight: SCREEN_HEIGHT * 0.42,
-    paddingHorizontal: 30,
-    justifyContent: "center",
-    paddingBottom: 50,
-  },
-  mascotContainer: {
-    marginBottom: 10,
-    alignItems: "flex-start",
+    paddingHorizontal: 28,
+    paddingBottom: 28,
+    overflow: 'hidden',
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 14,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: WHITE,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: "rgba(255,255,255,0.8)",
-    marginTop: 5,
-  },
-  sheet: {
-    flex: 1,
-    backgroundColor: BACKGROUND,
-    marginTop: -30,
-    borderTopLeftRadius: 35,
-    borderTopRightRadius: 35,
-    paddingHorizontal: 30,
-    paddingTop: 35,
-  },
-  form: { gap: 18 },
-  roleToggle: {
-    flexDirection: "row",
+  headerTitle: { fontSize: 34, color: WHITE, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.5 },
+  headerSub:   { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontFamily: 'Inter_400Regular', marginTop: 4 },
+
+  // ── Scroll + Card ──
+  scrollWrap: { flex: 1, marginTop: -22 },
+  card: {
     backgroundColor: WHITE,
-    borderRadius: 15,
-    padding: 5,
-    borderWidth: 1,
-    borderColor: INPUT_BORDER,
-    width: "100%",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 28,
+    paddingTop: 28,
   },
-  roleBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  roleBtnActive: { backgroundColor: PRIMARY },
-  roleBtnText: { fontWeight: "600", fontSize: 14 },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: WHITE,
-    borderRadius: 15,
-    borderWidth: 1.5,
-    borderColor: INPUT_BORDER,
-    paddingHorizontal: 15,
-    paddingVertical: Platform.OS === "ios" ? 15 : 5,
-    gap: 12,
-  },
-  inputFocused: {
-    borderColor: PRIMARY,
-    backgroundColor: "#F8F7FF",
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    fontSize: 15,
-    color: "#000000",
-    marginLeft: 10,
-  },
-  registerBtn: { marginTop: 10 },
-  gradientBtn: {
-    borderRadius: 15,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-  registerBtnText: { color: WHITE, fontSize: 16, fontWeight: "700", letterSpacing: 1 },
-  footer: { flexDirection: "row", justifyContent: "center", marginTop: 10 },
+
+  // ── Section label ──
+  sectionLabel: { fontSize: 12, color: MUTED, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 },
+
+  // ── Role selector ──
+  roleRow: { flexDirection: 'row', backgroundColor: SOFT_BG, borderRadius: 14, padding: 4, marginBottom: 16 },
+  roleChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 10, borderRadius: 11 },
+  roleChipActive: { backgroundColor: PRIMARY, shadowColor: PRIMARY, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 3 },
+  roleChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+
+  // ── Error ──
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#FECACA' },
+  errorText: { flex: 1, color: '#EF4444', fontSize: 13, fontFamily: 'Inter_500Medium' },
+
+  // ── Inputs ──
+  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: INPUT_BG, borderRadius: 14, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 14 : 6, borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 10 },
+  inputFocused: { borderColor: PRIMARY, backgroundColor: '#F5F3FF' },
+  input: { flex: 1, fontSize: 15, color: TEXT_DARK, height: 42 },
+
+  // ── Extra cards (family/caregiver) ──
+  extraCard: { backgroundColor: SOFT_BG, borderRadius: 16, borderWidth: 1.5, borderColor: PRIMARY + '22', padding: 14, gap: 6, marginBottom: 10 },
+  extraCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  extraCardTitle: { fontSize: 14, fontFamily: 'Inter_700Bold', color: PRIMARY },
+  extraCardSub:   { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular', marginBottom: 6 },
+
+  // ── Primary Button ──
+  primaryBtn: { borderRadius: 14, shadowColor: PRIMARY, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 7, marginTop: 6, marginBottom: 18 },
+  primaryBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16 },
+  primaryBtnText: { color: WHITE, fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
+
+  // ── Footer ──
+  footerRow: { flexDirection: 'row', justifyContent: 'center' },
   footerText: { color: MUTED, fontSize: 14 },
-  footerLink: { color: PRIMARY, fontWeight: "700", fontSize: 14 },
-  animationContainer: { alignItems: "center", justifyContent: "center", paddingVertical: 40, gap: 20 },
-  loadingTitle: { fontSize: 22, fontWeight: "700", color: PRIMARY, textAlign: "center" },
-  loadingSub: { fontSize: 14, color: MUTED, textAlign: "center", maxWidth: "80%" },
-  familyCard: {
-    backgroundColor: PRIMARY_SOFT,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: `${PRIMARY}33`,
-    padding: 16,
-    gap: 8,
-  },
-  familyCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  familyCardTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: PRIMARY,
-  },
-  familyCardSub: {
-    fontSize: 13,
-    color: `${PRIMARY}99`,
-    lineHeight: 18,
-  },
+  footerLink: { color: PRIMARY, fontSize: 14, fontFamily: 'Inter_700Bold' },
+
+  // ── Loading ──
+  loadingWrap: { paddingVertical: 60, alignItems: 'center', gap: 20 },
+  loadingTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', color: PRIMARY },
+  loadingSub:   { fontSize: 14, color: MUTED, textAlign: 'center' },
 });

@@ -18,7 +18,8 @@
     },
     "android": {
       "package": "com.dischargebuddy.app",
-      "googleServicesFile": "./assets/google-services.json"
+      "googleServicesFile": "./assets/google-services.json",
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/images/icon.png"

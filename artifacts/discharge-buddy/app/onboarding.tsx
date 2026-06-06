@@ -4,16 +4,8 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
-  FlatList,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ViewToken,
-} from "react-native";
+  Dimensions, FlatList, Platform, Pressable, StyleSheet, TouchableOpacity, View, ViewToken,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import Animated, {
   Easing,
   FadeIn,

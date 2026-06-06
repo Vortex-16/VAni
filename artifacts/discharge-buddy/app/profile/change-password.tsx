@@ -2,15 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  Pressable,
-} from "react-native";
+  KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, Pressable,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 

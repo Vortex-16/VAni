@@ -3,15 +3,8 @@ import * as Haptics from "expo-haptics";
 import { router, useSegments } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
-  Animated,
-  Dimensions,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  Animated, Dimensions, Platform, Pressable, StyleSheet, TouchableOpacity, View,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useSidebar } from "@/context/SidebarContext";

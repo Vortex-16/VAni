@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 

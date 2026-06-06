@@ -5,16 +5,8 @@ import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Animated,
-  Dimensions,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-} from "react-native";
+  Animated, Dimensions, Platform, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Linking } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import Svg, { Circle, G, Rect, Text as SvgText, TSpan } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "@/constants/translations";
@@ -22,7 +14,7 @@ import { t } from "@/constants/translations";
 import { MascotBuddy } from "@/components/MascotBuddy";
 import { AnimPressable } from "@/components/AnimPressable";
 import colors from "@/constants/colors";
-import { useApp } from "@/context/AppContext";
+import { useApp, getLevel } from "@/context/AppContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { SuccessBurst } from "@/components/SuccessBurst";
 
@@ -178,10 +170,88 @@ function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; la
   );
 }
 
+// ── Skeleton shimmer block for startup loading ───────────────────────────────
+function SkeletonBox({ w, h, radius = 10, mt = 0 }: { w: number | string; h: number; radius?: number; mt?: number }) {
+  const shimmer = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.7] });
+  return (
+    <Animated.View
+      style={[
+        { width: w as any, height: h, borderRadius: radius, backgroundColor: "rgba(255,255,255,0.45)", marginTop: mt },
+        { opacity },
+      ]}
+    />
+  );
+}
+
+function HomeSkeletonLoader({ topInset }: { topInset: number }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ flex: 1, backgroundColor: "#F5F4FB" }}>
+      {/* Purple header skeleton */}
+      <LinearGradient
+        colors={["#4B26C8", PURPLE, "#8B5CF6"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerBg, { paddingTop: topInset + 14, paddingHorizontal: edgePad, paddingBottom: 28 }]}
+      >
+        {/* top bar */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <SkeletonBox w={42} h={42} radius={21} />
+          <View style={{ flex: 1, marginHorizontal: 10, gap: 6 }}>
+            <SkeletonBox w="50%" h={12} radius={6} />
+            <SkeletonBox w="70%" h={18} radius={8} />
+          </View>
+          <SkeletonBox w={42} h={42} radius={21} />
+        </View>
+        {/* mascot placeholder */}
+        <View style={{ alignItems: "center", marginVertical: 4 }}>
+          <SkeletonBox w={84} h={84} radius={42} />
+          <SkeletonBox w={120} h={14} radius={7} mt={8} />
+        </View>
+        {/* stats row */}
+        <View style={{ flexDirection: "row", gap: 14, marginTop: 14 }}>
+          <SkeletonBox w={96} h={96} radius={48} />
+          <View style={{ flex: 1, gap: 8, justifyContent: "center" }}>
+            <SkeletonBox w="40%" h={12} radius={6} />
+            <SkeletonBox w="60%" h={30} radius={8} />
+            <SkeletonBox w="50%" h={10} radius={5} />
+          </View>
+        </View>
+        {/* weekly bars */}
+        <View style={{ marginTop: 18, flexDirection: "row", gap: 8, justifyContent: "center" }}>
+          {[40, 60, 50, 70, 80, 55, 45].map((h, i) => (
+            <SkeletonBox key={i} w={22} h={h} radius={11} />
+          ))}
+        </View>
+      </LinearGradient>
+      {/* body cards */}
+      <View style={{ padding: edgePad, gap: 14, marginTop: 20 }}>
+        <SkeletonBox w="100%" h={58} radius={18} />
+        <SkeletonBox w="100%" h={58} radius={18} />
+        <SkeletonBox w="100%" h={58} radius={18} />
+      </View>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user, role, activePatientId, familyMembers, setActivePatientId } = useApp();
+  const { user, role, activePatientId, familyMembers, setActivePatientId, isInitializing } = useApp();
 
+  if (!user && !isInitializing) return <Redirect href="/login" />;
+  if (isInitializing) {
+    const topInset = Platform.OS === "web" ? 67 : insets.top;
+    return <HomeSkeletonLoader topInset={topInset} />;
+  }
   if (!user) return <Redirect href="/login" />;
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
@@ -228,8 +298,20 @@ function PatientDashboard({ topInset }: { topInset: number }) {
   const { 
     user, todayDoses, medicines, followUps, updateDoseStatus, language, 
     doseHistory, recoverySuggestion, clearRecoverySuggestion, refreshData,
-    streak, speakNeural, isSpeaking, speakingTargetId 
+    streak, xp, speakNeural, isSpeaking, speakingTargetId, notifications
   } = useApp();
+
+  // ── XP / Level pill ──────────────────────────────────────────────────────────
+  const level = getLevel(xp);
+  const xpInLevel = xp - level.min;
+  const xpNeeded = level.max - level.min;
+  const xpPct = Math.min(1, xpInLevel / xpNeeded);
+
+  // Count unread notifications across all groups
+  const unreadCount = (notifications || []).reduce(
+    (sum, group) => sum + group.items.filter((n) => !n.read).length,
+    0
+  );
   const { open: openSidebar } = useSidebar();
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -327,12 +409,27 @@ function PatientDashboard({ topInset }: { topInset: number }) {
               </AnimPressable>
               <AnimPressable onPress={() => router.push("/notifications")} style={styles.iconBtn}>
                 <Feather name="bell" size={19} color="#fff" />
-                <View style={styles.notifDot} />
+                {unreadCount > 0 && <View style={styles.notifDot} />}
               </AnimPressable>
             </View>
           </Animated.View>
 
           <MascotBuddy size={isSmall ? 76 : 84} trigger={mascotTrigger} />
+
+          {/* ── XP / Level pill + Streak badge ──────────────────────── */}
+          <View style={styles.xpPill}>
+            <Text style={styles.xpLevelBadge}>Lv {level.level}</Text>
+            <View style={styles.xpBarBg}>
+              <Animated.View style={[styles.xpBarFill, { width: `${xpPct * 100}%` }]} />
+            </View>
+            <Text style={styles.xpText}>{xpInLevel}/{xpNeeded} XP</Text>
+          </View>
+          {streak > 0 && (
+            <View style={styles.streakBadgePill}>
+              <Text style={styles.streakFireText}>🔥</Text>
+              <Text style={styles.streakBadgePillText}>{streak} Day Streak</Text>
+            </View>
+          )}
 
           <View style={styles.statsBlock}>
             <View style={styles.statsRow1}>
@@ -396,13 +493,13 @@ function PatientDashboard({ topInset }: { topInset: number }) {
             <QuickAction icon="book" label="Journal" color="#10B981" delay={160}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/journal" as any); }} />
             <QuickAction icon="alert-triangle" label="Emergency" color="#F59E0B" delay={200}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); router.push("/emergency" as any); }} />
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); Linking.openURL("tel:112"); }} />
           </View>
         </View>
 
         {upcomingFollowUp && (
           <AnimPressable
-            onPress={() => router.push("/(tabs)/followups" as any)}
+            onPress={() => router.push("/followups" as any)}
             style={styles.followupCard}
           >
             <LinearGradient colors={["#EDE9FE", "#F5F3FF"]} style={styles.followupGrad}>
@@ -531,6 +628,42 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
   const patient = (linkedPatients || [])[0];
 
+  // ── Computed caregiver header stats ─────────────────────────────────────────
+  const allPatients = linkedPatients || [];
+
+  // Average adherence: for each patient compute taken/total from their doseLogs,
+  // fall back to riskScore-derived estimate if doseLogs are absent.
+  const avgAdherence = (() => {
+    if (allPatients.length === 0) return null;
+    const pcts = allPatients.map((p) => {
+      const logs = p.doseLogs ?? [];
+      if (logs.length === 0) {
+        // Derive a rough adherence from riskScore (higher risk → lower adherence)
+        return p.riskScore != null ? Math.max(0, 100 - p.riskScore) : null;
+      }
+      const taken = logs.filter((d) => d.status === "taken").length;
+      return Math.round((taken / logs.length) * 100);
+    }).filter((v): v is number => v !== null);
+    if (pcts.length === 0) return null;
+    return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+  })();
+
+  // Alert count: patients flagged as High risk
+  const alertCount = allPatients.filter(
+    (p) => p.riskLevel === "High"
+  ).length;
+
+  // Overall status label
+  const overallStatus = (() => {
+    if (allPatients.length === 0) return "No patients";
+    if (alertCount > 0) return "Needs Attn.";
+    const modCount = allPatients.filter((p) => p.riskLevel === "Moderate").length;
+    if (modCount > 0) return "Moderate";
+    return "Stable";
+  })();
+
+  const statusColor = alertCount > 0 ? "#EF4444" : overallStatus === "Moderate" ? "#F59E0B" : "#22C55E";
+
   const heroFade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(heroFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -598,17 +731,23 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
           <MascotBuddy size={isSmall ? 76 : 84} message="Hi! Let's keep our patient safe today! 💜" />
           <View style={styles.careStats}>
             <View style={styles.careStat}>
-              <Text style={styles.careStatVal}>98%</Text>
+              <Text style={styles.careStatVal}>
+                {avgAdherence !== null ? `${avgAdherence}%` : "—"}
+              </Text>
               <Text style={styles.careStatLbl}>Adherence</Text>
             </View>
             <View style={styles.careStatDivider} />
             <View style={styles.careStat}>
-              <Text style={styles.careStatVal}>0</Text>
+              <Text style={[styles.careStatVal, alertCount > 0 && { color: "#EF4444" }]}>
+                {alertCount}
+              </Text>
               <Text style={styles.careStatLbl}>Alerts</Text>
             </View>
             <View style={styles.careStatDivider} />
             <View style={styles.careStat}>
-              <Text style={styles.careStatVal}>Stable</Text>
+              <Text style={[styles.careStatVal, { color: statusColor }]}>
+                {overallStatus}
+              </Text>
               <Text style={styles.careStatLbl}>Status</Text>
             </View>
           </View>
@@ -856,6 +995,80 @@ const styles = StyleSheet.create({
   patientBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, flexShrink: 0 },
   patientBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   scrollContent: { paddingHorizontal: 0 },
+
+  // XP level pill
+  xpPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 30,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    gap: 8,
+    marginTop: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  xpLevelBadge: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+  xpBarBg: {
+    width: isSmall ? 70 : 88,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    overflow: "hidden",
+  },
+  xpBarFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: "#FCD34D",
+  },
+  xpText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  streakBadge: {
+    backgroundColor: "rgba(252,211,77,0.22)",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "rgba(252,211,77,0.4)",
+  },
+  streakText: {
+    color: "#FCD34D",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  // Prominent streak pill shown below the XP bar
+  streakBadgePill: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(252,211,77,0.2)",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    marginTop: 4,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(252,211,77,0.5)",
+  },
+  streakFireText: { fontSize: 18 },
+  streakBadgePillText: {
+    color: "#FCD34D",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
 
   // Family viewing bar
   familyBar: {

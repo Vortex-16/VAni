@@ -2,16 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Image,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+  Platform, ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";

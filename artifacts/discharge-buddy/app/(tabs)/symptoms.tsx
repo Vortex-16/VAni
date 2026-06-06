@@ -3,17 +3,8 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  Alert, Animated, Dimensions, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import Svg, {
   Circle, Defs, Line, LinearGradient as SvgGradient,
   Path, Polygon, Stop, Text as SvgText,

@@ -1,5 +1,6 @@
 import { Link, Stack } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 
 import { useColors } from "@/hooks/useColors";
 

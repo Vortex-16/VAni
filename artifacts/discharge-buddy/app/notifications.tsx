@@ -2,14 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-  Pressable,
-} from "react-native";
+  Platform, ScrollView, StyleSheet, Switch, View, Pressable,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 

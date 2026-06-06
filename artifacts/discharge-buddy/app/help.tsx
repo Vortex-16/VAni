@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  LayoutAnimation,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, ActivityIndicator,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

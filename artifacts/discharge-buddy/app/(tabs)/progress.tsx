@@ -3,14 +3,8 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef } from "react";
 import {
-  Animated,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  Animated, Platform, ScrollView, StyleSheet, TouchableOpacity, View,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ALL_ACHIEVEMENTS, getLevel, useApp } from "@/context/AppContext";

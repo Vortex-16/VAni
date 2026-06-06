@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, Animated, Dimensions } from 'react-native';
+import { StyleSheet, View, Animated, Dimensions, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { soundHelper } from '@/utils/SoundHelper';

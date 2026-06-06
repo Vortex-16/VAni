@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Modal, TextInput, Dimensions, ActivityIndicator, Alert,
-  StatusBar, Platform, Image, Linking
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Modal, TextInput, Dimensions, ActivityIndicator, Alert, StatusBar, Platform, Image, Linking, Text as RNText } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
 import type { Patient } from '@/context/AppContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSidebar } from '@/context/SidebarContext';
+import { Sidebar } from '@/components/Sidebar';
 
 const { width } = Dimensions.get('window');
 
@@ -125,6 +124,7 @@ export default function FamilyDashboard() {
     user, familyMembers, addFamilyMember, linkFamilyMember,
     setActivePatientId, activePatientId, logout, speakNeural, isOnboarded
   } = useApp();
+  const { open: openSidebar } = useSidebar();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -195,7 +195,7 @@ export default function FamilyDashboard() {
 
       {/* ── Top App Bar ── */}
       <View style={[styles.appBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity style={styles.iconBtn} onPress={openSidebar}>
           <Feather name="menu" size={24} color={TEXT_DARK} />
         </TouchableOpacity>
         <View style={styles.appBarRight}>
@@ -242,7 +242,7 @@ export default function FamilyDashboard() {
              <TouchableOpacity key={m.id} style={styles.familyItem} onPress={() => handleSelectMember(m)}>
                 <View style={styles.familyAvatarContainer}>
                    <View style={[styles.familyAvatar, { backgroundColor: ['#E0E7FF', '#FCE7F3', '#FEF3C7', '#D1FAE5'][i % 4] }]}>
-                      <Text style={styles.familyInitials}>{m.name.substring(0,2).toUpperCase()}</Text>
+                      <RNText style={styles.familyInitials} numberOfLines={1} adjustsFontSizeToFit>{m.name.substring(0,2).toUpperCase()}</RNText>
                    </View>
                 </View>
                 <Text style={styles.familyItemName} numberOfLines={1}>{m.name.split(' ')[0]}</Text>
@@ -251,9 +251,9 @@ export default function FamilyDashboard() {
           ))}
           
           <TouchableOpacity style={styles.familyItem} onPress={() => handleSelectMember(null)}>
-              <View style={styles.familyAvatarContainer}>
+               <View style={styles.familyAvatarContainer}>
                  <View style={[styles.familyAvatar, { backgroundColor: '#F3F4F6' }]}>
-                    <Text style={[styles.familyInitials, { color: TEXT_MUTED }]}>YOU</Text>
+                    <RNText style={[styles.familyInitials, { color: TEXT_MUTED }]} numberOfLines={1} adjustsFontSizeToFit>YOU</RNText>
                  </View>
               </View>
               <Text style={styles.familyItemName}>You</Text>
@@ -345,7 +345,7 @@ export default function FamilyDashboard() {
             <View style={styles.alertCard}>
                <View style={styles.alertLeft}>
                   <View style={[styles.alertAvatar, { backgroundColor: '#E0E7FF' }]}>
-                     <Text style={[styles.familyInitials, { fontSize: 14 }]}>RS</Text>
+                     <RNText style={[styles.familyInitials, { fontSize: 14 }]} numberOfLines={1} adjustsFontSizeToFit>RS</RNText>
                   </View>
                   <View style={styles.alertInfo}>
                      <Text style={styles.alertName}>Rajesh Sharma</Text>
@@ -362,7 +362,7 @@ export default function FamilyDashboard() {
             <View style={styles.alertCard}>
                <View style={styles.alertLeft}>
                   <View style={[styles.alertAvatar, { backgroundColor: '#FCE7F3' }]}>
-                     <Text style={[styles.familyInitials, { fontSize: 14 }]}>SS</Text>
+                     <RNText style={[styles.familyInitials, { fontSize: 14 }]} numberOfLines={1} adjustsFontSizeToFit>SS</RNText>
                   </View>
                   <View style={styles.alertInfo}>
                      <Text style={styles.alertName}>Sunita Sharma</Text>
@@ -385,6 +385,7 @@ export default function FamilyDashboard() {
         onLink={handleLink}
         loading={actionLoading}
       />
+      <Sidebar />
     </View>
   );
 }

@@ -852,99 +852,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .replace(/\s+/g, ' ')
       .trim();
 
-    const ELEVENLABS_CONFIGURED = !!(process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY);
-
-    if (!ELEVENLABS_CONFIGURED) {
-      // No ElevenLabs key — use device TTS directly (fast, no network call)
-      try {
-        Speech.speak(cleanText, {
-          language: language === 'hi' ? 'hi-IN' : 'en-US',
-          pitch: 1.0,
-          rate: 0.95,
-          onDone: () => { setIsSpeaking(false); setSpeakingTargetId(null); },
-          onError: () => { setIsSpeaking(false); setSpeakingTargetId(null); },
-        });
-      } catch {
-        setIsSpeaking(false);
-        setSpeakingTargetId(null);
-      }
-      return;
-    }
-
+    // Use device-native speech engine for instant, zero-latency playback
     try {
-      // 1. Fetch with 1-retry logic
-      const fetchWithRetry = async (attempt = 0): Promise<string> => {
-        const token = await AsyncStorage.getItem("discharge_buddy_token");
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-        
-        const res = await fetch(`${apiUrl}/api/ai/tts`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          },
-          body: JSON.stringify({ text: cleanText })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          return data.audioContent;
-        }
-
-        if (attempt < 1) return fetchWithRetry(attempt + 1);
-        throw new Error("ElevenLabs TTS failed after retry");
-      };
-
-      const audioContent = await fetchWithRetry();
-      console.log("✅ ElevenLabs TTS received. Playing premium voice...");
-      
-      // The legacy API must be imported from 'expo-file-system/legacy' in SDK 52
-      const fileUri = `${cacheDirectory}tts_${Date.now()}.mp3`;
-      await writeAsStringAsync(fileUri, audioContent, {
-        encoding: EncodingType.Base64,
-      });
-      
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: fileUri },
-        { 
-          shouldPlay: true, 
-          pitchCorrectionQuality: Audio.PitchCorrectionQuality.High,
-          rate: 0.88,
-          shouldCorrectPitch: true 
-        }
-      );
-      
-      audioRef.current = sound;
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
+      Speech.speak(cleanText, {
+        language: language === 'hi' ? 'hi-IN' : 'en-US',
+        pitch: 1.0,
+        rate: 0.95,
+        onDone: () => {
           setIsSpeaking(false);
           setSpeakingTargetId(null);
-          sound.unloadAsync();
-          audioRef.current = null;
+        },
+        onError: () => {
+          setIsSpeaking(false);
+          setSpeakingTargetId(null);
         }
       });
-    } catch (err) {
-      console.warn("⚠️ ElevenLabs unavailable, falling back to device speech.", err);
-      // Fallback: Use local device TTS if ElevenLabs fails
-      try {
-        console.log("📢 Using device-native speech engine.");
-        await Speech.speak(cleanText, {
-          language: language === 'hi' ? 'hi-IN' : 'en-US',
-          pitch: 1.0,
-          rate: 0.95,
-          onDone: () => {
-            setIsSpeaking(false);
-            setSpeakingTargetId(null);
-          },
-          onError: () => {
-            setIsSpeaking(false);
-            setSpeakingTargetId(null);
-          }
-        });
-        return; // Success with fallback
-      } catch (speechErr) {
-        console.error("[Local Speech Error]", speechErr);
-      }
+    } catch (speechErr) {
+      console.error("[Local Speech Error]", speechErr);
       setIsSpeaking(false);
       setSpeakingTargetId(null);
     }
@@ -1163,7 +1087,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 export function useApp() {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  if (!ctx) {
+    console.error("useApp was called outside AppProvider!");
+    // Return a proxy that prevents immediate destructuring crashes
+    return new Proxy({}, {
+      get: (target, prop) => {
+        if (prop === 'language') return 'en';
+        if (prop === 'isOnboarded') return false;
+        return undefined;
+      }
+    }) as AppContextType;
+  }
   return ctx;
 }
 

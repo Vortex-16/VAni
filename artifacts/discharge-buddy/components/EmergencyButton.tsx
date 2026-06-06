@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useRef, useState } from "react";
-import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Animated, StyleSheet, TouchableOpacity, View, Linking } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -24,17 +25,18 @@ export function EmergencyButton() {
     ]).start();
 
     Alert.alert(
-      "Send Emergency Alert",
-      "This will notify your caregiver immediately and share your location. Do you need emergency help?",
+      "Emergency Help",
+      "This will call the National Emergency Number (112) and notify your caregiver. Do you want to proceed?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Send Alert",
+          text: "Call 112",
           style: "destructive",
           onPress: () => {
             triggerEmergency();
             setPressed(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Linking.openURL("tel:112");
             setTimeout(() => setPressed(false), 5000);
           },
         },

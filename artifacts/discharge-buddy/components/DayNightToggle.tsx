@@ -1,11 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import {
-  View,
-  StyleSheet,
-  TouchableWithoutFeedback,
-  Animated,
-  Text,
-} from "react-native";
+import { View, StyleSheet, TouchableWithoutFeedback, Animated,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from "@expo/vector-icons";
 
 interface DayNightToggleProps {

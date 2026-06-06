@@ -10,20 +10,8 @@ import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Dimensions,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  StatusBar,
-  ActivityIndicator,
-  Image,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-} from "react-native";
+  Dimensions, Platform, ScrollView, StyleSheet, TouchableOpacity, View, StatusBar, ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import Animated, { 
   FadeIn, 
   FadeInDown,

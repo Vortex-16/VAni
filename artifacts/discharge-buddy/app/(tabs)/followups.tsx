@@ -2,31 +2,35 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
-  Alert,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  Alert, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, ActivityIndicator,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { FollowUp, useApp } from "@/context/AppContext";
-import { useColors } from "@/hooks/useColors";
+
+const BACKGROUND = "#F5F4FB";
+const WHITE = "#FFFFFF";
+const TEXT_MAIN = "#1E1B4B";
+const TEXT_MUTED = "#6B7280";
+const PRIMARY = "#6C47FF";
+const PRIMARY_LIGHT = "#EDE9FE";
+const BORDER = "#E2E8F0";
+const WARNING = "#F59E0B";
+const SUCCESS = "#10B981";
 
 export default function FollowupsScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { followUps: rawFollowUps, addFollowUp, completeFollowUp } = useApp();
   const followUps = rawFollowUps || [];
+  
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [doctor, setDoctor] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
@@ -56,31 +60,71 @@ export default function FollowupsScreen() {
     setShowModal(false);
   };
 
+  const handleGetCurrentLocation = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsGettingLocation(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission denied", "Allow location access to use this feature.");
+        setIsGettingLocation(false);
+        return;
+      }
+
+      let loc = await Location.getCurrentPositionAsync({});
+      // Optionally reverse geocode to get an address string
+      let reverseLoc = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      if (reverseLoc && reverseLoc.length > 0) {
+        const address = `${reverseLoc[0].name || reverseLoc[0].street}, ${reverseLoc[0].city}`;
+        setLocation(address);
+      } else {
+        setLocation(`${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Could not get current location.");
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
   const daysUntil = (dateStr: string) => {
     const diff = new Date(dateStr).getTime() - Date.now();
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topInset + 12 }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Follow-ups</Text>
-        <TouchableOpacity
-          onPress={() => setShowModal(true)}
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-        >
-          <Feather name="plus" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={["#4B26C8", PRIMARY, "#8B5CF6"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerBg, { paddingTop: topInset + 12 }]}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Follow-ups</Text>
+          <TouchableOpacity
+            onPress={() => setShowModal(true)}
+            style={styles.addBtn}
+          >
+            <Feather name="plus" size={20} color={PRIMARY} />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
         {upcoming.length > 0 && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Upcoming</Text>
+            <Text style={styles.sectionLabel}>Upcoming</Text>
             {upcoming.map((f) => {
               const days = daysUntil(f.dateTime);
               const isUrgent = days <= 2;
@@ -89,37 +133,33 @@ export default function FollowupsScreen() {
                   key={f.id}
                   style={[
                     styles.card,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: isUrgent ? colors.warning : colors.border,
-                      borderLeftColor: isUrgent ? colors.warning : colors.primary,
-                    },
+                    { borderLeftColor: isUrgent ? WARNING : PRIMARY }
                   ]}
                 >
                   <View style={styles.cardHeader}>
                     <View style={styles.cardLeft}>
-                      <Feather
-                        name="calendar"
-                        size={18}
-                        color={isUrgent ? colors.warning : colors.primary}
-                      />
-                      <View>
-                        <Text style={[styles.cardTitle, { color: colors.foreground }]}>{f.title}</Text>
-                        <Text style={[styles.cardDoctor, { color: colors.mutedForeground }]}>
-                          {f.doctorName}
-                        </Text>
+                      <View style={[styles.iconWrap, { backgroundColor: isUrgent ? "#FEF3C7" : PRIMARY_LIGHT }]}>
+                        <Feather
+                          name="calendar"
+                          size={18}
+                          color={isUrgent ? WARNING : PRIMARY}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{f.title}</Text>
+                        <Text style={styles.cardDoctor}>{f.doctorName}</Text>
                       </View>
                     </View>
                     <View
                       style={[
                         styles.daysBadge,
-                        { backgroundColor: isUrgent ? `${colors.warning}20` : `${colors.primary}15` },
+                        { backgroundColor: isUrgent ? "#FEF3C7" : PRIMARY_LIGHT },
                       ]}
                     >
                       <Text
                         style={[
                           styles.daysText,
-                          { color: isUrgent ? colors.warning : colors.primary },
+                          { color: isUrgent ? "#B45309" : PRIMARY },
                         ]}
                       >
                         {days === 0 ? "Today" : days === 1 ? "Tomorrow" : `${days}d`}
@@ -127,28 +167,32 @@ export default function FollowupsScreen() {
                     </View>
                   </View>
 
-                  {f.location ? (
-                    <View style={styles.detail}>
-                      <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                      <Text style={[styles.detailText, { color: colors.mutedForeground }]}>{f.location}</Text>
-                    </View>
-                  ) : null}
+                  <View style={styles.detailsContainer}>
+                    {f.location ? (
+                      <View style={styles.detail}>
+                        <Feather name="map-pin" size={14} color={TEXT_MUTED} />
+                        <Text style={styles.detailText}>{f.location}</Text>
+                      </View>
+                    ) : null}
 
-                  <View style={styles.detail}>
-                    <Feather name="clock" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.detailText, { color: colors.mutedForeground }]}>
-                      {new Date(f.dateTime).toLocaleDateString("en", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
+                    <View style={styles.detail}>
+                      <Feather name="clock" size={14} color={TEXT_MUTED} />
+                      <Text style={styles.detailText}>
+                        {new Date(f.dateTime).toLocaleDateString("en", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </View>
                   </View>
 
                   {f.notes ? (
-                    <Text style={[styles.cardNotes, { color: colors.mutedForeground }]}>{f.notes}</Text>
+                    <View style={styles.notesContainer}>
+                      <Text style={styles.cardNotes}>{f.notes}</Text>
+                    </View>
                   ) : null}
 
                   <TouchableOpacity
@@ -156,10 +200,10 @@ export default function FollowupsScreen() {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       completeFollowUp(f.id);
                     }}
-                    style={[styles.completeBtn, { borderColor: colors.success }]}
+                    style={styles.completeBtn}
                   >
-                    <Feather name="check" size={14} color={colors.success} />
-                    <Text style={[styles.completeBtnText, { color: colors.success }]}>Mark Complete</Text>
+                    <Feather name="check-circle" size={16} color={SUCCESS} />
+                    <Text style={styles.completeBtnText}>Mark Complete</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -169,18 +213,20 @@ export default function FollowupsScreen() {
 
         {completed.length > 0 && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.foreground, marginTop: 20 }]}>Completed</Text>
+            <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Completed</Text>
             {completed.map((f) => (
               <View
                 key={f.id}
-                style={[styles.card, { backgroundColor: `${colors.muted}80`, borderColor: colors.border, opacity: 0.7 }]}
+                style={[styles.card, styles.completedCard]}
               >
                 <View style={styles.cardHeader}>
                   <View style={styles.cardLeft}>
-                    <Feather name="check-circle" size={18} color={colors.success} />
+                    <View style={[styles.iconWrap, { backgroundColor: "#D1FAE5" }]}>
+                      <Feather name="check" size={18} color={SUCCESS} />
+                    </View>
                     <View>
-                      <Text style={[styles.cardTitle, { color: colors.mutedForeground }]}>{f.title}</Text>
-                      <Text style={[styles.cardDoctor, { color: colors.mutedForeground }]}>{f.doctorName}</Text>
+                      <Text style={[styles.cardTitle, { color: TEXT_MUTED, textDecorationLine: "line-through" }]}>{f.title}</Text>
+                      <Text style={styles.cardDoctor}>{f.doctorName}</Text>
                     </View>
                   </View>
                 </View>
@@ -191,30 +237,56 @@ export default function FollowupsScreen() {
 
         {followUps.length === 0 && (
           <View style={styles.empty}>
-            <Feather name="calendar" size={48} color={colors.border} />
-            <Text style={[styles.emptyTitle, { color: colors.mutedForeground }]}>No Follow-ups</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Add your doctor appointments and tests
+            <View style={styles.emptyIconWrap}>
+              <Feather name="calendar" size={32} color={PRIMARY} />
+            </View>
+            <Text style={styles.emptyTitle}>No Follow-ups</Text>
+            <Text style={styles.emptySubtitle}>
+              Add your doctor appointments and tests to keep track of your recovery journey.
             </Text>
           </View>
         )}
       </ScrollView>
 
       <Modal visible={showModal} animationType="slide" presentationStyle="formSheet">
-        <View style={[styles.modal, { backgroundColor: colors.background }]}>
+        <View style={styles.modal}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Follow-up</Text>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Feather name="x" size={22} color={colors.foreground} />
+            <Text style={styles.modalTitle}>Add Follow-up</Text>
+            <TouchableOpacity onPress={() => setShowModal(false)} style={styles.closeBtn}>
+              <Feather name="x" size={20} color={TEXT_MAIN} />
             </TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-            <ModalInput label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Cardiology Follow-up" colors={colors} />
-            <ModalInput label="Doctor / Location" value={doctor} onChangeText={setDoctor} placeholder="Dr. Name or Hospital" colors={colors} />
-            <ModalInput label="Address / Room" value={location} onChangeText={setLocation} placeholder="Location (optional)" colors={colors} />
-            <ModalInput label="Notes" value={notes} onChangeText={setNotes} placeholder="Preparation notes..." colors={colors} multiline />
-            <TouchableOpacity onPress={handleAdd} style={[styles.submitBtn, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.submitBtnText]}>Add Appointment</Text>
+          <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+            <ModalInput label="Appointment Title" value={title} onChangeText={setTitle} placeholder="e.g. Cardiology Checkup" />
+            <ModalInput label="Doctor Name" value={doctor} onChangeText={setDoctor} placeholder="Dr. Sarah Mitchell" />
+            
+            <View>
+              <View style={styles.locationHeader}>
+                <Text style={styles.inputLabel}>Location / Room</Text>
+                <TouchableOpacity onPress={handleGetCurrentLocation} style={styles.currentLocBtn}>
+                  {isGettingLocation ? (
+                    <ActivityIndicator size="small" color={PRIMARY} />
+                  ) : (
+                    <>
+                      <Feather name="navigation" size={12} color={PRIMARY} />
+                      <Text style={styles.currentLocText}>Use Current Location</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                value={location}
+                onChangeText={setLocation}
+                placeholder="Hospital Name or Address"
+                placeholderTextColor={TEXT_MUTED}
+                style={[styles.input, { minHeight: 48 }]}
+              />
+            </View>
+
+            <ModalInput label="Notes / Preparation" value={notes} onChangeText={setNotes} placeholder="Bring latest reports..." multiline />
+            
+            <TouchableOpacity onPress={handleAdd} style={styles.submitBtn}>
+              <Text style={styles.submitBtnText}>Save Appointment</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -228,33 +300,28 @@ function ModalInput({
   value,
   onChangeText,
   placeholder,
-  colors,
   multiline,
 }: {
   label: string;
   value: string;
   onChangeText: (t: string) => void;
   placeholder: string;
-  colors: ReturnType<typeof useColors>;
   multiline?: boolean;
 }) {
   return (
     <View>
-      <Text style={[styles.inputLabel, { color: colors.foreground }]}>{label}</Text>
+      <Text style={styles.inputLabel}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={TEXT_MUTED}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
         style={[
           styles.input,
           {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            color: colors.foreground,
-            minHeight: multiline ? 80 : 48,
+            minHeight: multiline ? 100 : 50,
             textAlignVertical: multiline ? "top" : "center",
           },
         ]}
@@ -264,65 +331,166 @@ function ModalInput({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BACKGROUND },
+  headerBg: {
+    paddingBottom: 24,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
-  title: { fontSize: 24, fontFamily: "Inter_700Bold" },
+  title: { fontSize: 26, fontFamily: "Inter_800ExtraBold", color: WHITE, letterSpacing: -0.5 },
   addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: WHITE,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  sectionLabel: { fontSize: 16, fontFamily: "Inter_600SemiBold", marginBottom: 12 },
+  sectionLabel: { fontSize: 18, fontFamily: "Inter_700Bold", color: TEXT_MAIN, marginBottom: 12, marginLeft: 4 },
   card: {
+    backgroundColor: WHITE,
     padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderLeftWidth: 4,
-    marginBottom: 12,
-    gap: 8,
+    borderRadius: 20,
+    borderLeftWidth: 5,
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 12,
+  },
+  completedCard: {
+    borderLeftWidth: 0,
+    backgroundColor: "#F9FAFB",
+    opacity: 0.8,
   },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  cardLeft: { flexDirection: "row", alignItems: "flex-start", gap: 10, flex: 1 },
-  cardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  cardDoctor: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  daysBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  daysText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  detail: { flexDirection: "row", alignItems: "center", gap: 6 },
-  detailText: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  cardNotes: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" },
+  cardLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  cardTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: TEXT_MAIN, marginBottom: 2 },
+  cardDoctor: { fontSize: 13, fontFamily: "Inter_500Medium", color: TEXT_MUTED },
+  daysBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  daysText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  detailsContainer: { gap: 8, marginTop: 4, paddingLeft: 52 },
+  detail: { flexDirection: "row", alignItems: "center", gap: 8 },
+  detailText: { fontSize: 13, fontFamily: "Inter_500Medium", color: TEXT_MUTED },
+  notesContainer: {
+    backgroundColor: "#F8FAFC",
+    padding: 10,
+    borderRadius: 12,
+    marginTop: 4,
+    marginLeft: 52,
+  },
+  cardNotes: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#475569", fontStyle: "italic" },
   completeBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#ECFDF5",
     alignSelf: "flex-start",
+    marginLeft: 52,
+    marginTop: 4,
   },
-  completeBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  empty: { alignItems: "center", paddingTop: 80, gap: 12 },
-  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
-  emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  modal: { flex: 1 },
+  completeBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: SUCCESS },
+  empty: { alignItems: "center", paddingTop: 80, gap: 16, paddingHorizontal: 30 },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: PRIMARY_LIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: TEXT_MAIN },
+  emptySubtitle: { fontSize: 15, fontFamily: "Inter_400Regular", color: TEXT_MUTED, textAlign: "center", lineHeight: 22 },
+  modal: { flex: 1, backgroundColor: BACKGROUND },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 20,
     paddingTop: 40,
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
-  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  inputLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 14, fontFamily: "Inter_400Regular" },
-  submitBtn: { paddingVertical: 14, borderRadius: 14, alignItems: "center", marginTop: 8 },
-  submitBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: TEXT_MAIN },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  currentLocBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: PRIMARY_LIGHT,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  currentLocText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: PRIMARY,
+  },
+  inputLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: TEXT_MAIN, marginBottom: 8 },
+  input: {
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: TEXT_MAIN,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  submitBtn: {
+    backgroundColor: PRIMARY,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    marginTop: 12,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  submitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: WHITE },
 });

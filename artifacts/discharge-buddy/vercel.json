@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "public": true,
+  "name": "discharge-buddy-web",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "cleanUrls": true
+}

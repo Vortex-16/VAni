@@ -3,16 +3,8 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
-  Dimensions,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Alert,
-  Modal,
-} from "react-native";
+  Dimensions, Platform, ScrollView, StyleSheet, TouchableOpacity, View, Alert, Modal,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Animated, { 
   FadeInDown, 

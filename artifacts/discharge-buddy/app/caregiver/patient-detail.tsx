@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -107,6 +107,7 @@ export const translations: Record<Language, any> = {
   }
 };
 
-export const t = (key: string, lang: Language) => {
-  return translations[lang][key] || translations["en"][key] || key;
+export const t = (key: string, lang?: Language) => {
+  const activeLang = lang || "en";
+  return translations[activeLang]?.[key] || translations["en"]?.[key] || key;
 };

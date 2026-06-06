@@ -95,7 +95,7 @@ export async function scheduleMedicineNotifications(
       content: {
         title: "Time for your medicine! 💊",
         body: `Please take ${medicine.dosage} of ${medicine.name}.`,
-        sound: 'universfield-new-notification-057-494255.mp3.mpeg',
+        sound: 'notification.mp3',
         data: { medicineId: medicine.id },
       },
       trigger: {

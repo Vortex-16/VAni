@@ -33,6 +33,7 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="intro" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
@@ -54,12 +55,18 @@ function RootLayoutNav() {
   );
 }
 
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import * as Font from "expo-font";
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    ...Feather.font,
+    ...Ionicons.font,
+    ...MaterialIcons.font,
   });
 
   useEffect(() => {

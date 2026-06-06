@@ -1,12 +1,6 @@
 import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView, Dimensions,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,

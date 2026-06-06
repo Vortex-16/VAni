@@ -1,4 +1,5 @@
 import { Audio } from 'expo-av';
+import { Platform } from 'react-native';
 
 const SOUND_URL = 'https://www.soundjay.com/buttons/sounds/button-37.mp3'; // Fast, reliable "ting"
 
@@ -18,8 +19,9 @@ class SoundHelper {
   public async load() {
     try {
       if (this.sound) return;
+      if (Platform.OS === 'web') return; // Web sound unsupported natively here
       const { sound } = await Audio.Sound.createAsync(
-        require('../assets/sounds/universfield-new-notification-057-494255.mp3.mpeg'),
+        require('../assets/sounds/notification.mp3'),
         { volume: 1.0 }
       );
       this.sound = sound;

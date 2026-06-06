@@ -1,14 +1,13 @@
 import React, { useMemo } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Linking, Alert,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/context/AppContext';
 import { useSidebar } from '@/context/SidebarContext';
+import { Sidebar } from '@/components/Sidebar';
 import type { Patient } from '@/context/AppContext';
 
 const PURPLE = '#6C47FF';
@@ -301,6 +300,7 @@ export default function CaregiverDashboard() {
           <Feather name="chevron-right" size={20} color="#94a3b8" />
         </TouchableOpacity>
       </ScrollView>
+      <Sidebar />
     </View>
   );
 }

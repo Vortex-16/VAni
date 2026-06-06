@@ -22,6 +22,12 @@ export default function Root({ children }: { children: React.ReactNode }) {
                 font-style: normal;
               }
               @font-face {
+                font-family: 'Ionicons';
+                src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.0.3/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+              }
+              @font-face {
                 font-family: 'MaterialIcons';
                 src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.0.3/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf') format('truetype');
                 font-weight: normal;

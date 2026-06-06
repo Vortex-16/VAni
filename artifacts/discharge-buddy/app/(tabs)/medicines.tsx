@@ -4,19 +4,8 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useRef, useState, useEffect } from "react";
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Alert,
-  ActivityIndicator,
-  Dimensions,
-} from "react-native";
+  Platform, ScrollView, StyleSheet, TouchableOpacity, View, Modal, TextInput, KeyboardAvoidingView, Alert, ActivityIndicator, Dimensions,  } from 'react-native';
+import { TranslateText as Text } from '@/components/TranslateText';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 

@@ -11,8 +11,8 @@ export default function EntryScreen() {
     if (isInitializing) return;
 
     if (!isOnboarded) {
-      console.log("[EntryScreen] Redirecting to /onboarding");
-      router.replace("/onboarding");
+      console.log("[EntryScreen] Redirecting to /intro");
+      router.replace("/intro");
       return;
     }
 
