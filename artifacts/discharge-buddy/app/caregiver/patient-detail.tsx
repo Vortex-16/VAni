@@ -16,12 +16,15 @@ type RiskLevel = 'high' | 'medium' | 'stable';
 
 function computeRisk(patient: Patient): { level: RiskLevel; reasons: string[]; adherence: number } {
   const today = new Date().toISOString().split('T')[0];
-  const todayLogs = patient.doseLogs.filter((l: any) => l.date === today);
+  const doseLogs = patient.doseLogs ?? [];
+  const meds = patient.medicines ?? [];
+  const symptomLogs = patient.symptomLogs ?? [];
+  const todayLogs = doseLogs.filter((l: any) => l.date === today);
   const taken = todayLogs.filter((l: any) => l.status === 'taken').length;
-  const total = patient.medicines.reduce((acc, m) => acc + (m.times?.length || 1), 0);
+  const total = meds.reduce((acc, m) => acc + (m.times?.length || 1), 0);
   const adherence = total > 0 ? Math.round((taken / total) * 100) : 100;
   const missed = todayLogs.filter((l: any) => l.status === 'missed').length;
-  const latestSymptom = patient.symptomLogs[patient.symptomLogs.length - 1];
+  const latestSymptom = symptomLogs[symptomLogs.length - 1];
   const reasons: string[] = [];
 
   if (latestSymptom?.riskLevel === 'high' || adherence < 40) {
@@ -65,18 +68,25 @@ export default function PatientDetail() {
 
   const patient = linkedPatients.find(p => p.id === id) ?? linkedPatients[0];
 
+  // Optional collections may be omitted by the API — normalize once so the
+  // rest of the screen can use them safely.
+  const doseLogs = patient.doseLogs ?? [];
+  const meds = patient.medicines ?? [];
+  const symptomLogs = patient.symptomLogs ?? [];
+  const followUps = patient.followUps ?? [];
+
   const { level, reasons, adherence } = useMemo(() => computeRisk(patient), [patient]);
   const riskCfg = RISK_CONFIG[level];
 
   const today = new Date().toISOString().split('T')[0];
-  const todayLogs = patient.doseLogs.filter((l: any) => l.date === today);
+  const todayLogs = doseLogs.filter((l: any) => l.date === today);
   const taken  = todayLogs.filter((l: any) => l.status === 'taken').length;
   const missed = todayLogs.filter((l: any) => l.status === 'missed').length;
-  const total  = patient.medicines.reduce((acc, m) => acc + (m.times?.length || 1), 0);
+  const total  = meds.reduce((acc, m) => acc + (m.times?.length || 1), 0);
   const pending = total - taken - missed;
 
   // Build timeline from all scheduled times
-  const timeline = patient.medicines.flatMap(m =>
+  const timeline = meds.flatMap(m =>
     (m.times || ['08:00']).map(time => {
       const log = todayLogs.find((l: any) => l.medicineId === m.id && l.scheduledTime === time);
       const status = log?.status || (time < new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) ? 'missed' : 'pending');
@@ -170,10 +180,10 @@ export default function PatientDetail() {
 
         {/* C. Recovery Trends */}
         <Section icon="trending-up" title="Recovery Trends">
-          {patient.symptomLogs.length === 0 ? (
+          {symptomLogs.length === 0 ? (
             <Text style={styles.emptyNote}>No symptom data yet.</Text>
           ) : (
-            patient.symptomLogs.slice(-3).reverse().map((log, i) => (
+            symptomLogs.slice(-3).reverse().map((log, i) => (
               <View key={i} style={styles.trendCard}>
                 <View style={styles.trendCardTop}>
                   <Text style={styles.trendDate}>{new Date(log.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
@@ -186,9 +196,9 @@ export default function PatientDetail() {
               </View>
             ))
           )}
-          {patient.symptomLogs.length > 1 && (() => {
-            const latest = patient.symptomLogs[patient.symptomLogs.length - 1];
-            const prev   = patient.symptomLogs[patient.symptomLogs.length - 2];
+          {symptomLogs.length > 1 && (() => {
+            const latest = symptomLogs[symptomLogs.length - 1];
+            const prev   = symptomLogs[symptomLogs.length - 2];
             if (latest.severity < prev.severity) return <Text style={styles.insightGood}>✨ Symptoms improving steadily</Text>;
             if (latest.severity > prev.severity) return <Text style={styles.insightBad}>⚠️ Symptom severity increasing — monitor closely</Text>;
             return <Text style={styles.insightNeutral}>➡️ Symptoms stable, no change</Text>;
@@ -209,7 +219,7 @@ export default function PatientDetail() {
           <View style={styles.planInfoRow}>
             <View style={styles.planInfoItem}>
               <Feather name="package" size={16} color={PURPLE} />
-              <Text style={styles.planInfoVal}>{patient.medicines.length}</Text>
+              <Text style={styles.planInfoVal}>{meds.length}</Text>
               <Text style={styles.planInfoLbl}>Medicines</Text>
             </View>
             <View style={styles.planInfoItem}>
@@ -223,12 +233,12 @@ export default function PatientDetail() {
               <Text style={styles.planInfoLbl}>Emergency</Text>
             </View>
           </View>
-          {patient.followUps.length > 0 && (
+          {followUps.length > 0 && (
             <View style={styles.followUpCard}>
               <Feather name="calendar" size={14} color={PURPLE} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.followUpTitle}>{patient.followUps[0].title}</Text>
-                <Text style={styles.followUpDate}>{new Date(patient.followUps[0].dateTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</Text>
+                <Text style={styles.followUpTitle}>{followUps[0].title}</Text>
+                <Text style={styles.followUpDate}>{new Date(followUps[0].dateTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</Text>
               </View>
             </View>
           )}

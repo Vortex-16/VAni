@@ -3,24 +3,12 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import type { Medicine } from "@/context/AppContext";
 
-// Guard: SDK 53+ removed push support from Expo Go Android
+import * as Notifications from 'expo-notifications';
+
 const isExpoGo = Constants.appOwnership === 'expo';
 
-// Lazy-load notifications to prevent crash on import in Expo Go
-const getNotifications = () => {
-  try {
-    if (Platform.OS === 'web') return require('expo-notifications');
-    if (isExpoGo) return null;
-    return require('expo-notifications');
-  } catch (e) {
-    return null;
-  }
-};
-
-const Notifications = getNotifications();
-
-// DISABLED FOR EXPO GO STABILITY
-if (Notifications && (Platform.OS === 'web' || !isExpoGo)) {
+// Configure notification handler for foreground notifications
+if (Platform.OS !== 'web') {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -31,7 +19,9 @@ if (Notifications && (Platform.OS === 'web' || !isExpoGo)) {
         shouldShowList: true,
       }),
     });
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Failed to set notification handler:", e);
+  }
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
@@ -41,7 +31,6 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   }
 
   try {
-    if (!Notifications) return false;
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
@@ -65,12 +54,14 @@ export async function getDevicePushToken(): Promise<string | null> {
       Constants?.expoConfig?.extra?.eas?.projectId ?? 
       Constants?.easConfig?.projectId;
 
-    if (isExpoGo && Platform.OS === 'android') {
-      console.warn('Push tokens are not supported in Expo Go on Android SDK 53+. Use a development build.');
+    // Remote push tokens were removed from Expo Go (Android & iOS) in SDK 53+.
+    // Attempting to fetch one there throws/warns — skip it and let local
+    // notifications keep working. Use a development build for real push tokens.
+    if (isExpoGo) {
+      console.warn('Push tokens are not supported in Expo Go (SDK 53+). Use a development build for remote push.');
       return null;
     }
 
-    if (!Notifications) return null;
     const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     console.log('Expo Push Token:', token);
     return token;
@@ -85,7 +76,7 @@ export async function scheduleMedicineNotifications(
 ): Promise<Record<string, string>> {
   const notificationIds: Record<string, string> = {};
   
-  if (Platform.OS === 'web' || !Notifications) return {};
+  if (Platform.OS === 'web') return {};
 
   for (const time of medicine.times) {
     const [hours, minutes] = time.split(':').map(Number);
@@ -136,13 +127,13 @@ export async function scheduleMedicineNotifications(
 export async function cancelMedicineNotifications(
   notificationIds: string[]
 ): Promise<void> {
-  if (!Notifications) return;
+
   for (const id of notificationIds) {
     await Notifications.cancelScheduledNotificationAsync(id);
   }
 }
 
 export async function cancelAllNotifications(): Promise<void> {
-  if (!Notifications) return;
+
   await Notifications.cancelAllScheduledNotificationsAsync();
 }

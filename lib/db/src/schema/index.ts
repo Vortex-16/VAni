@@ -26,6 +26,9 @@ export const users = pgTable("users", {
     evening: "20:00",
     night: "22:00"
   }),
+  isEmailVerified: boolean("is_email_verified").default(false).notNull(),
+  emailVerificationCode: text("email_verification_code"),
+  emailVerificationExpires: timestamp("email_verification_expires"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

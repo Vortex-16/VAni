@@ -52,7 +52,7 @@ export default function MonitorPage() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Symptoms</Text>
-          {patient.symptomLogs.map((log) => (
+          {(patient.symptomLogs ?? []).map((log) => (
             <View key={log.id} style={styles.card}>
               <View style={styles.logHeader}>
                 <Text style={styles.logDate}>{new Date(log.date).toLocaleDateString()}</Text>
@@ -70,7 +70,7 @@ export default function MonitorPage() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Medication Schedule</Text>
-          {patient.medicines.map((med) => (
+          {(patient.medicines ?? []).map((med) => (
             <View key={med.id} style={styles.medRow}>
               <View style={[styles.medIcon, { backgroundColor: med.color + '20' }]}>
                 <Feather name="package" size={20} color={med.color} />

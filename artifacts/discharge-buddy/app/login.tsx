@@ -3,7 +3,10 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import Constants from 'expo-constants';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -24,6 +27,79 @@ import { MockProvider } from "@/context/MockProvider";
 import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
 import { getFriendlyErrorMessage } from '@/utils/errorUtils';
 import { BlurView } from 'expo-blur';
+
+// Required for web OAuth redirect handling
+WebBrowser.maybeCompleteAuthSession();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Google OAuth Client IDs Configuration
+// ──────────────────────────────────────────────────────────────────────────────
+const isExpoGo = Constants.appOwnership === 'expo';
+
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1053496091346-rdlu90avmpelr3rsugdq07civngjtl1h.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+
+// Check if Google OAuth is available for this platform/environment
+const isGoogleAuthAvailable = (): boolean => {
+  // In Expo Go on Android/iOS, Google auth via expo-auth-session requires native client IDs
+  // Without them, the library will throw an error during initialization
+  if (isExpoGo && Platform.OS === 'android') {
+    return false;  // Not available in Expo Go on Android
+  }
+  if (isExpoGo && Platform.OS === 'ios') {
+    return false;  // Not available in Expo Go on iOS
+  }
+  
+  // On web or with proper native credentials, Google auth is available
+  if (Platform.OS === 'web') {
+    return !!GOOGLE_WEB_CLIENT_ID;
+  }
+  if (Platform.OS === 'android') {
+    return !!GOOGLE_ANDROID_CLIENT_ID || !!GOOGLE_WEB_CLIENT_ID;
+  }
+  if (Platform.OS === 'ios') {
+    return !!GOOGLE_IOS_CLIENT_ID || !!GOOGLE_WEB_CLIENT_ID;
+  }
+  
+  return !!GOOGLE_WEB_CLIENT_ID;
+};
+
+// Build Google OAuth config based on platform
+const getGoogleAuthConfig = () => {
+  const config: any = {
+    scopes: ['openid', 'profile', 'email'],
+  };
+
+  // For web platform, use webClientId
+  if (Platform.OS === 'web') {
+    config.webClientId = GOOGLE_WEB_CLIENT_ID;
+    return config;
+  }
+
+  // For Android production builds (not Expo Go)
+  if (Platform.OS === 'android') {
+    if (GOOGLE_ANDROID_CLIENT_ID) {
+      config.androidClientId = GOOGLE_ANDROID_CLIENT_ID;
+    } else {
+      config.webClientId = GOOGLE_WEB_CLIENT_ID;
+    }
+    return config;
+  }
+
+  // For iOS production builds (not Expo Go)
+  if (Platform.OS === 'ios') {
+    if (GOOGLE_IOS_CLIENT_ID) {
+      config.iosClientId = GOOGLE_IOS_CLIENT_ID;
+    } else {
+      config.webClientId = GOOGLE_WEB_CLIENT_ID;
+    }
+    return config;
+  }
+
+  // Fallback
+  return config;
+};
 
 const PRIMARY      = "#7C3AED";
 const PRIMARY_DARK = "#5B21B6";
@@ -89,6 +165,26 @@ export default function LoginScreen() {
 
   const passwordRef = React.useRef<TextInput>(null);
 
+  // ── Real Google OAuth via expo-auth-session ──
+  // Only initialize if Google auth is available for this platform
+  const canUseGoogleAuth = React.useMemo(() => isGoogleAuthAvailable(), []);
+  
+  // Only call useAuthRequest if Google auth is available (avoids validation errors in Expo Go)
+  const googleAuthState = canUseGoogleAuth 
+    ? Google.useAuthRequest(getGoogleAuthConfig())
+    : [null, null, null];
+  
+  const [googleRequest, googleResponse, promptGoogleAsync] = googleAuthState;
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const accessToken = googleResponse.authentication?.accessToken;
+      if (accessToken) executeGoogleOAuth(accessToken);
+    } else if (googleResponse?.type === 'error') {
+      setError('Google sign-in was cancelled or failed.');
+    }
+  }, [googleResponse]);
+
   const shakeX = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
 
@@ -128,7 +224,18 @@ export default function LoginScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Login failed"); }
+      
+      if (!res.ok) {
+        const d = await res.json();
+        if (d.error === "EMAIL_NOT_VERIFIED") {
+          setIsLoggingIn(false);
+          setLoginProgress(0);
+          router.replace(`/verify-email?email=${encodeURIComponent(email)}` as any);
+          return;
+        }
+        throw new Error(d.error || "Login failed");
+      }
+      
       const data = await res.json();
       await login(data.user, data.token);
       setLoginProgress(1);
@@ -136,6 +243,67 @@ export default function LoginScreen() {
     } catch (err: any) {
       setError(getFriendlyErrorMessage(err, 'auth'));
       setIsLoggingIn(false); setLoginProgress(0);
+      shake();
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setError(null);
+    
+    // Check if Google auth is available
+    if (!canUseGoogleAuth) {
+      setError('Google Sign-In is not available in Expo Go. Please use Email/Password login or build a development build with proper OAuth credentials.');
+      return;
+    }
+
+    if (!googleRequest) {
+      setError('Google authentication is not ready. Please try again.');
+      return;
+    }
+    
+    promptGoogleAsync();
+  };
+
+  // Called with a real Google accessToken — fetches user info then signs in
+  const executeGoogleOAuth = async (accessToken: string) => {
+    setIsLoggingIn(true);
+    setLoginProgress(0.6);
+    setError(null);
+    try {
+      // Fetch real user info from Google
+      const userInfoRes = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!userInfoRes.ok) throw new Error('Failed to fetch Google user info');
+      const userInfo = await userInfoRes.json() as { email: string; name: string; picture?: string };
+
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+      setLoginProgress(0.8);
+
+      const res = await fetch(`${apiUrl}/api/auth/oauth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'google',
+          accessToken,
+          role,
+        }),
+      });
+
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Google sign-in failed');
+      }
+
+      const data = await res.json();
+      await login(data.user, data.token);
+      setLoginProgress(1);
+      setTimeout(handleTransitionToSuccess, 100);
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed');
+      setIsLoggingIn(false);
+      setLoginProgress(0);
       shake();
     }
   };
@@ -271,6 +439,14 @@ export default function LoginScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
+            {/* Google Sign-In - Only shown if available */}
+            {canUseGoogleAuth && (
+              <TouchableOpacity onPress={handleGoogleSignIn} activeOpacity={0.85} style={styles.googleBtn}>
+                <Feather name="chrome" size={18} color={PRIMARY} style={{ marginRight: 10 }} />
+                <Text style={styles.googleBtnText}>Sign in with Google</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
@@ -338,6 +514,8 @@ export default function LoginScreen() {
           </View>
         </BlurView>
       </Modal>
+
+      {/* Real Google OAuth handled via expo-auth-session — no modal needed */}
     </KeyboardAvoidingView>
   );
 }
@@ -462,4 +640,59 @@ const styles = StyleSheet.create({
   demoOptSub:   { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular' },
   modalCancelBtn: { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
   modalCancelText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
+
+  // ── Google Button ──
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    marginBottom: 18,
+  },
+  googleBtnText: {
+    color: PRIMARY,
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+  },
+
+  // ── Google Modal Options ──
+  googleOpt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  googleOptAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleOptName: { fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT_DARK },
+  googleOptEmail: { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular', marginTop: 1 },
+
+  // ── Google Custom Input Form ──
+  googleInputWrap: {
+    marginTop: 12,
+    gap: 10,
+  },
+  googleInput: {
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: TEXT_DARK,
+    backgroundColor: '#F8FAFC',
+  },
 });

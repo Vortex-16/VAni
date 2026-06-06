@@ -176,6 +176,7 @@ export interface AppUser {
   phone?: string;
   avatar?: string;
   role: UserRole;
+  isEmailVerified?: boolean;
   linkedPatientId?: string;
   bloodType?: string;
   allergies?: string;
@@ -567,12 +568,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Graceful handling of network failures to prevent "Red Screen of Death"
       if (err instanceof TypeError && err.message.includes("Network request failed")) {
         console.warn("Backend server unreachable. Using local cache if available.");
+      } else if (
+        err?.status === 403 &&
+        (err?.data?.error === "EMAIL_NOT_VERIFIED" || err?.message?.includes("EMAIL_NOT_VERIFIED"))
+      ) {
+        // Partial session: token is valid but the account's email is no longer
+        // verified (e.g. registered then closed the app before confirming).
+        // Proactively send the user back to the verification screen.
+        console.warn("Session is partial — email not verified. Prompting re-verification.");
+        const email = await getPersistedEmail();
+        if (email) {
+          router.replace(`/verify-email?email=${encodeURIComponent(email)}` as any);
+        } else {
+          router.replace("/login");
+        }
       } else if (err?.status === 401 || err?.message?.includes("401")) {
         console.warn("Session expired. Logging out automatically.");
         logout();
       } else {
         console.error("Failed to load generic data", err);
       }
+    }
+  }
+
+  // Reads the persisted user's email straight from storage so it is reliable
+  // even before the `user` state has hydrated (avoids stale-closure nulls).
+  async function getPersistedEmail(): Promise<string | null> {
+    try {
+      if (user?.email) return user.email;
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw)?.user?.email ?? null;
+    } catch {
+      return null;
     }
   }
 

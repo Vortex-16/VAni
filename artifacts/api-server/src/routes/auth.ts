@@ -6,67 +6,139 @@ import { eq, and } from "drizzle-orm";
 import type { AuthRequest } from "../middlewares/auth";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { sendVerificationEmail } from "../lib/email";
 
 const router = Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Helper to generate a 6-digit OTP code
+function generateOTPCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 router.post("/oauth", async (req, res) => {
   try {
-    const { provider, idToken } = req.body;
+    const { provider, idToken, accessToken, role, familyMember, professionalDetails } = req.body;
     
     if (provider !== "google") {
       return res.status(400).json({ error: "Unsupported provider" });
     }
 
     let email = "";
-    let name = "";
+    let name  = "";
 
-    // If we are using a placeholder client ID, we simulate successful verification
-    // using the token payload directly (assuming it's a mock token from frontend)
-    if (process.env.GOOGLE_CLIENT_ID === "PLACEHOLDER_GOOGLE_CLIENT_ID" || process.env.NODE_ENV === "test") {
-      // Decode mock JWT without verifying signature
-      const decodedPayload = jwt.decode(idToken) as any;
-      if (decodedPayload && decodedPayload.email) {
-        email = decodedPayload.email;
-        name = decodedPayload.name || "Test User";
+    if (accessToken) {
+      // ── Web flow: expo-auth-session returns an accessToken ──────────────────
+      // Use it to fetch real user profile from Google's userinfo endpoint
+      const userInfoRes = await fetch("https://www.googleapis.com/userinfo/v2/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!userInfoRes.ok) {
+        return res.status(400).json({ error: "Invalid Google access token" });
+      }
+      const userInfo = (await userInfoRes.json()) as { email: string; name: string; picture?: string };
+      if (!userInfo.email) {
+        return res.status(400).json({ error: "Could not retrieve email from Google" });
+      }
+      email = userInfo.email;
+      name  = userInfo.name || "User";
+
+    } else if (idToken) {
+      // ── Native flow: verifies Google ID token directly ──────────────────────
+      if (process.env.GOOGLE_CLIENT_ID === "PLACEHOLDER_GOOGLE_CLIENT_ID" || process.env.NODE_ENV === "test") {
+        const decodedPayload = jwt.decode(idToken) as any;
+        email = decodedPayload?.email || "test@example.com";
+        name  = decodedPayload?.name  || "Test User";
       } else {
-        // Fallback for completely dummy tokens
-        email = "test@example.com";
-        name = "Test User";
+        const ticket = await client.verifyIdToken({
+          idToken,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (!payload?.email) {
+          return res.status(400).json({ error: "Invalid Google token payload" });
+        }
+        email = payload.email;
+        name  = payload.name || "User";
       }
     } else {
-      // Real Google verification
-      const ticket = await client.verifyIdToken({
-        idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      const payload = ticket.getPayload();
-      if (!payload || !payload.email) {
-        return res.status(400).json({ error: "Invalid Google token payload" });
-      }
-      email = payload.email;
-      name = payload.name || "User";
+      return res.status(400).json({ error: "Either accessToken or idToken is required" });
     }
 
     // Upsert User
-    let [user] = await db.select().from(users).where(eq(users.email, email));
+    let [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
     
     if (!user) {
-      // Create a dummy patient profile for new users since this app requires it
-      const [newPatient] = await db.insert(patients).values({
-        name,
-        age: 30, // Mock
-        condition: "General Checkup",
-        dischargeDate: new Date(),
-        emergencyContact: "911",
-      }).returning();
+      const selectedRole = role || "patient";
 
-      [user] = await db.insert(users).values({
-        email,
-        name,
-        role: "patient",
-        linkedPatientId: newPatient.id,
-      }).returning();
+      if (selectedRole === "family") {
+        // Family users manage others — they do NOT get their own patient profile.
+        [user] = await db.insert(users).values({
+          email: email.toLowerCase(),
+          name,
+          role: "family",
+          isEmailVerified: true,
+          linkedPatientId: null, // Family users have no self-patient
+        }).returning();
+
+        // If a family member was provided, create/link their patient record.
+        if (familyMember?.name) {
+          if (familyMember.email) {
+            const [patientUser] = await db.select().from(users)
+              .where(eq(users.email, familyMember.email.toLowerCase()));
+
+            if (patientUser?.linkedPatientId) {
+              await db.update(patients)
+                .set({ caregiverId: user.id })
+                .where(eq(patients.id, patientUser.linkedPatientId));
+              logger.info({ familyUserId: user.id, patientId: patientUser.linkedPatientId }, "Family user linked to existing patient via OAuth");
+            } else {
+              await db.insert(patients).values({
+                name: familyMember.name,
+                age: 0,
+                condition: "Healthy",
+                dischargeDate: new Date(),
+                emergencyContact: "None",
+                caregiverId: user.id,
+              });
+            }
+          } else {
+            await db.insert(patients).values({
+              name: familyMember.name,
+              age: 0,
+              condition: "Healthy",
+              dischargeDate: new Date(),
+              emergencyContact: "None",
+              caregiverId: user.id,
+            });
+          }
+        }
+      } else {
+        // Patient or Caregiver: create a self-patient profile
+        const [newPatient] = await db.insert(patients).values({
+          name,
+          age: selectedRole === "caregiver" ? 40 : 30, // Mock
+          condition: selectedRole === "caregiver" ? "General Caregiver" : "General Checkup",
+          dischargeDate: new Date(),
+          emergencyContact: "911",
+        }).returning();
+
+        [user] = await db.insert(users).values({
+          email: email.toLowerCase(),
+          name,
+          role: selectedRole,
+          isEmailVerified: true,
+          linkedPatientId: newPatient.id,
+        }).returning();
+      }
+    } else {
+      // If user exists and is not verified, OAuth automatically verifies them
+      if (!user.isEmailVerified) {
+        [user] = await db.update(users)
+          .set({ isEmailVerified: true })
+          .where(eq(users.id, user.id))
+          .returning();
+      }
     }
 
     // Generate our JWT Session Token
@@ -76,10 +148,10 @@ router.post("/oauth", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user });
+    return res.json({ token, user });
   } catch (error) {
     logger.error({ err: error }, "OAuth Error");
-    res.status(500).json({ error: "Authentication failed" });
+    return res.status(500).json({ error: "Authentication failed" });
   }
 });
 
@@ -96,34 +168,35 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "User already exists" });
     }
 
+    const verificationCode = generateOTPCode();
+    const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
     let newUser;
 
     if (role === "family") {
       // Family users manage others — they do NOT get their own patient profile.
-      // Create the family account first.
       [newUser] = await db.insert(users).values({
         email: email.toLowerCase(),
         name,
         role: "family",
         password: password || null,
-        linkedPatientId: null, // Family users have no self-patient
+        linkedPatientId: null,
+        isEmailVerified: false,
+        emailVerificationCode: verificationCode,
+        emailVerificationExpires: verificationExpires,
       }).returning();
 
       // If a family member was provided, create/link their patient record.
       if (familyMember?.name) {
         if (familyMember.email) {
-          // Option 2: Try to link an existing patient account by email
           const [patientUser] = await db.select().from(users)
             .where(eq(users.email, familyMember.email.toLowerCase()));
 
           if (patientUser?.linkedPatientId) {
-            // Link that patient record's caregiverId to the new family user
             await db.update(patients)
               .set({ caregiverId: newUser.id })
               .where(eq(patients.id, patientUser.linkedPatientId));
-            logger.info({ familyUserId: newUser.id, patientId: patientUser.linkedPatientId }, "Family user linked to existing patient");
           } else {
-            // Email provided but no matching patient found — create a profile anyway
             await db.insert(patients).values({
               name: familyMember.name,
               age: 0,
@@ -132,10 +205,8 @@ router.post("/register", async (req, res) => {
               emergencyContact: "None",
               caregiverId: newUser.id,
             });
-            logger.info({ familyUserId: newUser.id }, "Created new patient profile (email not found)");
           }
         } else {
-          // Option 1: Create a new patient profile for the family member
           await db.insert(patients).values({
             name: familyMember.name,
             age: 0,
@@ -144,11 +215,10 @@ router.post("/register", async (req, res) => {
             emergencyContact: "None",
             caregiverId: newUser.id,
           });
-          logger.info({ familyUserId: newUser.id, memberName: familyMember.name }, "Created family member patient profile");
         }
       }
     } else {
-      // Patient or Caregiver: create a self-patient profile as before
+      // Patient or Caregiver: create a self-patient profile
       const [newPatient] = await db.insert(patients).values({
         name,
         age: 0,
@@ -163,22 +233,25 @@ router.post("/register", async (req, res) => {
         role: role || "patient",
         password: password || null,
         linkedPatientId: newPatient.id,
+        isEmailVerified: false,
+        emailVerificationCode: verificationCode,
+        emailVerificationExpires: verificationExpires,
       }).returning();
     }
 
-    const token = jwt.sign(
-      { sub: newUser.id },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
-    );
+    // Send verification email
+    await sendVerificationEmail(newUser.email, verificationCode, newUser.name);
 
-    res.json({ token, user: newUser });
+    return res.json({
+      requiresVerification: true,
+      email: newUser.email,
+      message: "Registration successful. A verification code has been sent to your email."
+    });
   } catch (error) {
     logger.error({ err: error }, "Register Error");
-    res.status(500).json({ error: "Registration failed" });
+    return res.status(500).json({ error: "Registration failed" });
   }
 });
-
 
 router.post("/login", async (req, res) => {
   try {
@@ -194,16 +267,126 @@ router.post("/login", async (req, res) => {
       return res.status(404).json({ error: "User not found. Please register first." });
     }
 
+    // If user is not verified, block login and resend a verification code
+    if (!user.isEmailVerified) {
+      const verificationCode = generateOTPCode();
+      const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+      await db.update(users)
+        .set({
+          emailVerificationCode: verificationCode,
+          emailVerificationExpires: verificationExpires
+        })
+        .where(eq(users.id, user.id));
+
+      await sendVerificationEmail(user.email, verificationCode, user.name);
+
+      return res.status(403).json({
+        error: "EMAIL_NOT_VERIFIED",
+        email: user.email,
+        message: "Your email address is not verified. A verification code has been sent to your email."
+      });
+    }
+
     const token = jwt.sign(
       { sub: user.id }, 
       process.env.JWT_SECRET!, 
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user });
+    return res.json({ token, user });
   } catch (error) {
     logger.error({ err: error }, "Login Error");
-    res.status(500).json({ error: "Login failed" });
+    return res.status(500).json({ error: "Login failed" });
+  }
+});
+
+// Route to verify the OTP code
+router.post("/verify-email", async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ error: "Email and code are required" });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.isEmailVerified) {
+      const token = jwt.sign(
+        { sub: user.id }, 
+        process.env.JWT_SECRET!, 
+        { expiresIn: "7d" }
+      );
+      return res.json({ token, user });
+    }
+
+    if (!user.emailVerificationCode || user.emailVerificationCode !== code) {
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
+      return res.status(400).json({ error: "Verification code has expired" });
+    }
+
+    // Mark as verified
+    const [updatedUser] = await db.update(users)
+      .set({
+        isEmailVerified: true,
+        emailVerificationCode: null,
+        emailVerificationExpires: null
+      })
+      .where(eq(users.id, user.id))
+      .returning();
+
+    const token = jwt.sign(
+      { sub: updatedUser.id }, 
+      process.env.JWT_SECRET!, 
+      { expiresIn: "7d" }
+    );
+
+    return res.json({ token, user: updatedUser });
+  } catch (error) {
+    logger.error({ err: error }, "Email Verification Error");
+    return res.status(500).json({ error: "Email verification failed" });
+  }
+});
+
+// Route to resend verification code
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const verificationCode = generateOTPCode();
+    const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    await db.update(users)
+      .set({
+        emailVerificationCode: verificationCode,
+        emailVerificationExpires: verificationExpires
+      })
+      .where(eq(users.id, user.id));
+
+    await sendVerificationEmail(user.email, verificationCode, user.name);
+
+    return res.json({ success: true, message: "Verification code resent successfully" });
+  } catch (error) {
+    logger.error({ err: error }, "Resend Verification Error");
+    return res.status(500).json({ error: "Failed to resend verification code" });
   }
 });
 
@@ -234,7 +417,13 @@ router.get("/dev-session", async (req, res) => {
         name,
         role: "patient",
         linkedPatientId: newPatient.id,
+        isEmailVerified: true,
       }).returning();
+    } else if (!user.isEmailVerified) {
+      [user] = await db.update(users)
+        .set({ isEmailVerified: true })
+        .where(eq(users.id, user.id))
+        .returning();
     }
 
     // 2. Seed Medicines if empty
@@ -291,14 +480,14 @@ router.get("/dev-session", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user });
+    return res.json({ token, user });
   } catch (error) {
     logger.error({ err: error }, "Dev Session Error");
-    res.status(500).json({ error: "Dev session failed" });
+    return res.status(500).json({ error: "Dev session failed" });
   }
 });
 
-router.get("/me", requireAuth, async (req: AuthRequest, res) => {
+router.get("/me", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   res.json({ user: req.user });
 });
 
@@ -314,10 +503,10 @@ router.post("/push-token", requireAuth, async (req: AuthRequest, res) => {
       .where(eq(users.id, req.user!.id));
 
     logger.info({ userId: req.user!.id, token }, "Push token registered");
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     logger.error({ err: error }, "Push Token Registration Error");
-    res.status(500).json({ error: "Failed to register push token" });
+    return res.status(500).json({ error: "Failed to register push token" });
   }
 });
 
@@ -339,10 +528,10 @@ router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
       .where(eq(users.id, req.user!.id))
       .returning();
 
-    res.json({ user: updatedUser });
+    return res.json({ user: updatedUser });
   } catch (error) {
     logger.error({ err: error }, "Profile Update Error");
-    res.status(500).json({ error: "Failed to update profile" });
+    return res.status(500).json({ error: "Failed to update profile" });
   }
 });
 
@@ -356,10 +545,10 @@ router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
       .set({ password: newP })
       .where(eq(users.id, req.user!.id));
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     logger.error({ err: error }, "Password Change Error");
-    res.status(500).json({ error: "Failed to change password" });
+    return res.status(500).json({ error: "Failed to change password" });
   }
 });
 

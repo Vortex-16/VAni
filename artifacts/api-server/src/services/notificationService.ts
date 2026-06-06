@@ -121,8 +121,39 @@ export interface NotificationPayload {
 }
 
 export async function sendPushNotification(token: string, payload: NotificationPayload) {
+  if (!token) return null;
+
+  // Route Expo push tokens to Expo Push API
+  if (token.startsWith("ExponentPushToken[") || token.includes("host.exp.expo")) {
+    logger.info({ token }, "Sending push notification via Expo API");
+    try {
+      const response = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Accept-encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: token,
+          sound: "default",
+          title: payload.title,
+          body: payload.body,
+          data: payload.data || {},
+        }),
+      });
+      const data = await response.json();
+      logger.info({ data }, "Expo push notification response");
+      return data;
+    } catch (error) {
+      logger.error({ err: error, token }, "Error sending Expo push notification");
+      return null;
+    }
+  }
+
+  // Route native tokens to Firebase Cloud Messaging (FCM)
   if (!admin.apps.length) {
-    logger.error("Firebase Admin not initialized. Cannot send notification.");
+    logger.error("Firebase Admin not initialized. Cannot send FCM notification.");
     return null;
   }
 
@@ -152,10 +183,10 @@ export async function sendPushNotification(token: string, payload: NotificationP
     };
 
     const response = await admin.messaging().send(message);
-    logger.info({ response, token }, "Push notification sent successfully");
+    logger.info({ response, token }, "FCM push notification sent successfully");
     return response;
   } catch (error) {
-    logger.error({ err: error, token }, "Error sending push notification");
+    logger.error({ err: error, token }, "Error sending FCM push notification");
     return null;
   }
 }
@@ -164,21 +195,69 @@ export async function sendPushNotification(token: string, payload: NotificationP
  * Batch send notifications to multiple tokens
  */
 export async function sendMulticastNotification(tokens: string[], payload: NotificationPayload) {
-  if (!admin.apps.length || tokens.length === 0) return null;
+  if (tokens.length === 0) return null;
 
-  try {
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens,
-      notification: {
+  const expoTokens: string[] = [];
+  const fcmTokens: string[] = [];
+
+  for (const token of tokens) {
+    if (token.startsWith("ExponentPushToken[") || token.includes("host.exp.expo")) {
+      expoTokens.push(token);
+    } else {
+      fcmTokens.push(token);
+    }
+  }
+
+  // Batch send to Expo
+  if (expoTokens.length > 0) {
+    try {
+      const messages = expoTokens.map(token => ({
+        to: token,
+        sound: "default",
         title: payload.title,
         body: payload.body,
-      },
-      data: payload.data,
-    });
-    logger.info({ successCount: response.successCount, failureCount: response.failureCount }, "Multicast notifications sent");
-    return response;
-  } catch (error) {
-    logger.error({ err: error }, "Error sending multicast notifications");
-    return null;
+        data: payload.data || {},
+      }));
+
+      const response = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Accept-encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messages),
+      });
+      const data = await response.json();
+      logger.info({ data }, "Expo multicast push response");
+    } catch (error) {
+      logger.error({ err: error, expoTokens }, "Error sending Expo multicast push");
+    }
   }
+
+  // Batch send to FCM
+  if (fcmTokens.length > 0) {
+    if (!admin.apps.length) {
+      logger.warn("Firebase Admin not initialized. Skipping FCM multicast.");
+      return null;
+    }
+
+    try {
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens: fcmTokens,
+        notification: {
+          title: payload.title,
+          body: payload.body,
+        },
+        data: payload.data,
+      });
+      logger.info({ successCount: response.successCount, failureCount: response.failureCount }, "FCM multicast notifications sent");
+      return response;
+    } catch (error) {
+      logger.error({ err: error }, "Error sending FCM multicast notifications");
+      return null;
+    }
+  }
+
+  return null;
 }

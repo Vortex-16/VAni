@@ -148,18 +148,29 @@ export default function RegisterScreen() {
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Registration failed"); }
       const data = await res.json();
-      await login(data.user, data.token);
-      setProgress(1); setIsSuccess(true);
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      try {
-        const { sound } = await Audio.Sound.createAsync(require("../assets/sounds/notification.mp3"));
-        await sound.playAsync();
-        sound.setOnPlaybackStatusUpdate((s) => { if (s.isLoaded && s.didJustFinish) sound.unloadAsync(); });
-      } catch {}
-      setTimeout(() => {
-        const dest = role === 'caregiver' ? '/caregiver/dashboard' : role === 'family' ? '/family/dashboard' : '/(tabs)';
-        router.replace(dest as any);
-      }, 700);
+      
+      if (data.requiresVerification) {
+        setProgress(1); 
+        setIsSuccess(true);
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setTimeout(() => {
+          router.replace(`/verify-email?email=${encodeURIComponent(email)}` as any);
+        }, 700);
+      } else {
+        await login(data.user, data.token);
+        setProgress(1); 
+        setIsSuccess(true);
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        try {
+          const { sound } = await Audio.Sound.createAsync(require("../assets/sounds/notification.mp3"));
+          await sound.playAsync();
+          sound.setOnPlaybackStatusUpdate((s) => { if (s.isLoaded && s.didJustFinish) sound.unloadAsync(); });
+        } catch {}
+        setTimeout(() => {
+          const dest = role === 'caregiver' ? '/caregiver/dashboard' : role === 'family' ? '/family/dashboard' : '/(tabs)';
+          router.replace(dest as any);
+        }, 700);
+      }
     } catch (err: any) {
       setIsRegistering(false); setProgress(0);
       setError(err.message || "Failed to register"); shake();

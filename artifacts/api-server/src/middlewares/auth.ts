@@ -7,7 +7,7 @@ export interface AuthRequest extends Request {
   user?: typeof users.$inferSelect;
 }
 
-export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return next(); // Guest — no token, continue anyway
@@ -24,18 +24,20 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
     // Invalid token — treat as guest, don't block
   }
 
-  next();
+  return next();
 };
 
-export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing or invalid authorization header" });
+    res.status(401).json({ error: "Missing or invalid authorization header" });
+    return;
   }
 
   const token = authHeader.split(" ")[1];
   if (!token) {
-    return res.status(401).json({ error: "Missing token" });
+    res.status(401).json({ error: "Missing token" });
+    return;
   }
 
   try {
@@ -43,12 +45,18 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     const [user] = await db.select().from(users).where(eq(users.id, decoded.sub));
 
     if (!user) {
-      return res.status(401).json({ error: "User not found" });
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+
+    if (!user.isEmailVerified) {
+      res.status(403).json({ error: "EMAIL_NOT_VERIFIED", message: "Please verify your email address to access this resource." });
+      return;
     }
 
     req.user = user;
-    next();
+    return next();
   } catch (err) {
-    return res.status(401).json({ error: "Invalid token" });
+    res.status(401).json({ error: "Invalid token" });
   }
 };

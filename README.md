@@ -5,6 +5,8 @@
 [![Expo](https://img.shields.io/badge/Maintained%20with-Expo-000020?style=for-the-badge&logo=expo)](https://expo.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
+> **📚 New to the project?** Start with [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) for a complete guide to all resources.
+
 ---
 
 ## 📖 Overview
@@ -155,12 +157,20 @@ JWT_SECRET=your_super_secret
 # Database
 DATABASE_URL=your_neon_postgres_url
 
+# Google OAuth (See GOOGLE_OAUTH_SETUP.md for detailed configuration)
+GOOGLE_CLIENT_ID=your_google_oauth_web_client_id
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_google_oauth_web_client_id
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_google_oauth_android_client_id
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_google_oauth_ios_client_id
+
 # AI Providers
 GEMINI_API_KEY=your_google_ai_key
 ANTHROPIC_API_KEY=your_anthropic_key
 GROQ_API_KEY=your_groq_key
 NVIDIA_API_KEY=your_nvidia_key
 ```
+
+> **⚠️ Important:** For Google OAuth setup with native Android/iOS client IDs, see [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)
 
 ### 4. Run Services
 **Backend:**
