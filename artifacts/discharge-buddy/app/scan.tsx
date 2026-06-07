@@ -229,16 +229,28 @@ export default function ScanScreen() {
     if (!scanResult) return;
     try {
       for (const med of scanResult.medicines) {
+        const times = [];
+        if (med.schedule?.morning) times.push("08:00");
+        if (med.schedule?.afternoon) times.push("14:00");
+        if (med.schedule?.night) times.push("20:00");
+        if (times.length === 0) times.push("09:00"); // Default
+
         await addMedicine({
-          name: med.name,
-          dosage: med.dosage,
-          frequency: med.frequency,
-          timing: med.timing,
-          notes: med.notes,
+          name: med.name || "Unknown Medicine",
+          dosage: med.dosage || "",
+          frequency: med.frequency || "Daily",
+          times,
+          instructions: med.notes || med.timing || "",
+          simplifiedInstructions: med.notes || "",
+          startDate: new Date().toISOString(),
+          color: MEDICINE_COLORS[Math.floor(Math.random() * MEDICINE_COLORS.length)],
         } as any);
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace("/(tabs)/medicines");
+      // Wait a moment for state updates to settle before navigating
+      setTimeout(() => {
+        router.push("/(tabs)/medicines");
+      }, 500);
     } catch (err) {
       console.error("Failed to add medicines:", err);
     }

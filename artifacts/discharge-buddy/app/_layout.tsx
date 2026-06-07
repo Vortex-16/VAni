@@ -16,6 +16,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { SidebarProvider } from "@/context/SidebarContext";
+import { AssistantProvider } from "@/components/assistant/AssistantProvider";
+import { AssistantOverlay } from "@/components/assistant/AssistantOverlay";
 import { Audio } from 'expo-av';
 
 SplashScreen.preventAutoHideAsync();
@@ -90,7 +92,10 @@ export default function RootLayout() {
             <KeyboardProvider>
               <AppProvider>
                 <SidebarProvider>
-                  <RootLayoutNav />
+                  <AssistantProvider>
+                    <AssistantOverlay />
+                    <RootLayoutNav />
+                  </AssistantProvider>
                 </SidebarProvider>
               </AppProvider>
             </KeyboardProvider>

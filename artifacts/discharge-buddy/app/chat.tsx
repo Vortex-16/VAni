@@ -10,6 +10,7 @@ import Animated, { FadeInUp, LinearTransition, useSharedValue, useAnimatedStyle,
 
 import { useApp } from "@/context/AppContext";
 import { NeuralOrb } from "@/components/NeuralOrb";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
 
 const { width } = Dimensions.get("window");
 const PURPLE = "#6C47FF";
@@ -61,47 +62,7 @@ export default function ChatScreen() {
   */
 
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-
-  useEffect(() => {
-    // Initialize Web Speech API for STT (Only works on Web)
-    if (Platform.OS !== 'web') return;
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result: any) => result.transcript)
-          .join('');
-        setInput(transcript);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("STT Error:", event.error);
-        setIsListening(false);
-      };
-    }
-  }, []);
-
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      recognitionRef.current?.start();
-      setIsListening(true);
-    }
-  };
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const sendMessage = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
@@ -227,12 +188,14 @@ export default function ChatScreen() {
           {/* Central Orb Hero */}
           <View style={styles.orbSection}>
             <View style={styles.mainOrbWrapper}>
-              <NeuralOrb isSpeaking={isSpeaking} isProcessing={isLoading || isListening} isAssistant={true} />
+              <NeuralOrb isSpeaking={isSpeaking} isProcessing={isLoading || isListening || isTranscribing} isAssistant={true} />
             </View>
             {isListening ? (
-              <Text style={[styles.orbHint, { color: PURPLE, fontWeight: 'bold' }]}>Listening to you... 🎙️</Text>
+              <Text style={[styles.orbHint, { color: PURPLE, fontWeight: 'bold' }]}>🎙️ Recording... tap the mic to send</Text>
+            ) : isTranscribing ? (
+              <Text style={[styles.orbHint, { color: "#9333EA", fontWeight: 'bold' }]}>⏳ Transcribing your speech...</Text>
             ) : !isSpeaking && !isLoading && (
-              <Text style={styles.orbHint}>Tap a message's voice button to hear Mr. Meddy 🎙️</Text>
+              <Text style={styles.orbHint}>Tap 🎙️ to speak, tap again to send to Mr. Meddy</Text>
             )}
           </View>
 
@@ -289,6 +252,13 @@ export default function ChatScreen() {
               </Animated.View>
             ))}
 
+            {isTranscribing && (
+              <View style={styles.typingBubble}>
+                <ActivityIndicator size="small" color="#9333EA" style={{ marginRight: 8 }} />
+                <Text style={[styles.typingText, { color: "#9333EA" }]}>Transcribing your speech…</Text>
+              </View>
+            )}
+
             {isLoading && (
               <View style={styles.typingBubble}>
                 <ActivityIndicator size="small" color={PURPLE} style={{ marginRight: 8 }} />
@@ -303,7 +273,7 @@ export default function ChatScreen() {
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.input}
-              placeholder={isListening ? "Listening..." : "How are you feeling?"}
+              placeholder={isListening ? "Listening..." : isTranscribing ? "Transcribing..." : "How are you feeling?"}
               placeholderTextColor="#A0AEC0"
               value={input}
               onChangeText={(t) => {
@@ -313,21 +283,28 @@ export default function ChatScreen() {
               onSubmitEditing={handleSend}
               multiline={false}
               returnKeyType="send"
+              editable={!isTranscribing && !isLoading && !isListening}
             />
-            <TouchableOpacity 
-              onPress={() => {
-                console.log("[ChatScreen] Button pressed. input:", input, "isListening:", isListening);
-                if (input.trim()) handleSend();
-                else toggleListening();
-              }} 
-              style={[
-                styles.sendBtn, 
-                !input.trim() && !isListening && styles.sendBtnDisabled,
-                isListening && { backgroundColor: '#F87171' }
-              ]}
-            >
-              <Feather name={input.trim() ? "send" : (isListening ? "square" : "mic")} size={18} color="#fff" />
-            </TouchableOpacity>
+            {input.trim() ? (
+              <TouchableOpacity 
+                onPress={handleSend}
+                style={[styles.sendBtn, isLoading && styles.sendBtnDisabled]}
+                disabled={isLoading}
+              >
+                <Feather name="send" size={18} color="#fff" />
+              </TouchableOpacity>
+            ) : (
+              <VoiceInputButton
+                onTranscriptionComplete={(text) => {
+                  console.log("[ChatScreen] Voice transcription complete:", text);
+                  setInput(text);
+                  sendMessage(text);
+                }}
+                onListeningStateChange={setIsListening}
+                onTranscribingStateChange={setIsTranscribing}
+                disabled={isLoading}
+              />
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>

@@ -267,4 +267,59 @@ router.post("/test-push", requireAuth, async (req: any, res: any) => {
   }
 });
 
+/**
+ * @route POST /api/ai/intent
+ * @desc Classify a user's natural language command into an actionable app intent
+ */
+router.post("/intent", optionalAuth, async (req: any, res: any) => {
+  const { text, context } = req.body;
+  if (!text) return res.status(400).json({ error: "Text is required" });
+
+  try {
+    const response = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [
+        {
+          role: "system",
+          content: `You are an AI command router for a medical app called Discharge Buddy.
+Your job is to map user speech to specific app actions.
+Return ONLY valid JSON. No other text.
+Format: {"intent": "NAVIGATE" | "ACTION" | "UNKNOWN", "target": "ROUTE_PATH_OR_ACTION_NAME", "confidence": 0.0_to_1.0}
+
+Available Navigate Targets:
+- "medicines" (matches: go to medicines, show meds, medicine page, meds)
+- "journal" (matches: open journal, journal page)
+- "scan" (matches: scan prescription, open ocr, ocr page, add medicine by picture)
+- "symptoms" (matches: symptom page, activity, log symptom)
+- "home" (matches: go home, dashboard)
+
+Available Action Targets:
+- "LOG_SYMPTOM" (matches: log a symptom, I have pain)
+- "ADD_MEDICINE" (matches: add a medicine manually)
+
+Context: User is currently on screen: ${context || 'unknown'}
+
+Example 1: "take me to the OCR page" -> {"intent": "NAVIGATE", "target": "scan", "confidence": 0.95}
+Example 2: "go to the journal" -> {"intent": "NAVIGATE", "target": "journal", "confidence": 0.95}
+Example 3: "I want to log a symptom" -> {"intent": "ACTION", "target": "LOG_SYMPTOM", "confidence": 0.90}
+Example 4: "how are you" -> {"intent": "UNKNOWN", "target": "", "confidence": 0.1}
+`
+        },
+        {
+          role: "user",
+          content: text
+        }
+      ],
+      temperature: 0.1,
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0]?.message?.content || '{"intent":"UNKNOWN"}');
+    return res.json(result);
+  } catch (err: any) {
+    console.error("[Intent Parsing Error]", err);
+    return res.status(500).json({ intent: "UNKNOWN", error: err.message });
+  }
+});
+
 export default router;

@@ -168,49 +168,9 @@ export class PrescriptionService {
    * @returns Structured prescription data with confidence scores
    */
   static async analyzePrescription(imageBase64: string): Promise<PrescriptionAnalysisResult> {
-    const ocrServiceUrl = process.env.OCR_SERVICE_URL;
-
-    // ─── Use Local OCR Service if configured ───
-    if (ocrServiceUrl) {
-      console.log(`[Pipeline] Redirecting to local OCR Service: ${ocrServiceUrl}`);
-      try {
-        const response = await fetch(`${ocrServiceUrl}/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: imageBase64 }),
-        });
-
-        if (response.ok) {
-          const result = (await response.json()) as any;
-          // Map local service format to PrescriptionAnalysisResult
-          return {
-            medicines: result.entities.map((m: any) => ({
-              ...m,
-              confidence: result.ocr.confidence * 100,
-              low_confidence: result.ocr.confidence < 0.7,
-              schedule: { morning: false, afternoon: false, evening: false, night: false }, // Placeholder
-            })),
-            general_instructions: result.ocr.full_text,
-            explanation: "Processed via local ensemble OCR.",
-            warnings: result.metadata?.low_confidence_words > 5 ? ["Some text was hard to read."] : [],
-            overall_confidence: result.ocr.confidence * 100,
-            ocr_source: result.ocr.source,
-            processing_note: `Local Service: ${result.ocr.word_count} words detected.`,
-          };
-        }
-        console.warn("[Pipeline] Local OCR service failed, falling back to NVIDIA...");
-      } catch (err: any) {
-        console.error(`[Pipeline] Local OCR connection error: ${err.message}`);
-      }
-    }
-
-    // ─── Fallback: NVIDIA / Groq Pipeline ───
-    const nvidiaKey = process.env.NVIDIA_API_KEY || process.env.EXPO_PUBLIC_NVIDIA_API_KEY;
+    // ─── Direct Groq Vision Pipeline (Lightning Fast) ───
     const groqKey = process.env.GROQ_API_KEY || process.env.EXPO_PUBLIC_GROQ_API_KEY;
 
-    if (!nvidiaKey) {
-      throw new Error("NVIDIA_API_KEY is not configured in environment variables");
-    }
     if (!groqKey) {
       throw new Error("GROQ_API_KEY is not configured in environment variables");
     }
@@ -220,14 +180,14 @@ export class PrescriptionService {
       ? imageBase64.split(",")[1]!
       : imageBase64;
 
-    console.log("[Pipeline] Step 1: Attempting NVIDIA Nemotron OCR service...");
+    console.log("[Pipeline] Step 1: Attempting NVIDIA Vision OCR service (via Groq fallback)...");
 
     let extractedText = "";
     try {
-      extractedText = await this.analyzeWithNemotron(cleanBase64, nvidiaKey);
+      extractedText = await this.analyzeWithGroqVision(cleanBase64, groqKey);
     } catch (err: any) {
-      console.error(`[Pipeline] NVIDIA Nemotron Service error: ${err.message}`);
-      throw new Error("NVIDIA Nemotron OCR failed: " + err.message);
+      console.error(`[Pipeline] Groq Vision OCR error: ${err.message}`);
+      throw new Error("OCR failed: " + err.message);
     }
 
     if (extractedText.trim().length === 0) {
@@ -238,7 +198,7 @@ export class PrescriptionService {
         explanation: "",
         warnings: ["No readable text was found in the image. Please ensure the prescription is clearly visible."],
         overall_confidence: 0,
-        ocr_source: "nvidia_nemotron",
+        ocr_source: "nvidia_vision",
         processing_note: "OCR completed but no text was detected.",
       };
     }
@@ -271,42 +231,50 @@ export class PrescriptionService {
       overall_confidence: medicines.length > 0
         ? Math.round(medicines.reduce((s, m) => s + m.confidence, 0) / medicines.length)
         : 0,
-      ocr_source: "nvidia_nemotron",
-      processing_note: "Used NVIDIA Nemotron for OCR and Groq for structuring.",
+      ocr_source: "groq_llama_vision",
+      processing_note: "Used Groq Llama Vision for OCR and Groq for structuring.",
     };
   }
 
   /**
-   * Use NVIDIA nemotron-parse model for OCR extraction.
+   * Use Groq's Llama Vision model for image OCR.
+   * (NVIDIA vision models return 403 with this API key.)
    */
-  private static async analyzeWithNemotron(imageBase64: string, apiKey: string): Promise<string> {
-    const nvaiUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
-    
-    // As per user provided code, assume jpeg
-    const mime = "image/jpeg";
-    const mediaTag = `<img src="data:${mime};base64,${imageBase64}" />`;
-    const toolName = "markdown_no_bbox";
+  private static async analyzeWithGroqVision(imageBase64: string, groqApiKey: string): Promise<string> {
+    const groqUrl = "https://api.groq.com/openai/v1/chat/completions";
 
     const requestBody = {
-      model: "nvidia/nemotron-parse",
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages: [
         {
           role: "user",
-          content: mediaTag
+          content: [
+            {
+              type: "text",
+              text: (
+                "You are a medical OCR expert. Extract ALL text from this prescription or " +
+                "medical discharge document exactly as written. Include medicine names, dosages, " +
+                "frequencies, timings, doctor notes, and patient instructions. " +
+                "Do NOT summarize. Output the raw extracted text only."
+              )
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`
+              }
+            }
+          ]
         }
       ],
-      tools: [
-        { type: "function", function: { name: toolName } }
-      ],
-      tool_choice: { type: "function", function: { name: toolName } },
-      max_tokens: 8192,
+      max_tokens: 1024,
+      temperature: 0.1,
     };
 
-    const response = await fetch(nvaiUrl, {
+    const response = await fetch(groqUrl, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Accept": "application/json",
+        "Authorization": `Bearer ${groqApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
@@ -314,36 +282,18 @@ export class PrescriptionService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`NVIDIA API error: ${response.status} ${errorText}`);
+      throw new Error(`Groq Vision API error: ${response.status} ${errorText}`);
     }
 
-    const data = (await response.json()) as NvidiaResponse;
-    
-    try {
-      const toolCalls = data.choices[0]?.message?.tool_calls;
-      if (!toolCalls || toolCalls.length === 0) {
-        throw new Error("No tool calls found in NVIDIA response");
-      }
-      
-      const functionArgs = toolCalls[0].function.arguments;
-      const parsedArgs = JSON.parse(functionArgs);
-      
-      // Expected format is an array with a text object
-      // e.g. [{"text": "markdown string"}]
-      if (Array.isArray(parsedArgs) && parsedArgs.length > 0 && parsedArgs[0].text !== undefined) {
-        return parsedArgs[0].text;
-      }
-      
-      // fallback if it's an object instead of array
-      if (parsedArgs.text) {
-        return parsedArgs.text;
-      }
-      
-      throw new Error("Could not find 'text' in NVIDIA response arguments.");
-    } catch (e: any) {
-      console.error("Failed to parse NVIDIA response:", JSON.stringify(data).substring(0, 500));
-      throw new Error("Failed to parse OCR response: " + e.message);
+    const data = (await response.json()) as any;
+    const extractedText = data.choices?.[0]?.message?.content;
+
+    if (!extractedText || typeof extractedText !== "string") {
+      throw new Error("Groq Vision API returned an empty response.");
     }
+
+    console.log(`[Pipeline] Groq Vision extracted ${extractedText.length} chars of text.`);
+    return extractedText.trim();
   }
 
   /**

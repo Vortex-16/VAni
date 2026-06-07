@@ -84,6 +84,14 @@ class RecoveryReportGenerator:
         ))
 
         self.styles.add(ParagraphStyle(
+            name='CardValue',
+            fontSize=12,
+            fontName='Helvetica',
+            textColor=TEXT,
+            leading=16,
+        ))
+
+        self.styles.add(ParagraphStyle(
             name='PremiumBullet',
             fontSize=11,
             fontName='Helvetica',

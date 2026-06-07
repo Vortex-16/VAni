@@ -19,7 +19,6 @@ import { MedicineCard } from "@/components/MedicineCard";
 import { AnimPressable } from "@/components/AnimPressable";
 import { MascotBuddy } from "@/components/MascotBuddy";
 import { TimeSegmentedControl } from "@/components/TimeSegmentedControl";
-import { TimeOfDayFilter } from "@/components/TimeOfDayFilter";
 import { SuccessBurst } from "@/components/SuccessBurst";
 import { Medicine, useApp } from "@/context/AppContext";
 
@@ -29,12 +28,12 @@ const PURPLE = "#6C47FF";
 const PURPLE_LIGHT = "#EDE9FE";
 const WHITE = "#FFFFFF";
 
-const TIME_SLOTS: { label: string; range: [string, string]; icon: any; color: string; emoji: string; gradient: readonly [string, string] }[] = [
-  { label: "Early Morning", range: ["00:00", "06:00"], icon: "sunrise", color: "#6366F1", emoji: "✨", gradient: ["#818CF8", "#6366F1"] },
-  { label: "Morning", range: ["06:00", "12:00"], icon: "sun", color: "#0EA5E9", emoji: "☀️", gradient: ["#38BDF8", "#0EA5E9"] },
-  { label: "Afternoon", range: ["12:00", "17:00"], icon: "cloud", color: "#10B981", emoji: "🌤️", gradient: ["#34D399", "#10B981"] },
-  { label: "Evening", range: ["17:00", "21:00"], icon: "moon", color: "#1E1B4B", emoji: "🌕", gradient: ["#312E81", "#1E1B4B"] },
-  { label: "Night", range: ["21:00", "24:00"], icon: "moon", color: "#0F172A", emoji: "🌙✨", gradient: ["#1E1B4B", "#0F172A"] },
+const TIME_SLOTS: { label: string; range: [string, string]; icon: any; color: string; gradient: readonly [string, string] }[] = [
+  { label: "Early Morning", range: ["00:00", "06:00"], icon: "sunrise", color: "#6366F1", gradient: ["#818CF8", "#6366F1"] },
+  { label: "Morning", range: ["06:00", "12:00"], icon: "sun", color: "#0EA5E9", gradient: ["#38BDF8", "#0EA5E9"] },
+  { label: "Afternoon", range: ["12:00", "17:00"], icon: "cloud", color: "#10B981", gradient: ["#34D399", "#10B981"] },
+  { label: "Evening", range: ["17:00", "21:00"], icon: "sunset", color: "#1E1B4B", gradient: ["#312E81", "#1E1B4B"] },
+  { label: "Night", range: ["21:00", "24:00"], icon: "moon", color: "#0F172A", gradient: ["#1E1B4B", "#0F172A"] },
 ];
 
 function computeRefillDays(med: Medicine): number {
@@ -73,6 +72,15 @@ const tabStyles = StyleSheet.create({
     alignItems: "center", 
     justifyContent: "center",
     zIndex: 1,
+    borderRadius: 50,
+  },
+  btnActive: {
+    backgroundColor: WHITE,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   text: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.85)" },
   textActive: { color: PURPLE },
@@ -134,26 +142,13 @@ export default function MedicinesScreen() {
   const [activeTab, setActiveTab] = useState<"today" | "all" | "refills">("today");
   const [dayTimeFilter, setDayTimeFilter] = useState<string>("Morning");
   const [containerWidth, setContainerWidth] = useState(0);
-  const sliderTranslateX = useSharedValue(0);
-
-  useEffect(() => {
-    if (containerWidth > 0) {
-      const tabIndex = activeTab === "today" ? 0 : activeTab === "all" ? 1 : 2;
-      const tabWidth = (containerWidth - 8) / 3; 
-      sliderTranslateX.value = withSpring(tabIndex * tabWidth, { damping: 18, stiffness: 120 });
-    }
-  }, [activeTab, containerWidth]);
-
-  const animatedSliderStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: sliderTranslateX.value }]
-  }));
-
   const [mascotTrigger, setMascotTrigger] = useState(0);
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [deletingMedId, setDeletingMedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showSupplyModal, setShowSupplyModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const topInset = Platform.OS === "web" ? 0 : insets.top;
 
   const getDosesForSlot = (range: [string, string]) =>
@@ -244,16 +239,18 @@ export default function MedicinesScreen() {
             </View>
             <Text style={styles.headerSub}>{takenCount} of {totalCount} taken today</Text>
           </View>
-          <AnimPressable
-            onPress={() => router.push("/scan")}
-            style={styles.scanBtn}
-          >
-            <Feather name="camera" size={20} color={PURPLE} />
-          </AnimPressable>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <AnimPressable
+              onPress={() => router.push("/scan")}
+              style={styles.scanBtn}
+            >
+              <Feather name="camera" size={20} color={PURPLE} />
+            </AnimPressable>
+          </View>
         </View>
 
-        <View style={{ marginTop: 10, width: '100%' }}>
-          <MascotBuddy size={70} trigger={mascotTrigger} />
+        <View style={{ marginTop: 4, width: '100%' }}>
+          <MascotBuddy size={45} trigger={mascotTrigger} />
         </View>
 
         <View style={styles.progressWrap}>
@@ -265,15 +262,7 @@ export default function MedicinesScreen() {
 
         <View 
           style={tabStyles.container}
-          onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
         >
-          <Animated.View 
-            style={[
-              tabStyles.slider, 
-              { width: containerWidth > 0 ? (containerWidth - 8) / 3 : '33.3%' },
-              animatedSliderStyle
-            ]} 
-          />
           {(["today", "all", "refills"] as const).map((tab) => (
             <TouchableOpacity
               key={tab}
@@ -281,7 +270,7 @@ export default function MedicinesScreen() {
                 setActiveTab(tab);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              style={tabStyles.btn}
+              style={[tabStyles.btn, activeTab === tab && tabStyles.btnActive]}
               activeOpacity={0.7}
             >
               <Text style={[
@@ -300,22 +289,18 @@ export default function MedicinesScreen() {
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
+
         {(activeTab === "today" || activeTab === "all") && medicines.length > 0 && (
-          <View>
-            <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
-              <Text style={styles.filterTitle}>Time of Day Filter</Text>
-              <Text style={styles.filterSub}>Filter your medicines based on time of day</Text>
-            </View>
-            <TimeOfDayFilter 
-              value={dayTimeFilter} 
-              onChange={(val) => {
-                setDayTimeFilter(val);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }} 
-            />
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 4, paddingTop: 4, paddingBottom: 12 }}>
+            <TouchableOpacity 
+              onPress={() => setShowFilterModal(true)} 
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}
+            >
+              <Feather name="filter" size={14} color="#475569" />
+              <Text style={{ color: '#475569', fontSize: 13, fontFamily: 'Inter_600SemiBold' }}>{dayTimeFilter} ▾</Text>
+            </TouchableOpacity>
           </View>
         )}
-
         {activeTab === "today" ? (
           totalCount === 0 ? (
             <View style={styles.empty}>
@@ -332,13 +317,13 @@ export default function MedicinesScreen() {
                 return (
                   <View key={slot.label} style={styles.slotSection}>
                     <View style={styles.slotHeader}>
-                      <LinearGradient
-                        colors={slot.gradient}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={styles.slotIconWrap}
-                      >
-                        <Text style={{ fontSize: 22 }}>{slot.emoji}</Text>
-                      </LinearGradient>
+                        <LinearGradient
+                          colors={slot.gradient}
+                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                          style={styles.slotIconWrap}
+                        >
+                          <Feather name={slot.icon as any} size={20} color={WHITE} />
+                        </LinearGradient>
                       <Text style={styles.slotLabel}>{slot.label}</Text>
                       <View style={[styles.slotBadge, { backgroundColor: `${slot.color}15` }]}>
                         <Text style={[styles.slotBadgeText, { color: slot.color }]}>{slotTaken}/{doses.length}</Text>
@@ -740,6 +725,49 @@ export default function MedicinesScreen() {
         </Modal>
       )}
 
+      {/* Time Filter Modal */}
+      {showFilterModal && (
+        <Modal visible={true} transparent animationType="fade" onRequestClose={() => setShowFilterModal(false)}>
+          <View style={styles.modalBlur}>
+            <View style={[styles.modalContent, { width: "85%", alignItems: "center" }]}>
+              <View style={[styles.iconBtn, { backgroundColor: `${PURPLE}15`, marginBottom: 16, width: 60, height: 60, borderRadius: 30 }]}>
+                <Feather name="clock" size={28} color={PURPLE} />
+              </View>
+              <Text style={[styles.modalTitle, { marginBottom: 12 }]}>Select Time of Day</Text>
+              
+              <View style={{ width: '100%', marginBottom: 20 }}>
+                {TIME_SLOTS.filter(s => s.label !== "Early Morning").map(slot => (
+                  <TouchableOpacity
+                    key={slot.label}
+                    style={[
+                      { padding: 14, borderRadius: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },
+                      dayTimeFilter === slot.label ? { backgroundColor: PURPLE } : { backgroundColor: '#F1F5F9' }
+                    ]}
+                    onPress={() => {
+                      setDayTimeFilter(slot.label);
+                      setShowFilterModal(false);
+                      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                  >
+                    <Feather name={slot.icon as any} size={20} color={dayTimeFilter === slot.label ? WHITE : '#64748b'} />
+                    <Text style={[{ fontSize: 16, fontFamily: "Inter_600SemiBold" }, dayTimeFilter === slot.label ? { color: WHITE } : { color: '#1E1B4B' }]}>
+                      {slot.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.modalCancel, { backgroundColor: "#F1F5F9", width: '100%' }]}
+                onPress={() => setShowFilterModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       <SuccessBurst 
         visible={showSuccess} 
         onComplete={() => setShowSuccess(false)} 
@@ -750,8 +778,8 @@ export default function MedicinesScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 20, paddingBottom: 24,
-    borderBottomLeftRadius: 40, borderBottomRightRadius: 40,
+    paddingHorizontal: 20, paddingBottom: 16,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
     overflow: "hidden",
   },
   decor1: {

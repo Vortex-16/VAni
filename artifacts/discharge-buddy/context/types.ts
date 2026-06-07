@@ -41,4 +41,6 @@ export interface IDataProvider {
   createDischargePlan(payload: any): Promise<{ planId: string }>;
   generateTTS(text: string): Promise<{ audioContent: string }>;
   getChatResponse(query: string): Promise<{ message: string; actions: { type: string; label: string }[] }>;
+  transcribeAudio(audioBase64: string, fileExtension?: string): Promise<string>;
+  getIntent(text: string, context?: string): Promise<{ intent: string, target: string, confidence: number }>;
 }

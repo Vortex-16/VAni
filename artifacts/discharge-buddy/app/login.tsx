@@ -1,9 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, TouchableOpacity, Platform, Dimensions, StatusBar, KeyboardAvoidingView, Image, Modal } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  Dimensions,
+  StatusBar,
+  Image,
+  Modal,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, SlideInDown, Easing as ReanimatedEasing } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+  runOnJS,
+  Extrapolation,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { Animated as RNAnimated, Easing as RNEasing } from "react-native";
 import { router } from "expo-router";
 import * as WebBrowser from 'expo-web-browser';
@@ -23,6 +41,14 @@ import { RoleSelectModal, AppRole } from '@/components/RoleSelectModal';
 WebBrowser.maybeCompleteAuthSession();
 
 const { width, height } = Dimensions.get('window');
+
+// Snap positions as fraction of screen height
+const COLLAPSED_HEIGHT = height * 0.48;  // 48% - default
+const EXPANDED_HEIGHT  = height * 0.65;  // 65% - dragged up
+
+// translateY values: 0 = at EXPANDED position, positive = slide down toward COLLAPSED
+const SNAP_EXPANDED  = 0;
+const SNAP_COLLAPSED = EXPANDED_HEIGHT - COLLAPSED_HEIGHT;
 
 const isExpoGo = Constants.appOwnership === 'expo';
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '294320272880-n69lce6o1nas43m16bkdk7kipj67sgfr.apps.googleusercontent.com';
@@ -44,14 +70,15 @@ const getGoogleAuthConfig = () => {
   return config;
 };
 
-// Colors from intro.tsx
-const BG_COLOR = '#E9DEFE';
+// ── Colors ────────────────────────────────────────────────────────────────────
+const BG_COLOR      = '#E9DEFE';
 const PRIMARY_COLOR = '#6C47FF';
-const TEXT_DARK = "#1E293B";
-const MUTED = "#64748B";
-const WHITE = "#FFFFFF";
+const TEXT_DARK     = "#1E293B";
+const MUTED         = "#64748B";
+const WHITE         = "#FFFFFF";
 
-const GoogleIcon = ({ size = 20 }) => (
+// ── Google G Icon ─────────────────────────────────────────────────────────────
+const GoogleIcon = ({ size = 22 }) => (
   <Svg width={size} height={size} viewBox="0 0 48 48">
     <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
     <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -61,25 +88,22 @@ const GoogleIcon = ({ size = 20 }) => (
   </Svg>
 );
 
-function ParallaxCloud({ scale, top, left, delay, duration }: { scale: number; top: number; left: number; delay: number; duration: number }) {
+// ── Floating Cloud ────────────────────────────────────────────────────────────
+function ParallaxCloud({ scale, top, left, duration }: { scale: number; top: number; left: number; duration: number }) {
   const floatY = useRef(new RNAnimated.Value(0)).current;
   const floatX = useRef(new RNAnimated.Value(0)).current;
-
   useEffect(() => {
-    RNAnimated.loop(
-      RNAnimated.parallel([
-        RNAnimated.sequence([
-          RNAnimated.timing(floatY, { toValue: -15, duration: duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
-          RNAnimated.timing(floatY, { toValue: 0, duration: duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
-        ]),
-        RNAnimated.sequence([
-          RNAnimated.timing(floatX, { toValue: 20, duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
-          RNAnimated.timing(floatX, { toValue: 0, duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
-        ])
-      ])
-    ).start();
+    RNAnimated.loop(RNAnimated.parallel([
+      RNAnimated.sequence([
+        RNAnimated.timing(floatY, { toValue: -15, duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+        RNAnimated.timing(floatY, { toValue: 0,   duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+      ]),
+      RNAnimated.sequence([
+        RNAnimated.timing(floatX, { toValue: 20,  duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+        RNAnimated.timing(floatX, { toValue: 0,   duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+      ]),
+    ])).start();
   }, []);
-
   return (
     <RNAnimated.View style={{ position: 'absolute', top, left, transform: [{ translateY: floatY }, { translateX: floatX }, { scale }], opacity: 0.7 }}>
       <View style={styles.cloudContainer}>
@@ -92,24 +116,72 @@ function ParallaxCloud({ scale, top, left, delay, duration }: { scale: number; t
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { login } = useApp();
-  
-  const [error, setError] = useState<string | null>(null);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const [error,        setError]        = useState<string | null>(null);
+  const [isSignUp,     setIsSignUp]     = useState(false);
+  const [isLoggingIn,  setIsLoggingIn]  = useState(false);
   const [loginProgress, setLoginProgress] = useState(0);
-  const [isSuccess, setIsSuccess] = useState(false);
-  
+  const [isSuccess,    setIsSuccess]    = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
-  const [pendingToken, setPendingToken] = useState<string | null>(null);
-  const [pendingEmail, setPendingEmail] = useState<string | undefined>(undefined);
+  const [pendingToken,  setPendingToken]  = useState<string | null>(null);
+  const [pendingEmail,  setPendingEmail]  = useState<string | undefined>(undefined);
   const [suggestedRole, setSuggestedRole] = useState<AppRole>('patient');
+  const [isExpanded,   setIsExpanded]   = useState(false);
 
+  // ── Gesture / Animation ──
+  // translateY: SNAP_COLLAPSED = sheet at 42% height, SNAP_EXPANDED = sheet at 80%
+  const translateY = useSharedValue(SNAP_COLLAPSED);
+  const startY     = useSharedValue(SNAP_COLLAPSED);
+
+  const snapTo = (target: number, expanded: boolean) => {
+    'worklet';
+    translateY.value = withSpring(target, { damping: 20, stiffness: 180 });
+    runOnJS(setIsExpanded)(expanded);
+    if (Platform.OS !== 'web') runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const panGesture = Gesture.Pan()
+    .onBegin(() => { startY.value = translateY.value; })
+    .onUpdate((e) => {
+      const next = startY.value + e.translationY;
+      // Clamp between expanded and collapsed
+      translateY.value = Math.max(SNAP_EXPANDED, Math.min(SNAP_COLLAPSED, next));
+    })
+    .onEnd((e) => {
+      // Snap to nearest based on velocity + position
+      const midpoint = (SNAP_EXPANDED + SNAP_COLLAPSED) / 2;
+      if (e.velocityY < -500 || translateY.value < midpoint) {
+        snapTo(SNAP_EXPANDED, true);
+      } else {
+        snapTo(SNAP_COLLAPSED, false);
+      }
+    });
+
+  // Animated sheet style
+  const sheetAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  // Blur intensity: 0 when collapsed, 20 when fully expanded
+  const blurAnimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateY.value, [SNAP_COLLAPSED, SNAP_EXPANDED], [0, 1], Extrapolation.CLAMP),
+    pointerEvents: translateY.value < SNAP_COLLAPSED - 10 ? 'auto' : 'none',
+  }));
+
+  // Handle bar color hint
+  const handleAnimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateY.value, [SNAP_EXPANDED, SNAP_COLLAPSED], [0.3, 1], Extrapolation.CLAMP),
+  }));
+
+  // ── Auth ──
   const canUseGoogleAuth = React.useMemo(() => isGoogleAuthAvailable(), []);
-  const [googleRequest, googleResponse, promptGoogleAsync] = canUseGoogleAuth 
+  const [, googleResponse, promptGoogleAsync] = canUseGoogleAuth
     ? Google.useAuthRequest(getGoogleAuthConfig()) : [null, null, null];
 
   useEffect(() => {
@@ -121,11 +193,11 @@ export default function LoginScreen() {
     }
   }, [googleResponse]);
 
-  const handleTransitionToSuccess = async (navRole: AppRole) => {
+  const handleTransitionToSuccess = (navRole: AppRole) => {
     setIsSuccess(true);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTimeout(() => {
-      const path = navRole === "caregiver" ? "/caregiver/dashboard" : navRole === "family" ? "/family/dashboard" : "/(tabs)";
+      const path = navRole === 'caregiver' ? '/caregiver/dashboard' : navRole === 'family' ? '/family/dashboard' : '/(tabs)';
       router.replace(path as any);
     }, 600);
   };
@@ -136,8 +208,7 @@ export default function LoginScreen() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        provider: 'google',
-        accessToken,
+        provider: 'google', accessToken,
         ...(opts?.role ? { role: opts.role } : {}),
         ...(opts?.confirmRole ? { confirmRole: true } : {}),
         ...(opts?.extraData ? opts.extraData : {}),
@@ -149,17 +220,14 @@ export default function LoginScreen() {
   };
 
   const executeGoogleOAuth = async (accessToken: string) => {
-    setIsLoggingIn(true);
-    setLoginProgress(0.7);
-    setError(null);
+    setIsLoggingIn(true); setLoginProgress(0.7); setError(null);
     try {
       const data = await postOAuth(accessToken);
       if (data.needsRoleSelection) {
         setPendingToken(accessToken);
         setPendingEmail(data.pendingProfile?.email);
         setSuggestedRole((data.suggestedRole as AppRole) ?? 'patient');
-        setIsLoggingIn(false);
-        setLoginProgress(0);
+        setIsLoggingIn(false); setLoginProgress(0);
         setShowRoleModal(true);
         return;
       }
@@ -169,142 +237,184 @@ export default function LoginScreen() {
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
       setIsLoggingIn(false); setLoginProgress(0);
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
   const handleRoleConfirm = async (chosenRole: AppRole, extraData?: any) => {
     setShowRoleModal(false);
     if (!pendingToken) return;
-    setIsLoggingIn(true);
-    setLoginProgress(0.8);
-    setError(null);
+    setIsLoggingIn(true); setLoginProgress(0.8); setError(null);
     try {
       const data = await postOAuth(pendingToken, { role: chosenRole, confirmRole: true, extraData });
       await login(data.user, data.token);
-      setPendingToken(null);
       setLoginProgress(1);
-      setTimeout(() => handleTransitionToSuccess((data.user?.role as AppRole) ?? chosenRole), 100);
+      setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || 'Role confirmation failed');
       setIsLoggingIn(false); setLoginProgress(0);
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
+
+  const handleDevLogin = async () => {
+    setIsLoggingIn(true); setLoginProgress(0.5); setError(null);
+    try {
+      const apiUrl = getApiUrl();
+      const res = await fetch(`${apiUrl}/api/auth/dev-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'dev@example.com', password: 'devpassword123' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Dev login failed');
+      
+      await login(data.user, data.token);
+      setLoginProgress(1);
+      setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
+    } catch (err: any) {
+      setError(err.message || 'Dev login failed');
+      setIsLoggingIn(false); setLoginProgress(0);
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
 
   const handleGoogleAction = () => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError(null);
-    if (!canUseGoogleAuth) {
-      setError('Google Sign-In needs native credentials on this device.');
-      return;
-    }
+    if (!canUseGoogleAuth) { setError('Google Sign-In needs native credentials on this device.'); return; }
     if (promptGoogleAsync) promptGoogleAsync();
   };
 
   const runDemo = async (role: AppRole) => {
-    setIsLoggingIn(true);
-    setShowDemoModal(false);
+    setIsLoggingIn(true); setShowDemoModal(false);
     setTimeout(async () => {
       const mockUser = { id: `demo-${role}-1`, name: `Demo ${role}`, email: `demo@${role}.com`, role, isEmailVerified: true };
-      const mockToken = "demo_token_123";
-      await login(mockUser as any, mockToken);
+      await login(mockUser as any, 'demo_token_123');
       setIsLoggingIn(false);
       handleTransitionToSuccess(role);
     }, 1500);
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <GestureHandlerRootView style={styles.root}>
       <StatusBar barStyle="dark-content" />
 
-      {/* BACKGROUND LAYER: Clouds */}
-      <ParallaxCloud scale={0.8} top={height * 0.1} left={-20} delay={0} duration={4000} />
-      <ParallaxCloud scale={1.2} top={height * 0.25} left={width * 0.7} delay={500} duration={4500} />
-      <ParallaxCloud scale={0.6} top={height * 0.4} left={width * 0.1} delay={1000} duration={3500} />
-
-      {/* CHARACTER LAYER */}
-      <View style={[styles.mascotArea, { paddingTop: insets.top }]}>
+      {/* ── Background ── */}
+      <View style={[styles.bgLayer, { paddingTop: insets.top }]}>
+        <ParallaxCloud scale={0.8} top={height * 0.08} left={-20} duration={4000} />
+        <ParallaxCloud scale={1.2} top={height * 0.22} left={width * 0.68} duration={4500} />
+        <ParallaxCloud scale={0.6} top={height * 0.35} left={width * 0.1} duration={3500} />
         <View style={styles.mascotWrap}>
           <Image source={require('@/assets/images/intro_image.png')} style={styles.robotImage} />
         </View>
       </View>
 
-      {/* FOREGROUND LAYER: Bottom Sheet */}
-      <Animated.View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom + 20, 30) }]}>
-        <View style={styles.handleBar} />
-        
-        <View style={styles.textContent}>
-          <Text style={styles.title}>{isSignUp ? "Create Account" : "Sign in"}</Text>
-          <Text style={styles.subtitle}>Use your Google account to log in or create a new account.</Text>
-        </View>
-
-        {!!error && (
-          <View style={styles.errorBox}>
-            <Feather name="alert-circle" size={14} color="#EF4444" />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {isLoggingIn ? (
-          <Animated.View entering={FadeIn} style={styles.loadingWrap}>
-            <Text style={styles.loadingTitle}>{isSuccess ? "Success!" : "Authenticating…"}</Text>
-            <LiquidCapsuleProgress progress={loginProgress} colorStart={PRIMARY_COLOR} colorEnd="#EDE9FE" size={180} />
-          </Animated.View>
-        ) : (
-          <View style={styles.actionContainer}>
-            <GlareHover
-              width="100%"
-              glareColor="#ffffff"
-              glareOpacity={0.5}
-              glareAngle={45}
-              glareSize={200}
-              transitionDuration={500}
-              borderRadius={16}
-            >
-              <TouchableOpacity onPress={handleGoogleAction} activeOpacity={0.85} style={styles.googleBtn}>
-                <GoogleIcon size={22} />
-                <Text style={styles.googleBtnText} numberOfLines={1}>Continue with Google</Text>
-              </TouchableOpacity>
-            </GlareHover>
-
-            {/* Sign Up / Sign In Toggle */}
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleText}>
-                {isSignUp ? "Already have an account?" : "Don't have an account?"}
-              </Text>
-              <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} activeOpacity={0.7}>
-                <Text style={styles.toggleLink}>{isSignUp ? "Sign in" : "Sign up"}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Developer options */}
-            <View style={styles.devOptions}>
-              <TouchableOpacity onPress={() => setShowDemoModal(true)} style={styles.devBtn}>
-                <Text style={styles.devText}>Demo / Guest View</Text>
-              </TouchableOpacity>
-              <Text style={{ color: '#CBD5E1' }}>•</Text>
-              <TouchableOpacity onPress={() => router.replace('/intro')} style={styles.devBtn}>
-                <Text style={styles.devText}>Back to Intro</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+      {/* ── Blur overlay — visible only when expanded ── */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, styles.blurOverlay, blurAnimStyle]} pointerEvents="none">
+        <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} />
       </Animated.View>
 
-      {/* Demo Selection Modal */}
+      {/* ── Draggable Bottom Sheet ── */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[styles.sheet, sheetAnimStyle]}>
+          {/* Handle bar — tap also toggles */}
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {
+              if (isExpanded) {
+                translateY.value = withSpring(SNAP_COLLAPSED, { damping: 20, stiffness: 180 });
+                setIsExpanded(false);
+              } else {
+                translateY.value = withSpring(SNAP_EXPANDED, { damping: 20, stiffness: 180 });
+                setIsExpanded(true);
+              }
+            }}
+            style={styles.handleWrap}
+          >
+            <Animated.View style={[styles.handleBar, handleAnimStyle]} />
+          </TouchableOpacity>
+
+          <View
+            style={[styles.sheetContent, { paddingBottom: Math.max(insets.bottom + 48, 64) }]}
+          >
+            <View style={styles.textContent}>
+              <Text style={styles.title}>{isSignUp ? 'Create Account' : 'Sign in'}</Text>
+              <Text style={styles.subtitle}>Use your Google account to log in or create a new account.</Text>
+            </View>
+
+            {!!error && (
+              <View style={styles.errorBox}>
+                <Feather name="alert-circle" size={14} color="#EF4444" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {isLoggingIn ? (
+              <Animated.View entering={FadeIn} style={styles.loadingWrap}>
+                <Text style={styles.loadingTitle}>{isSuccess ? 'Success!' : 'Authenticating…'}</Text>
+                <LiquidCapsuleProgress progress={loginProgress} colorStart={PRIMARY_COLOR} colorEnd="#EDE9FE" size={180} />
+              </Animated.View>
+            ) : (
+              <View style={styles.actionContainer}>
+                <GlareHover
+                  width="100%"
+                  glareColor="#ffffff"
+                  glareOpacity={0.5}
+                  glareAngle={45}
+                  glareSize={200}
+                  transitionDuration={500}
+                  borderRadius={16}
+                >
+                  <TouchableOpacity onPress={handleGoogleAction} activeOpacity={0.85} style={styles.googleBtn}>
+                    <GoogleIcon size={22} />
+                    <Text style={styles.googleBtnText} numberOfLines={1}>Continue with Google</Text>
+                  </TouchableOpacity>
+                </GlareHover>
+
+                {/* Sign up / Sign in toggle */}
+                <View style={styles.toggleRow}>
+                  <Text style={styles.toggleText}>
+                    {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                  </Text>
+                  <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} activeOpacity={0.7}>
+                    <Text style={styles.toggleLink}>{isSignUp ? 'Sign in' : 'Sign up'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Dev links */}
+                <View style={styles.devOptions}>
+                  <TouchableOpacity onPress={() => setShowDemoModal(true)} style={styles.devBtn}>
+                    <Text style={styles.devText}>Demo / Guest View</Text>
+                  </TouchableOpacity>
+                  <Text style={{ color: '#CBD5E1' }}>•</Text>
+                  <TouchableOpacity onPress={handleDevLogin} style={styles.devBtn}>
+                    <Text style={[styles.devText, { color: PRIMARY_COLOR, fontFamily: 'Inter_700Bold' }]}>Dev Login</Text>
+                  </TouchableOpacity>
+                  <Text style={{ color: '#CBD5E1' }}>•</Text>
+                  <TouchableOpacity onPress={() => router.replace('/intro')} style={styles.devBtn}>
+                    <Text style={styles.devText}>Back to Intro</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+      </GestureDetector>
+
+      {/* ── Demo Role Modal ── */}
       <Modal visible={showDemoModal} transparent animationType="fade" onRequestClose={() => setShowDemoModal(false)}>
         <BlurView intensity={20} tint="dark" style={styles.modalOuter}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Select Demo Role</Text>
             <Text style={styles.modalSub}>Experience the app as different users without an account.</Text>
-            
             <View style={{ gap: 10 }}>
               {([
-                { role: 'patient',   icon: 'user',  color: PRIMARY_COLOR, label: 'Patient',      sub: 'View patient dashboard' },
-                { role: 'family',    icon: 'heart', color: '#db2777',     label: 'Family',       sub: 'Monitor a patient' },
-                { role: 'caregiver', icon: 'users', color: '#0284c7',     label: 'Caregiver',    sub: 'Manage patient plans' },
-                { role: 'doctor',    icon: 'activity', color: '#10b981',  label: 'Doctor',       sub: 'Create discharge plans' },
+                { role: 'patient',   icon: 'user',     color: PRIMARY_COLOR, label: 'Patient',   sub: 'View patient dashboard' },
+                { role: 'family',    icon: 'heart',    color: '#db2777',     label: 'Family',    sub: 'Monitor a patient' },
+                { role: 'caregiver', icon: 'users',    color: '#0284c7',     label: 'Caregiver', sub: 'Manage patient plans' },
+                { role: 'doctor',    icon: 'activity', color: '#10b981',     label: 'Doctor',    sub: 'Create discharge plans' },
               ] as const).map((opt) => (
                 <TouchableOpacity key={opt.role} style={styles.demoOpt} onPress={() => runDemo(opt.role)}>
                   <View style={[styles.demoOptIcon, { backgroundColor: opt.color + '18' }]}>
@@ -332,32 +442,24 @@ export default function LoginScreen() {
         onConfirm={handleRoleConfirm as any}
         onCancel={() => { setShowRoleModal(false); setPendingToken(null); }}
       />
-    </KeyboardAvoidingView>
+    </GestureHandlerRootView>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG_COLOR,
-  },
-  cloudContainer: { width: 100, height: 60, justifyContent: 'flex-end' },
-  cloudCircle: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 50 },
-  cloudCircleLeft: { width: 40, height: 40, bottom: 0, left: 10 },
-  cloudCircleTop: { width: 50, height: 50, bottom: 10, left: 25 },
-  cloudCircleRight: { width: 40, height: 40, bottom: 0, right: 15 },
-  cloudBase: { width: 80, height: 30, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, bottom: 0, left: 10, position: 'absolute' },
-  
-  mascotArea: {
-    flex: 0.6,
+  root: { flex: 1, backgroundColor: BG_COLOR },
+
+  // Background + mascot
+  bgLayer: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    justifyContent: 'flex-end', 
-    zIndex: 100, 
-    marginBottom: -40,
+    justifyContent: 'flex-start',
   },
   mascotWrap: {
+    position: 'absolute',
+    bottom: COLLAPSED_HEIGHT - 40,  // peeks above the collapsed sheet
     alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 15 },
     shadowOpacity: 0.15,
@@ -369,109 +471,71 @@ const styles = StyleSheet.create({
     height: height * 0.55,
     resizeMode: 'contain',
   },
-  
-  bottomSheet: {
-    flex: 0.4,
+
+  // Blur overlay
+  blurOverlay: { zIndex: 5 },
+
+  // ── Draggable sheet ──
+  sheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: EXPANDED_HEIGHT,      // always full expanded height; translateY moves it
     backgroundColor: WHITE,
-    width: '100%',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    paddingHorizontal: 32,
-    paddingTop: 45,
-    alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -15 },
-    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.08,
     shadowRadius: 20,
-    elevation: 25,
+    elevation: 30,
     zIndex: 10,
-    justifyContent: 'flex-start', 
+  },
+  handleWrap: {
+    alignItems: 'center',
+    paddingVertical: 16,
   },
   handleBar: {
-    width: 40,
+    width: 44,
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#E2E8F0',
-    marginBottom: 20,
-    position: 'absolute',
-    top: 15,
+    backgroundColor: '#CBD5E1',
   },
-  textContent: {
+
+  sheetContent: {
+    paddingHorizontal: 32,
     alignItems: 'center',
-    marginBottom: 30,
-    width: '100%'
   },
+
+  // Text
+  textContent: { alignItems: 'center', marginBottom: 28, width: '100%' },
   title: {
-    fontSize: 28,
-    color: TEXT_DARK,
-    fontFamily: 'Inter_800ExtraBold',
-    textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    fontSize: 28, color: TEXT_DARK, fontFamily: 'Inter_800ExtraBold',
+    textAlign: 'center', marginBottom: 8, letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: MUTED,
-    fontFamily: 'Inter_500Medium',
-    textAlign: 'center',
+    fontSize: 14, color: MUTED, fontFamily: 'Inter_500Medium', textAlign: 'center',
   },
 
-  actionContainer: {
-    width: '100%',
-    alignItems: 'center'
-  },
+  // Action buttons
+  actionContainer: { width: '100%', alignItems: 'center' },
   googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 18,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    width: '100%',
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F8FAFC', paddingVertical: 18, borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#E2E8F0', width: '100%', gap: 12,
   },
-  googleBtnText: {
-    color: TEXT_DARK,
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    flexShrink: 1,
-  },
+  googleBtnText: { color: TEXT_DARK, fontSize: 16, fontFamily: 'Inter_600SemiBold', flexShrink: 1 },
 
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 20,
-  },
-  toggleText: {
-    color: MUTED,
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-  },
-  toggleLink: {
-    color: PRIMARY_COLOR,
-    fontSize: 14,
-    fontFamily: 'Inter_700Bold',
-  },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20 },
+  toggleText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
+  toggleLink: { color: PRIMARY_COLOR, fontSize: 14, fontFamily: 'Inter_700Bold' },
 
-  devOptions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 24
-  },
-  devBtn: {
-    padding: 4
-  },
-  devText: {
-    color: MUTED,
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-    textDecorationLine: 'underline'
-  },
+  devOptions: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 22 },
+  devBtn: { padding: 4 },
+  devText: { color: MUTED, fontSize: 13, fontFamily: 'Inter_500Medium', textDecorationLine: 'underline' },
 
+  // Error
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 20, width: '100%',
@@ -479,17 +543,30 @@ const styles = StyleSheet.create({
   },
   errorText: { flex: 1, color: '#EF4444', fontSize: 13, fontFamily: 'Inter_500Medium' },
 
+  // Loading
   loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
   loadingTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', color: PRIMARY_COLOR, marginBottom: 20 },
 
+  // Clouds
+  cloudContainer: { width: 100, height: 60, justifyContent: 'flex-end' },
+  cloudCircle: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 50 },
+  cloudCircleLeft:  { width: 40, height: 40, bottom: 0, left: 10 },
+  cloudCircleTop:   { width: 50, height: 50, bottom: 10, left: 25 },
+  cloudCircleRight: { width: 40, height: 40, bottom: 0, right: 15 },
+  cloudBase: { width: 80, height: 30, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, bottom: 0, left: 10, position: 'absolute' },
+
+  // Demo modal
   modalOuter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.1)' },
-  modalCard:  { backgroundColor: WHITE, borderRadius: 24, padding: 24, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
+  modalCard:  {
+    backgroundColor: WHITE, borderRadius: 24, padding: 24, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
+  },
   modalTitle: { fontSize: 20, fontFamily: 'Inter_800ExtraBold', color: TEXT_DARK, marginBottom: 4 },
   modalSub:   { fontSize: 13, color: MUTED, fontFamily: 'Inter_400Regular', marginBottom: 20 },
-  demoOpt: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  demoOptIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  demoOpt:    { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  demoOptIcon:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   demoOptLabel: { fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT_DARK },
   demoOptSub:   { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular' },
-  modalCancelBtn: { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
+  modalCancelBtn:  { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
   modalCancelText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
 });

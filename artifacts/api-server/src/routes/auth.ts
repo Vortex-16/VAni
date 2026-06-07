@@ -566,6 +566,49 @@ router.get("/dev-session", async (req, res) => {
   }
 });
 
+// Development-only email/password login endpoint
+router.post("/dev-login", async (req, res) => {
+  try {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ error: "Not allowed in production" });
+    }
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    const devEmail = process.env.DEV_USER_EMAIL || "dev@example.com";
+    const devPassword = process.env.DEV_USER_PASSWORD || "devpassword123";
+    if (email !== devEmail || password !== devPassword) {
+      return res.status(401).json({ error: "Invalid dev credentials" });
+    }
+    // Find or create the dev user in DB
+    let [user] = await db.select().from(users).where(eq(users.email, devEmail.toLowerCase()));
+    if (!user) {
+      const hashed = await bcrypt.hash(devPassword, BCRYPT_ROUNDS);
+      const [newPatient] = await db.insert(patients).values({
+        name: "Dev Tester",
+        age: 30,
+        condition: "Development User",
+        dischargeDate: new Date(),
+        emergencyContact: "N/A",
+      }).returning();
+      [user] = await db.insert(users).values({
+        email: devEmail.toLowerCase(),
+        name: "Dev Tester",
+        role: "patient",
+        password: hashed,
+        linkedPatientId: newPatient.id,
+        isEmailVerified: true,
+      }).returning();
+    }
+    const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET!, { expiresIn: "7d" });
+    return res.json({ token, user });
+  } catch (error) {
+    logger.error({ err: error }, "Dev login Error");
+    return res.status(500).json({ error: "Dev login failed" });
+  }
+});
+
 router.get("/me", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   res.json({ user: req.user });
 });

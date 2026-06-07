@@ -2,7 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Platform, ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator,  } from 'react-native';
+  Platform, ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator,
+} from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
@@ -17,8 +18,10 @@ const WHITE = "#ffffff";
 const ACCENT = "#00B894";
 const PURPLE = "#6C47FF";
 
-// The OCR Service handles our premium PDF generation
-const OCR_SERVICE_URL = "http://192.168.0.101:8100"; 
+// OCR Service runs on port 8100 on the same machine as the API server.
+// On Android, localhost doesn't resolve — use the same LAN IP as the API server.
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+const OCR_SERVICE_URL = API_BASE.replace(/:3000\/?$/, ':8100').replace(/\/$/, '');
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -34,14 +37,14 @@ export default function ProfileScreen() {
     }, [])
   );
 
-  const adherence = todayDoses.length > 0 
+  const adherence = todayDoses.length > 0
     ? Math.round((todayDoses.filter(d => d.status === "taken").length / todayDoses.length) * 100)
     : 0;
 
   const handleShareReport = async () => {
     try {
       setIsGenerating(true);
-      
+
       // 1. Prepare data
       const reportData = {
         name: user?.name || "Patient",
@@ -59,7 +62,7 @@ export default function ProfileScreen() {
           adherence > 80 ? "Consistency is excellent this week." : "Try to be more consistent with evening doses.",
           streak > 3 ? `Great job maintaining a ${streak}-day streak!` : "Starting a new streak today!"
         ],
-        summary: adherence > 85 
+        summary: adherence > 85
           ? "You've maintained exceptional consistency this week. Your recovery is on a very positive trajectory."
           : "Good progress! There is some slight room for improvement in dose timing consistency.",
         recommendations: [
@@ -80,7 +83,7 @@ export default function ProfileScreen() {
         });
         if (!response.ok) throw new Error("Failed to generate report on server");
         const blob = await response.blob();
-        
+
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -99,10 +102,10 @@ export default function ProfileScreen() {
         body: JSON.stringify(reportData),
       });
       if (!response.ok) throw new Error("Failed to generate report on server");
-      
+
       const blob = await response.blob();
       const fileUri = `${(FileSystem as any).documentDirectory}${fileName}`;
-      
+
       // Convert blob to base64 for saving
       const reader = new FileReader();
       const base64Data = await new Promise<string>((resolve) => {
@@ -162,8 +165,8 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: bottomInset + 32 }}
       >
         <View style={[styles.header, { paddingTop: topInset + 12 }]}>
-          <TouchableOpacity 
-            onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} 
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
             style={styles.backBtn}
           >
             <Feather name="arrow-left" size={20} color={WHITE} />
@@ -223,7 +226,7 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionRow}
             onPress={() => router.push("/profile/edit")}
           >
@@ -234,7 +237,7 @@ export default function ProfileScreen() {
             <Feather name="chevron-right" size={18} color="#94a3b8" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionRow}
             onPress={() => router.push("/profile/change-password")}
           >
@@ -245,7 +248,7 @@ export default function ProfileScreen() {
             <Feather name="chevron-right" size={18} color="#94a3b8" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionRow}
             onPress={handleShareReport}
           >
@@ -256,7 +259,7 @@ export default function ProfileScreen() {
             <Feather name="chevron-right" size={18} color="#94a3b8" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionRow}
             onPress={() => router.push("/help")}
           >
