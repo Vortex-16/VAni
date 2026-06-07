@@ -44,27 +44,21 @@ const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
 // Check if Google OAuth is available for this platform/environment
 const isGoogleAuthAvailable = (): boolean => {
-  // In Expo Go on Android/iOS, Google auth via expo-auth-session requires native client IDs
-  // Without them, the library will throw an error during initialization
-  if (isExpoGo && Platform.OS === 'android') {
-    return false;  // Not available in Expo Go on Android
-  }
-  if (isExpoGo && Platform.OS === 'ios') {
-    return false;  // Not available in Expo Go on iOS
-  }
-  
-  // On web or with proper native credentials, Google auth is available
+  // Web uses the web client ID directly.
   if (Platform.OS === 'web') {
     return !!GOOGLE_WEB_CLIENT_ID;
   }
+  // Native (Android/iOS) requires its OWN platform client ID. expo-auth-session's
+  // Google.useAuthRequest THROWS if androidClientId/iosClientId is missing on native
+  // (a web client ID is NOT accepted). It also never works inside Expo Go.
+  // Returning false here avoids calling the hook → no crash; the button shows a message.
   if (Platform.OS === 'android') {
-    return !!GOOGLE_ANDROID_CLIENT_ID || !!GOOGLE_WEB_CLIENT_ID;
+    return !isExpoGo && !!GOOGLE_ANDROID_CLIENT_ID;
   }
   if (Platform.OS === 'ios') {
-    return !!GOOGLE_IOS_CLIENT_ID || !!GOOGLE_WEB_CLIENT_ID;
+    return !isExpoGo && !!GOOGLE_IOS_CLIENT_ID;
   }
-  
-  return !!GOOGLE_WEB_CLIENT_ID;
+  return false;
 };
 
 // Build Google OAuth config based on platform
@@ -257,7 +251,7 @@ export default function LoginScreen() {
     
     // Check if Google auth is available
     if (!canUseGoogleAuth) {
-      setError('Google Sign-In is not available in Expo Go. Please use Email/Password login or build a development build with proper OAuth credentials.');
+      setError('Google Sign-In needs native credentials on this device. Please use Email/Password, or configure the Android/iOS client ID in a build.');
       return;
     }
 
