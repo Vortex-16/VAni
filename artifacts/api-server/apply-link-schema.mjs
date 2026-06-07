@@ -11,6 +11,10 @@ import pg from "pg";
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 const statements = [
+  // Email-verification columns (added with the OTP feature; older DBs lack them).
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_email_verified boolean NOT NULL DEFAULT false;`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code text;`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires timestamp;`,
   // Enums (CREATE TYPE has no IF NOT EXISTS — guard via catalog check).
   `DO $$ BEGIN
      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'link_relationship') THEN
