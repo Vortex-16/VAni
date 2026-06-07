@@ -1,178 +1,116 @@
-import { Audio } from 'expo-av';
+import React, { useState, useEffect, useRef } from "react";
+import { View, StyleSheet, TouchableOpacity, Platform, Dimensions, StatusBar, KeyboardAvoidingView, Image, Modal } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
+import Animated, { FadeIn, SlideInDown, Easing as ReanimatedEasing } from "react-native-reanimated";
+import { Animated as RNAnimated, Easing as RNEasing } from "react-native";
 import { router } from "expo-router";
-import React, { useState, useEffect } from "react";
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Dimensions,
-  Modal,
-  StatusBar,
-} from 'react-native';
-import { TranslateText as Text } from '@/components/TranslateText';
-import { useSharedValue, useAnimatedStyle, withSequence, withRepeat, withTiming } from "react-native-reanimated";
-import Animated from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "@/context/AppContext";
-import { MockProvider } from "@/context/MockProvider";
-import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
-import { getFriendlyErrorMessage } from '@/utils/errorUtils';
+import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { getApiUrl } from '@/utils/apiUrl';
-import { RoleSelectModal, type AppRole } from '@/components/RoleSelectModal';
 
-// Required for web OAuth redirect handling
+import { TranslateText as Text } from '@/components/TranslateText';
+import { useApp } from "@/context/AppContext";
+import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
+import { getApiUrl } from '@/utils/apiUrl';
+import { GlareHover } from '@/components/GlareHover';
+import { RoleSelectModal, AppRole } from '@/components/RoleSelectModal';
+
 WebBrowser.maybeCompleteAuthSession();
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Google OAuth Client IDs Configuration
-// ──────────────────────────────────────────────────────────────────────────────
-const isExpoGo = Constants.appOwnership === 'expo';
+const { width, height } = Dimensions.get('window');
 
+const isExpoGo = Constants.appOwnership === 'expo';
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '294320272880-n69lce6o1nas43m16bkdk7kipj67sgfr.apps.googleusercontent.com';
 const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
-// Check if Google OAuth is available for this platform/environment
 const isGoogleAuthAvailable = (): boolean => {
-  // Web uses the web client ID directly.
-  if (Platform.OS === 'web') {
-    return !!GOOGLE_WEB_CLIENT_ID;
-  }
-  // Native (Android/iOS) requires its OWN platform client ID. expo-auth-session's
-  // Google.useAuthRequest THROWS if androidClientId/iosClientId is missing on native
-  // (a web client ID is NOT accepted). It also never works inside Expo Go.
-  // Returning false here avoids calling the hook → no crash; the button shows a message.
-  if (Platform.OS === 'android') {
-    return !isExpoGo && !!GOOGLE_ANDROID_CLIENT_ID;
-  }
-  if (Platform.OS === 'ios') {
-    return !isExpoGo && !!GOOGLE_IOS_CLIENT_ID;
-  }
+  if (Platform.OS === 'web') return !!GOOGLE_WEB_CLIENT_ID;
+  if (Platform.OS === 'android') return !isExpoGo && !!GOOGLE_ANDROID_CLIENT_ID;
+  if (Platform.OS === 'ios') return !isExpoGo && !!GOOGLE_IOS_CLIENT_ID;
   return false;
 };
 
-// Build Google OAuth config based on platform
 const getGoogleAuthConfig = () => {
-  const config: any = {
-    scopes: ['openid', 'profile', 'email'],
-  };
-
-  // For web platform, use webClientId
-  if (Platform.OS === 'web') {
-    config.webClientId = GOOGLE_WEB_CLIENT_ID;
-    return config;
-  }
-
-  // For Android dev/production builds (not Expo Go).
-  // Always include webClientId so the provider can also return a backend-verifiable
-  // idToken; add the native androidClientId when configured.
-  if (Platform.OS === 'android') {
-    config.webClientId = GOOGLE_WEB_CLIENT_ID;
-    if (GOOGLE_ANDROID_CLIENT_ID) config.androidClientId = GOOGLE_ANDROID_CLIENT_ID;
-    return config;
-  }
-
-  // For iOS dev/production builds (not Expo Go)
-  if (Platform.OS === 'ios') {
-    config.webClientId = GOOGLE_WEB_CLIENT_ID;
-    if (GOOGLE_IOS_CLIENT_ID) config.iosClientId = GOOGLE_IOS_CLIENT_ID;
-    return config;
-  }
-
-  // Fallback
+  const config: any = { scopes: ['openid', 'profile', 'email'] };
+  config.webClientId = GOOGLE_WEB_CLIENT_ID;
+  if (Platform.OS === 'android' && GOOGLE_ANDROID_CLIENT_ID) config.androidClientId = GOOGLE_ANDROID_CLIENT_ID;
+  if (Platform.OS === 'ios' && GOOGLE_IOS_CLIENT_ID) config.iosClientId = GOOGLE_IOS_CLIENT_ID;
   return config;
 };
 
-const PRIMARY      = "#7C3AED";
-const PRIMARY_DARK = "#5B21B6";
-const WHITE        = "#FFFFFF";
-const MUTED        = "#94A3B8";
-const SOFT_BG      = "#F5F3FF";
-const INPUT_BG     = "#F8FAFC";
-const TEXT_DARK    = "#1E1B4B";
+// Colors from intro.tsx
+const BG_COLOR = '#E9DEFE';
+const PRIMARY_COLOR = '#6C47FF';
+const TEXT_DARK = "#1E293B";
+const MUTED = "#64748B";
+const WHITE = "#FFFFFF";
 
-const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get("window");
+const GoogleIcon = ({ size = 20 }) => (
+  <Svg width={size} height={size} viewBox="0 0 48 48">
+    <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    <Path fill="none" d="M0 0h48v48H0z"/>
+  </Svg>
+);
 
-// ── Decorative prescription lines in the header ───────────────────────────────
-function RxDecor() {
+function ParallaxCloud({ scale, top, left, delay, duration }: { scale: number; top: number; left: number; delay: number; duration: number }) {
+  const floatY = useRef(new RNAnimated.Value(0)).current;
+  const floatX = useRef(new RNAnimated.Value(0)).current;
+
+  useEffect(() => {
+    RNAnimated.loop(
+      RNAnimated.parallel([
+        RNAnimated.sequence([
+          RNAnimated.timing(floatY, { toValue: -15, duration: duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+          RNAnimated.timing(floatY, { toValue: 0, duration: duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+        ]),
+        RNAnimated.sequence([
+          RNAnimated.timing(floatX, { toValue: 20, duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+          RNAnimated.timing(floatX, { toValue: 0, duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+        ])
+      ])
+    ).start();
+  }, []);
+
   return (
-    <View style={decor.wrap} pointerEvents="none">
-      {/* Rx symbol */}
-      <Text style={decor.rx}>℞</Text>
-      {/* Pill capsule shapes */}
-      <View style={decor.capsuleRow}>
-        <View style={[decor.capsule, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
-        <View style={[decor.capsule, { backgroundColor: 'rgba(255,255,255,0.07)', width: 32 }]} />
+    <RNAnimated.View style={{ position: 'absolute', top, left, transform: [{ translateY: floatY }, { translateX: floatX }, { scale }], opacity: 0.7 }}>
+      <View style={styles.cloudContainer}>
+        <View style={[styles.cloudCircle, styles.cloudCircleLeft]} />
+        <View style={[styles.cloudCircle, styles.cloudCircleTop]} />
+        <View style={[styles.cloudCircle, styles.cloudCircleRight]} />
+        <View style={styles.cloudBase} />
       </View>
-      {/* Cross / plus signs */}
-      <View style={[decor.cross, { top: 24, right: 28 }]}>
-        <Feather name="plus" size={28} color="rgba(255,255,255,0.1)" />
-      </View>
-      <View style={[decor.cross, { bottom: 30, left: 20 }]}>
-        <Feather name="plus" size={16} color="rgba(255,255,255,0.08)" />
-      </View>
-      {/* Heart-pulse icon faint */}
-      <View style={decor.pulse}>
-        <Feather name="activity" size={48} color="rgba(255,255,255,0.06)" />
-      </View>
-    </View>
+    </RNAnimated.View>
   );
 }
 
-const decor = StyleSheet.create({
-  wrap:      { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
-  rx:        { position: 'absolute', top: 18, left: 24, fontSize: 52, color: 'rgba(255,255,255,0.08)', fontWeight: '900' },
-  capsuleRow:{ position: 'absolute', bottom: 24, right: 16, flexDirection: 'row', gap: 6 },
-  capsule:   { width: 52, height: 22, borderRadius: 11 },
-  cross:     { position: 'absolute' },
-  pulse:     { position: 'absolute', bottom: 16, left: '38%' },
-});
-
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login, setRole, setUser, switchProvider, resetOnboarding } = useApp();
-
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [role,         setRoleState]    = useState<"patient" | "caregiver" | "family">("patient");
-  const [emailFocused,    setEmailFocused]    = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [error,  setError]  = useState<string | null>(null);
-  const [showDemoModal, setShowDemoModal] = useState(false);
-
-  const [isLoggingIn,   setIsLoggingIn]   = useState(false);
+  const { login } = useApp();
+  
+  const [error, setError] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginProgress, setLoginProgress] = useState(0);
-  const [isSuccess,     setIsSuccess]     = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | undefined>(undefined);
+  const [suggestedRole, setSuggestedRole] = useState<AppRole>('patient');
 
-  // First-time Google sign-in role selection
-  const [showRoleModal,  setShowRoleModal]  = useState(false);
-  const [pendingToken,   setPendingToken]   = useState<string | null>(null);
-  const [pendingEmail,   setPendingEmail]   = useState<string | undefined>(undefined);
-  const [suggestedRole,  setSuggestedRole]  = useState<AppRole>('patient');
-
-  const passwordRef = React.useRef<TextInput>(null);
-
-  // ── Real Google OAuth via expo-auth-session ──
-  // Only initialize if Google auth is available for this platform
   const canUseGoogleAuth = React.useMemo(() => isGoogleAuthAvailable(), []);
-  
-  // Only call useAuthRequest if Google auth is available (avoids validation errors in Expo Go)
-  const googleAuthState = canUseGoogleAuth 
-    ? Google.useAuthRequest(getGoogleAuthConfig())
-    : [null, null, null];
-  
-  const [googleRequest, googleResponse, promptGoogleAsync] = googleAuthState;
+  const [googleRequest, googleResponse, promptGoogleAsync] = canUseGoogleAuth 
+    ? Google.useAuthRequest(getGoogleAuthConfig()) : [null, null, null];
 
   useEffect(() => {
     if (googleResponse?.type === 'success') {
@@ -183,91 +121,16 @@ export default function LoginScreen() {
     }
   }, [googleResponse]);
 
-  const shakeX = useSharedValue(0);
-  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
-
-  const shake = () => {
-    shakeX.value = withSequence(
-      withTiming(-8, { duration: 45 }),
-      withRepeat(withTiming(8, { duration: 45 }), 4, true),
-      withTiming(0, { duration: 45 })
-    );
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-  };
-
-  const handleTransitionToSuccess = async (navRole: AppRole = role) => {
+  const handleTransitionToSuccess = async (navRole: AppRole) => {
     setIsSuccess(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    try {
-      const { sound } = await Audio.Sound.createAsync(require("../assets/sounds/notification.mp3"));
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((s) => { if (s.isLoaded && s.didJustFinish) sound.unloadAsync().catch(() => {}); });
-    } catch {}
     setTimeout(() => {
       const path = navRole === "caregiver" ? "/caregiver/dashboard" : navRole === "family" ? "/family/dashboard" : "/(tabs)";
       router.replace(path as any);
     }, 600);
   };
 
-  const handleLogin = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setError(null);
-    if (!email || !password) { setError("Please enter both email and password"); shake(); return; }
-    setIsLoggingIn(true);
-    setLoginProgress(0.8);
-    try {
-      const apiUrl = getApiUrl();
-      const res = await fetch(`${apiUrl}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      
-      if (!res.ok) {
-        const d = await res.json();
-        if (d.error === "EMAIL_NOT_VERIFIED") {
-          setIsLoggingIn(false);
-          setLoginProgress(0);
-          router.replace(`/verify-email?email=${encodeURIComponent(email)}` as any);
-          return;
-        }
-        throw new Error(d.error || "Login failed");
-      }
-      
-      const data = await res.json();
-      await login(data.user, data.token);
-      setLoginProgress(1);
-      setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
-    } catch (err: any) {
-      setError(getFriendlyErrorMessage(err, 'auth'));
-      setIsLoggingIn(false); setLoginProgress(0);
-      shake();
-    }
-  };
-
-  const handleGoogleSignIn = () => {
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setError(null);
-    
-    // Check if Google auth is available
-    if (!canUseGoogleAuth) {
-      setError('Google Sign-In needs native credentials on this device. Please use Email/Password, or configure the Android/iOS client ID in a build.');
-      return;
-    }
-
-    if (!googleRequest) {
-      setError('Google authentication is not ready. Please try again.');
-      return;
-    }
-    
-    if (promptGoogleAsync) {
-      promptGoogleAsync();
-    }
-  };
-
-  // POST to /oauth. The backend decides "new vs existing" — a brand-new user
-  // comes back with { needsRoleSelection } so we can ask for the role first.
-  const postOAuth = async (accessToken: string, opts?: { role?: AppRole; confirmRole?: boolean }) => {
+  const postOAuth = async (accessToken: string, opts?: { role?: AppRole; confirmRole?: boolean; extraData?: any }) => {
     const apiUrl = getApiUrl();
     const res = await fetch(`${apiUrl}/api/auth/oauth`, {
       method: 'POST',
@@ -277,26 +140,21 @@ export default function LoginScreen() {
         accessToken,
         ...(opts?.role ? { role: opts.role } : {}),
         ...(opts?.confirmRole ? { confirmRole: true } : {}),
+        ...(opts?.extraData ? opts.extraData : {}),
       }),
     });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.error || 'Google sign-in failed');
-    }
-    return res.json();
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error || 'Google sign-in failed');
+    return d;
   };
 
-  // Called with a real Google accessToken — signs in, or prompts for a role
-  // if this is a first-time sign-in.
   const executeGoogleOAuth = async (accessToken: string) => {
     setIsLoggingIn(true);
     setLoginProgress(0.7);
     setError(null);
     try {
       const data = await postOAuth(accessToken);
-
       if (data.needsRoleSelection) {
-        // First-time user — pause and ask which role to register as (no OTP).
         setPendingToken(accessToken);
         setPendingEmail(data.pendingProfile?.email);
         setSuggestedRole((data.suggestedRole as AppRole) ?? 'patient');
@@ -305,232 +163,148 @@ export default function LoginScreen() {
         setShowRoleModal(true);
         return;
       }
-
       await login(data.user, data.token);
       setLoginProgress(1);
       setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
     } catch (err: any) {
-      setError(err.message || 'Google sign-in failed');
-      setIsLoggingIn(false);
-      setLoginProgress(0);
-      shake();
+      setError(err.message || 'Authentication failed');
+      setIsLoggingIn(false); setLoginProgress(0);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
-  // User picked a role in the modal — confirm account creation.
-  const handleRoleConfirm = async (chosen: AppRole) => {
+  const handleRoleConfirm = async (chosenRole: AppRole, extraData?: any) => {
     setShowRoleModal(false);
     if (!pendingToken) return;
     setIsLoggingIn(true);
     setLoginProgress(0.8);
     setError(null);
     try {
-      const data = await postOAuth(pendingToken, { role: chosen, confirmRole: true });
+      const data = await postOAuth(pendingToken, { role: chosenRole, confirmRole: true, extraData });
       await login(data.user, data.token);
       setPendingToken(null);
       setLoginProgress(1);
-      setTimeout(() => handleTransitionToSuccess((data.user?.role as AppRole) ?? chosen), 100);
+      setTimeout(() => handleTransitionToSuccess((data.user?.role as AppRole) ?? chosenRole), 100);
     } catch (err: any) {
-      setError(err.message || 'Google sign-in failed');
-      setIsLoggingIn(false);
-      setLoginProgress(0);
-      shake();
+      setError(err.message || 'Registration failed');
+      setIsLoggingIn(false); setLoginProgress(0);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
-  const handleRoleCancel = () => {
-    setShowRoleModal(false);
-    setPendingToken(null);
-    setPendingEmail(undefined);
+  const handleGoogleAction = () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setError(null);
+    if (!canUseGoogleAuth) {
+      setError('Google Sign-In needs native credentials on this device.');
+      return;
+    }
+    if (promptGoogleAsync) promptGoogleAsync();
   };
 
-  const handleGuestLogin = async () => {
-    const AS = (await import("@react-native-async-storage/async-storage")).default;
-    await AS.removeItem("discharge_buddy_token");
-    setIsLoggingIn(true); setLoginProgress(0.8);
-    setTimeout(async () => {
-      setRole(role);
-      setUser({ id: Date.now().toString(), name: "Guest " + role, email: "test@example.com", role });
-      setLoginProgress(1);
-      setTimeout(handleTransitionToSuccess, 100);
-    }, 300);
-  };
-
-  const runDemo = async (demoRole: "patient" | "caregiver" | "family") => {
+  const runDemo = async (role: AppRole) => {
+    setIsLoggingIn(true);
     setShowDemoModal(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setIsLoggingIn(true); setLoginProgress(0.8);
-    try {
-      const AS = (await import("@react-native-async-storage/async-storage")).default;
-      await AS.removeItem("discharge_buddy_token");
-      const { MockProvider: MP } = await import("@/context/MockProvider");
-      switchProvider(new MP());
-      setRole(demoRole);
-      setUser({ id: "demo-user", name: demoRole === "caregiver" ? "Demo Caregiver" : demoRole === "family" ? "Demo Family" : "Demo Patient", email: "demo@dischargebuddy.app", role: demoRole });
-      setLoginProgress(1);
-      setTimeout(handleTransitionToSuccess, 100);
-    } catch { setIsLoggingIn(false); setLoginProgress(0); }
+    setTimeout(async () => {
+      const mockUser = { id: `demo-${role}-1`, name: `Demo ${role}`, email: `demo@${role}.com`, role, isEmailVerified: true };
+      const mockToken = "demo_token_123";
+      await login(mockUser as any, mockToken);
+      setIsLoggingIn(false);
+      handleTransitionToSuccess(role);
+    }, 1500);
   };
-
-  const topPad = Platform.OS === "web" ? 0 : insets.top;
-  const botPad = Platform.OS === "web" ? 24 : insets.bottom;
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <StatusBar barStyle="light-content" />
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar barStyle="dark-content" />
 
-      {/* ── Purple Header Block ── */}
-      <LinearGradient
-        colors={[PRIMARY_DARK, PRIMARY]}
-        start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }}
-        style={[styles.header, { paddingTop: topPad + 28 }]}
-      >
-        <RxDecor />
-        <View style={styles.logoRow}>
-          <View style={styles.logoCircle}>
-            <Feather name="activity" size={22} color={WHITE} />
-          </View>
-          <Text style={styles.logoText}>DischargeBuddy</Text>
+      {/* BACKGROUND LAYER: Clouds */}
+      <ParallaxCloud scale={0.8} top={height * 0.1} left={-20} delay={0} duration={4000} />
+      <ParallaxCloud scale={1.2} top={height * 0.25} left={width * 0.7} delay={500} duration={4500} />
+      <ParallaxCloud scale={0.6} top={height * 0.4} left={width * 0.1} delay={1000} duration={3500} />
+
+      {/* CHARACTER LAYER */}
+      <View style={[styles.mascotArea, { paddingTop: insets.top }]}>
+        <View style={styles.mascotWrap}>
+          <Image source={require('@/assets/images/intro_image.png')} style={styles.robotImage} />
         </View>
-        <Text style={styles.headerTitle}>Sign In</Text>
-        <Text style={styles.headerSub}>Your recovery, our priority.</Text>
-      </LinearGradient>
-
-      {/* ── White Form Card ── */}
-      <View style={[styles.card, { paddingBottom: botPad + 16 }]}>
-        {isLoggingIn ? (
-          <View style={styles.loadingWrap}>
-            <Text style={styles.loadingTitle}>{isSuccess ? "Welcome back!" : "Verifying…"}</Text>
-            <LiquidCapsuleProgress progress={loginProgress} colorStart={PRIMARY} colorEnd="#EDE9FE" size={200} />
-            <Text style={styles.loadingSub}>{isSuccess ? "Redirecting to your dashboard" : "Checking your credentials"}</Text>
-          </View>
-        ) : (
-          <Animated.View style={shakeStyle}>
-            {/* Role selector */}
-            <View style={styles.roleRow}>
-              {(["patient", "family", "caregiver"] as const).map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  onPress={() => setRoleState(r)}
-                  style={[styles.roleChip, role === r && styles.roleChipActive]}
-                >
-                  <Feather name={r === "patient" ? "user" : r === "family" ? "heart" : "users"} size={13} color={role === r ? WHITE : PRIMARY} />
-                  <Text style={[styles.roleChipText, { color: role === r ? WHITE : PRIMARY }]}>
-                    {r.charAt(0).toUpperCase() + r.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {!!error && (
-              <View style={styles.errorBox}>
-                <Feather name="alert-circle" size={14} color="#EF4444" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {/* Email */}
-            <View style={[styles.inputWrap, emailFocused && styles.inputFocused]}>
-              <Feather name="mail" size={18} color={emailFocused ? PRIMARY : MUTED} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email address"
-                placeholderTextColor={MUTED}
-                value={email} onChangeText={setEmail}
-                onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
-                autoCapitalize="none" keyboardType="email-address"
-                returnKeyType="next" onSubmitEditing={() => passwordRef.current?.focus()}
-                autoCorrect={false}
-              />
-            </View>
-
-            {/* Password */}
-            <View style={[styles.inputWrap, passwordFocused && styles.inputFocused]}>
-              <Feather name="lock" size={18} color={passwordFocused ? PRIMARY : MUTED} />
-              <TextInput
-                ref={passwordRef}
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={MUTED}
-                value={password} onChangeText={setPassword}
-                onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)}
-                secureTextEntry={!showPassword}
-                returnKeyType="done" onSubmitEditing={handleLogin}
-                autoCorrect={false}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Feather name={showPassword ? "eye" : "eye-off"} size={18} color={MUTED} />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={styles.forgotWrap}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            {/* Sign In */}
-            <TouchableOpacity onPress={handleLogin} activeOpacity={0.85} style={styles.primaryBtn}>
-              <LinearGradient colors={[PRIMARY, PRIMARY_DARK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtnGrad}>
-                <Text style={styles.primaryBtnText}>SIGN IN</Text>
-                <Feather name="arrow-right" size={18} color={WHITE} />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Google Sign-In - Only shown if available */}
-            {canUseGoogleAuth && (
-              <TouchableOpacity onPress={handleGoogleSignIn} activeOpacity={0.85} style={styles.googleBtn}>
-                <Feather name="chrome" size={18} color={PRIMARY} style={{ marginRight: 10 }} />
-                <Text style={styles.googleBtnText}>Sign in with Google</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Guest + Demo row */}
-            <View style={styles.altRow}>
-              <TouchableOpacity style={styles.altBtn} onPress={handleGuestLogin}>
-                <Feather name="user" size={15} color={PRIMARY} />
-                <Text style={styles.altBtnText}>Guest</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.altBtn, { borderColor: '#D97706' }]} onPress={() => setShowDemoModal(true)}>
-                <Feather name="play-circle" size={15} color="#D97706" />
-                <Text style={[styles.altBtnText, { color: '#D97706' }]}>Demo</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Footer */}
-            <View style={styles.footerRow}>
-              <Text style={styles.footerText}>New here? </Text>
-              <TouchableOpacity onPress={() => router.replace("/register")}>
-                <Text style={styles.footerLink}>Create Account</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => { router.replace("/intro"); setTimeout(() => resetOnboarding(), 100); }}
-              style={styles.devBtn}
-            >
-              <Text style={styles.devText}>[Dev] Reset Onboarding</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
       </View>
 
-      {/* Demo Modal */}
+      {/* FOREGROUND LAYER: Bottom Sheet */}
+      <Animated.View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom + 20, 30) }]}>
+        <View style={styles.handleBar} />
+        
+        <View style={styles.textContent}>
+          <Text style={styles.title}>{isSignUp ? "Create Account" : "Sign in"}</Text>
+          <Text style={styles.subtitle}>Use your Google account to log in or create a new account.</Text>
+        </View>
+
+        {!!error && (
+          <View style={styles.errorBox}>
+            <Feather name="alert-circle" size={14} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {isLoggingIn ? (
+          <Animated.View entering={FadeIn} style={styles.loadingWrap}>
+            <Text style={styles.loadingTitle}>{isSuccess ? "Success!" : "Authenticating…"}</Text>
+            <LiquidCapsuleProgress progress={loginProgress} colorStart={PRIMARY_COLOR} colorEnd="#EDE9FE" size={180} />
+          </Animated.View>
+        ) : (
+          <View style={styles.actionContainer}>
+            <GlareHover
+              width="100%"
+              glareColor="#ffffff"
+              glareOpacity={0.5}
+              glareAngle={45}
+              glareSize={200}
+              transitionDuration={500}
+              borderRadius={16}
+            >
+              <TouchableOpacity onPress={handleGoogleAction} activeOpacity={0.85} style={styles.googleBtn}>
+                <GoogleIcon size={22} />
+                <Text style={styles.googleBtnText} numberOfLines={1}>Continue with Google</Text>
+              </TouchableOpacity>
+            </GlareHover>
+
+            {/* Sign Up / Sign In Toggle */}
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleText}>
+                {isSignUp ? "Already have an account?" : "Don't have an account?"}
+              </Text>
+              <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} activeOpacity={0.7}>
+                <Text style={styles.toggleLink}>{isSignUp ? "Sign in" : "Sign up"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Developer options */}
+            <View style={styles.devOptions}>
+              <TouchableOpacity onPress={() => setShowDemoModal(true)} style={styles.devBtn}>
+                <Text style={styles.devText}>Demo / Guest View</Text>
+              </TouchableOpacity>
+              <Text style={{ color: '#CBD5E1' }}>•</Text>
+              <TouchableOpacity onPress={() => router.replace('/intro')} style={styles.devBtn}>
+                <Text style={styles.devText}>Back to Intro</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </Animated.View>
+
+      {/* Demo Selection Modal */}
       <Modal visible={showDemoModal} transparent animationType="fade" onRequestClose={() => setShowDemoModal(false)}>
-        <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill}>
-          <View style={styles.modalOuter}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Try Demo Mode</Text>
-              <Text style={styles.modalSub}>Explore the app without signing in</Text>
+        <BlurView intensity={20} tint="dark" style={styles.modalOuter}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Select Demo Role</Text>
+            <Text style={styles.modalSub}>Experience the app as different users without an account.</Text>
+            
+            <View style={{ gap: 10 }}>
               {([
-                { role: 'patient',   icon: 'user',  color: PRIMARY,    label: 'Patient',      sub: 'Recovery & medication tracking' },
-                { role: 'family',    icon: 'heart', color: '#f43f5e',  label: 'Family Member', sub: 'Monitor loved ones' },
-                { role: 'caregiver', icon: 'users', color: '#0284c7',  label: 'Caregiver',    sub: 'Manage patient plans' },
+                { role: 'patient',   icon: 'user',  color: PRIMARY_COLOR, label: 'Patient',      sub: 'View patient dashboard' },
+                { role: 'family',    icon: 'heart', color: '#db2777',     label: 'Family',       sub: 'Monitor a patient' },
+                { role: 'caregiver', icon: 'users', color: '#0284c7',     label: 'Caregiver',    sub: 'Manage patient plans' },
+                { role: 'doctor',    icon: 'activity', color: '#10b981',  label: 'Doctor',       sub: 'Create discharge plans' },
               ] as const).map((opt) => (
                 <TouchableOpacity key={opt.role} style={styles.demoOpt} onPress={() => runDemo(opt.role)}>
                   <View style={[styles.demoOptIcon, { backgroundColor: opt.color + '18' }]}>
@@ -551,129 +325,164 @@ export default function LoginScreen() {
         </BlurView>
       </Modal>
 
-      {/* First-time Google sign-in role selection */}
       <RoleSelectModal
         visible={showRoleModal}
         email={pendingEmail}
         suggestedRole={suggestedRole}
-        onConfirm={handleRoleConfirm}
-        onCancel={handleRoleCancel}
+        onConfirm={handleRoleConfirm as any}
+        onCancel={() => { setShowRoleModal(false); setPendingToken(null); }}
       />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: WHITE },
-
-  // ── Header ──
-  header: {
-    paddingHorizontal: 28,
-    paddingBottom: 32,
-    overflow: 'hidden',
-  },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-  logoCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  logoText: { fontSize: 16, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
-  headerTitle: { fontSize: 36, color: WHITE, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.5 },
-  headerSub:   { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontFamily: 'Inter_400Regular', marginTop: 4 },
-
-  // ── Card ──
-  card: {
+  container: {
     flex: 1,
-    backgroundColor: WHITE,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    marginTop: -24,
-    paddingHorizontal: 28,
-    paddingTop: 28,
+    backgroundColor: BG_COLOR,
+  },
+  cloudContainer: { width: 100, height: 60, justifyContent: 'flex-end' },
+  cloudCircle: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 50 },
+  cloudCircleLeft: { width: 40, height: 40, bottom: 0, left: 10 },
+  cloudCircleTop: { width: 50, height: 50, bottom: 10, left: 25 },
+  cloudCircleRight: { width: 40, height: 40, bottom: 0, right: 15 },
+  cloudBase: { width: 80, height: 30, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, bottom: 0, left: 10, position: 'absolute' },
+  
+  mascotArea: {
+    flex: 0.6,
+    alignItems: 'center',
+    justifyContent: 'flex-end', 
+    zIndex: 100, 
+    marginBottom: -40,
+  },
+  mascotWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.06, shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.15,
+    shadowRadius: 25,
+    elevation: 30,
+  },
+  robotImage: {
+    width: width * 1.3,
+    height: height * 0.55,
+    resizeMode: 'contain',
+  },
+  
+  bottomSheet: {
+    flex: 0.4,
+    backgroundColor: WHITE,
+    width: '100%',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    paddingHorizontal: 32,
+    paddingTop: 45,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -15 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 25,
+    zIndex: 10,
+    justifyContent: 'flex-start', 
+  },
+  handleBar: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#E2E8F0',
+    marginBottom: 20,
+    position: 'absolute',
+    top: 15,
+  },
+  textContent: {
+    alignItems: 'center',
+    marginBottom: 30,
+    width: '100%'
+  },
+  title: {
+    fontSize: 28,
+    color: TEXT_DARK,
+    fontFamily: 'Inter_800ExtraBold',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: MUTED,
+    fontFamily: 'Inter_500Medium',
+    textAlign: 'center',
   },
 
-  // ── Role selector ──
-  roleRow: { flexDirection: 'row', backgroundColor: SOFT_BG, borderRadius: 14, padding: 4, marginBottom: 18 },
-  roleChip: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, paddingVertical: 10, borderRadius: 11,
+  actionContainer: {
+    width: '100%',
+    alignItems: 'center'
   },
-  roleChipActive: {
-    backgroundColor: PRIMARY,
-    shadowColor: PRIMARY, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 3,
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 18,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    width: '100%',
+    gap: 12,
   },
-  roleChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  googleBtnText: {
+    color: TEXT_DARK,
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    flexShrink: 1,
+  },
 
-  // ── Error ──
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 20,
+  },
+  toggleText: {
+    color: MUTED,
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
+  toggleLink: {
+    color: PRIMARY_COLOR,
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+  },
+
+  devOptions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 24
+  },
+  devBtn: {
+    padding: 4
+  },
+  devText: {
+    color: MUTED,
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    textDecorationLine: 'underline'
+  },
+
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FEF2F2', borderRadius: 12,
-    padding: 12, marginBottom: 14,
+    backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 20, width: '100%',
     borderWidth: 1, borderColor: '#FECACA',
   },
   errorText: { flex: 1, color: '#EF4444', fontSize: 13, fontFamily: 'Inter_500Medium' },
 
-  // ── Inputs ──
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: INPUT_BG,
-    borderRadius: 14,
-    paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 14 : 6,
-    borderWidth: 1.5, borderColor: '#E2E8F0',
-    marginBottom: 12,
-  },
-  inputFocused: { borderColor: PRIMARY, backgroundColor: '#F5F3FF' },
-  input: { flex: 1, fontSize: 15, color: TEXT_DARK, height: 44 },
+  loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
+  loadingTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', color: PRIMARY_COLOR, marginBottom: 20 },
 
-  forgotWrap: { alignItems: 'flex-end', marginBottom: 18 },
-  forgotText: { color: PRIMARY, fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-
-  // ── Primary Button ──
-  primaryBtn: {
-    borderRadius: 14,
-    shadowColor: PRIMARY, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 7,
-    marginBottom: 18,
-  },
-  primaryBtnGrad: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: 14, paddingVertical: 16,
-  },
-  primaryBtnText: { color: WHITE, fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
-
-  // ── Divider ──
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-  dividerText: { color: MUTED, fontSize: 12, fontFamily: 'Inter_400Regular' },
-
-  // ── Alt buttons ──
-  altRow: { flexDirection: 'row', gap: 12, marginBottom: 18 },
-  altBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    paddingVertical: 13, borderRadius: 14,
-    borderWidth: 1.5, borderColor: PRIMARY,
-  },
-  altBtnText: { color: PRIMARY, fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-
-  // ── Footer ──
-  footerRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 10 },
-  footerText: { color: MUTED, fontSize: 14 },
-  footerLink: { color: PRIMARY, fontSize: 14, fontFamily: 'Inter_700Bold' },
-
-  devBtn: { alignItems: 'center', marginTop: 6 },
-  devText: { color: MUTED, fontSize: 11, textDecorationLine: 'underline' },
-
-  // ── Loading ──
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
-  loadingTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', color: PRIMARY },
-  loadingSub:   { fontSize: 14, color: MUTED, textAlign: 'center' },
-
-  // ── Modal ──
-  modalOuter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.25)' },
+  modalOuter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.1)' },
   modalCard:  { backgroundColor: WHITE, borderRadius: 24, padding: 24, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
   modalTitle: { fontSize: 20, fontFamily: 'Inter_800ExtraBold', color: TEXT_DARK, marginBottom: 4 },
   modalSub:   { fontSize: 13, color: MUTED, fontFamily: 'Inter_400Regular', marginBottom: 20 },
@@ -683,59 +492,4 @@ const styles = StyleSheet.create({
   demoOptSub:   { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular' },
   modalCancelBtn: { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
   modalCancelText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
-
-  // ── Google Button ──
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-    marginBottom: 18,
-  },
-  googleBtnText: {
-    color: PRIMARY,
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-  },
-
-  // ── Google Modal Options ──
-  googleOpt: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  googleOptAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EDE9FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleOptName: { fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT_DARK },
-  googleOptEmail: { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular', marginTop: 1 },
-
-  // ── Google Custom Input Form ──
-  googleInputWrap: {
-    marginTop: 12,
-    gap: 10,
-  },
-  googleInput: {
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: TEXT_DARK,
-    backgroundColor: '#F8FAFC',
-  },
 });

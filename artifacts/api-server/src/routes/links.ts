@@ -119,7 +119,7 @@ router.post("/", async (req: AuthRequest, res) => {
 router.delete("/:patientId", async (req: AuthRequest, res) => {
   try {
     const me = req.user!.id;
-    const { patientId } = req.params;
+    const patientId = req.params.patientId as string;
 
     await db.update(careLinks)
       .set({ status: "revoked" })

@@ -6,13 +6,13 @@ export class MedicineController {
   static async getMedicines(req: AuthRequest, res: Response) {
     if (!req.user?.linkedPatientId) return res.json({ medicines: [] });
     const userMedicines = await MedicineService.getUserMedicines(req.user.linkedPatientId);
-    res.json({ medicines: userMedicines });
+    return res.json({ medicines: userMedicines });
   }
 
   static async getTodayDoses(req: AuthRequest, res: Response) {
     if (!req.user?.linkedPatientId) return res.json({ doseLogs: [] });
     const logs = await MedicineService.getTodayDoses(req.user.linkedPatientId);
-    res.json({ doseLogs: logs });
+    return res.json({ doseLogs: logs });
   }
 
   static async updateDoseStatus(req: AuthRequest, res: Response) {
@@ -32,9 +32,9 @@ export class MedicineController {
         });
       }
 
-      res.json({ doseLog: updated });
+      return res.json({ doseLog: updated });
     } catch (error) {
-      res.status(500).json({ error: "Failed to update dose" });
+      return res.status(500).json({ error: "Failed to update dose" });
     }
   }
 
@@ -49,11 +49,11 @@ export class MedicineController {
         req.body
       );
 
-      res.status(201).json(medicine);
+      return res.status(201).json(medicine);
     } catch (error: any) {
       console.error("[MedicineController] Add failed. Request body:", req.body);
       console.error("[MedicineController] Error detail:", error);
-      res.status(500).json({ error: "Failed to add medicine", detail: error.message });
+      return res.status(500).json({ error: "Failed to add medicine", detail: error.message });
     }
   }
 
@@ -61,9 +61,9 @@ export class MedicineController {
     try {
       const id = req.params.id as string;
       const updated = await MedicineService.updateMedicine(id, req.body);
-      res.json(updated);
+      return res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Failed to update medicine" });
+      return res.status(500).json({ error: "Failed to update medicine" });
     }
   }
 
@@ -71,9 +71,9 @@ export class MedicineController {
     try {
       const id = req.params.id as string;
       await MedicineService.deleteMedicine(id);
-      res.status(204).end();
+      return res.status(204).end();
     } catch (error) {
-      res.status(500).json({ error: "Failed to delete medicine" });
+      return res.status(500).json({ error: "Failed to delete medicine" });
     }
   }
 
@@ -84,9 +84,9 @@ export class MedicineController {
     try {
       const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
       const history = await MedicineService.getAdherenceHistory(req.user.id, isNaN(days) ? 30 : days);
-      res.json({ success: true, history });
+      return res.json({ success: true, history });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to get adherence history" });
+      return res.status(500).json({ success: false, message: "Failed to get adherence history" });
     }
   }
 }

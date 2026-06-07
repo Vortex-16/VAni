@@ -21,9 +21,9 @@ export class StorageController {
         extractedData,
       });
 
-      res.json({ success: true, data: { prescription } });
+      return res.json({ success: true, data: { prescription } });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to save prescription" });
+      return res.status(500).json({ success: false, message: "Failed to save prescription" });
     }
   }
 
@@ -34,9 +34,9 @@ export class StorageController {
 
     try {
       const prescriptions = await StorageService.getUserPrescriptions(req.user.id);
-      res.json({ success: true, data: prescriptions });
+      return res.json({ success: true, data: prescriptions });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to get prescriptions" });
+      return res.status(500).json({ success: false, message: "Failed to get prescriptions" });
     }
   }
 
@@ -47,10 +47,10 @@ export class StorageController {
 
     try {
       const user = await StorageService.getUserProfile(req.user.id);
-      res.json({ success: true, data: user });
+      return res.json({ success: true, data: user });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to get profile";
-      res.status(500).json({ success: false, message });
+      return res.status(500).json({ success: false, message });
     }
   }
 }

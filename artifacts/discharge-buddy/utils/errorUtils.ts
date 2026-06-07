@@ -25,6 +25,9 @@ export function getFriendlyErrorMessage(error: any, context: 'scan' | 'import' |
     if (message.includes("exists")) {
       return "An account with this email already exists.";
     }
+    if (message.includes("USE_GOOGLE_SIGNIN")) {
+      return "This account uses Google Sign-In. Please tap the 'Sign in with Google' button below.";
+    }
   }
 
   // 3. Scan/Import Specifics

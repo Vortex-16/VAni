@@ -2,7 +2,7 @@ import { pgTable, text, integer, timestamp, boolean, pgEnum, uuid, varchar, date
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const userRoleEnum = pgEnum("user_role", ["patient", "caregiver", "family"]);
+export const userRoleEnum = pgEnum("user_role", ["patient", "caregiver", "family", "doctor"]);
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
 export const doseStatusEnum = pgEnum("dose_status", ["taken", "missed", "pending", "snoozed"]);
 export const linkRelationshipEnum = pgEnum("link_relationship", ["family", "caregiver"]);
@@ -22,6 +22,12 @@ export const users = pgTable("users", {
   avatar: text("avatar"),
   password: text("password"),
   pushToken: text("push_token"),
+  hospital: text("hospital"),
+  designation: text("designation"),
+  department: text("department"),
+  registrationNumber: text("registration_number"),
+  specialization: text("specialization"),
+  relationshipPreference: text("relationship_preference"),
   anchorTimes: jsonb("anchor_times").default({
     morning: "08:00",
     afternoon: "14:00",

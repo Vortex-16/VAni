@@ -42,9 +42,9 @@ export class RecoveryController {
         notes,
       });
 
-      res.json({ success: true, data: log });
+      return res.json({ success: true, data: log });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to save recovery log" });
+      return res.status(500).json({ success: false, message: "Failed to save recovery log" });
     }
   }
 
@@ -56,9 +56,9 @@ export class RecoveryController {
     try {
       const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
       const logs = await RecoveryService.getRecoveryLogs(req.user.id, days);
-      res.json({ success: true, data: logs });
+      return res.json({ success: true, data: logs });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to get recovery logs" });
+      return res.status(500).json({ success: false, message: "Failed to get recovery logs" });
     }
   }
 
@@ -69,9 +69,9 @@ export class RecoveryController {
 
     try {
       const trends = await RecoveryService.getRecoveryTrends(req.user.id);
-      res.json({ success: true, data: trends });
+      return res.json({ success: true, data: trends });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to get recovery trends" });
+      return res.status(500).json({ success: false, message: "Failed to get recovery trends" });
     }
   }
 
@@ -82,9 +82,9 @@ export class RecoveryController {
 
     try {
       const alerts = await RecoveryService.detectAlerts(req.user.id);
-      res.json({ success: true, data: alerts });
+      return res.json({ success: true, data: alerts });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to detect alerts" });
+      return res.status(500).json({ success: false, message: "Failed to detect alerts" });
     }
   }
 }

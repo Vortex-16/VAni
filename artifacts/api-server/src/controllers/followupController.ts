@@ -31,9 +31,9 @@ export class FollowupController {
         notes: notes || (doctorName ? `Doctor: ${doctorName}` : undefined),
       });
 
-      res.json({ success: true, data: followup });
+      return res.json({ success: true, data: followup });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to create followup" });
+      return res.status(500).json({ success: false, message: "Failed to create followup" });
     }
   }
 
@@ -45,11 +45,11 @@ export class FollowupController {
     try {
       const status = req.query.status as "upcoming" | "completed" | "missed" | undefined;
       const followups = await FollowupService.getFollowups(req.user.id, status);
-      res.json({ success: true, data: followups });
+      return res.json({ success: true, data: followups });
     } catch (err: unknown) {
       console.error("[FollowupController] Error fetching followups:", err);
       const message = err instanceof Error ? err.message : "Failed to get followups";
-      res.status(500).json({ success: false, message });
+      return res.status(500).json({ success: false, message });
     }
   }
 
@@ -59,7 +59,7 @@ export class FollowupController {
     }
 
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { status } = req.body;
 
       if (status !== "completed" && status !== "missed") {
@@ -70,10 +70,10 @@ export class FollowupController {
       }
 
       const updated = await FollowupService.updateFollowupStatus(id, req.user.id, status);
-      res.json({ success: true, data: updated });
+      return res.json({ success: true, data: updated });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to update followup";
-      res.status(500).json({ success: false, message });
+      return res.status(500).json({ success: false, message });
     }
   }
 
@@ -83,12 +83,12 @@ export class FollowupController {
     }
 
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       await FollowupService.deleteFollowup(id, req.user.id);
-      res.json({ success: true, message: "Deleted" });
+      return res.json({ success: true, message: "Deleted" });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to delete followup";
-      res.status(500).json({ success: false, message });
+      return res.status(500).json({ success: false, message });
     }
   }
 }

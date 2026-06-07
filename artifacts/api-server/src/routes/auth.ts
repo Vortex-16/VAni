@@ -52,7 +52,7 @@ async function verifyPassword(plain: string, stored: string, userId: string): Pr
 
 router.post("/oauth", async (req, res) => {
   try {
-    const { provider, idToken, accessToken, role, confirmRole, familyMember, professionalDetails } = req.body;
+    const { provider, idToken, accessToken, role, confirmRole, familyMember, professionalDetails, phone, relationshipPreference, hospital, designation, department, registrationNumber, specialization } = req.body;
     
     if (provider !== "google") {
       return res.status(400).json({ error: "Unsupported provider" });
@@ -115,12 +115,18 @@ router.post("/oauth", async (req, res) => {
     if (!user) {
       const selectedRole = role || "patient";
 
+      if ((selectedRole === "caregiver" || selectedRole === "doctor") && !email.toLowerCase().endsWith("@doc.in")) {
+        return res.status(400).json({ error: "Caregiver and Doctor accounts require an @doc.in email address." });
+      }
+
       if (selectedRole === "family") {
         // Family users manage others — they do NOT get their own patient profile.
         [user] = await db.insert(users).values({
           email: email.toLowerCase(),
           name,
           role: "family",
+          phone: phone || null,
+          relationshipPreference: relationshipPreference || null,
           isEmailVerified: true,
           linkedPatientId: null, // Family users have no self-patient
         }).returning();
@@ -173,6 +179,12 @@ router.post("/oauth", async (req, res) => {
           email: email.toLowerCase(),
           name,
           role: selectedRole,
+          phone: phone || null,
+          hospital: hospital || null,
+          designation: designation || null,
+          department: department || null,
+          registrationNumber: registrationNumber || null,
+          specialization: specialization || null,
           isEmailVerified: true,
           linkedPatientId: newPatient.id,
         }).returning();
@@ -212,6 +224,10 @@ router.post("/register", async (req, res) => {
     let [existingUser] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
     if (existingUser) {
       return res.status(400).json({ error: "User already exists" });
+    }
+
+    if ((role === "caregiver" || role === "doctor") && !email.toLowerCase().endsWith("@doc.in")) {
+      return res.status(400).json({ error: "Caregiver and Doctor accounts require an @doc.in email address." });
     }
 
     const verificationCode = generateOTPCode();

@@ -17,9 +17,9 @@ export class DoseTrackingController {
 
     try {
       const stats = await DoseTrackingService.getAdherenceStats(req.user.linkedPatientId);
-      res.json({ success: true, data: stats });
+      return res.json({ success: true, data: stats });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to get adherence stats" });
+      return res.status(500).json({ success: false, message: "Failed to get adherence stats" });
     }
   }
 
@@ -30,9 +30,9 @@ export class DoseTrackingController {
 
     try {
       const markedCount = await DoseTrackingService.markMissedDoses(req.user.linkedPatientId);
-      res.json({ success: true, data: { markedCount } });
+      return res.json({ success: true, data: { markedCount } });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to mark missed doses" });
+      return res.status(500).json({ success: false, message: "Failed to mark missed doses" });
     }
   }
 }

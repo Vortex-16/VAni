@@ -15,9 +15,9 @@ export class LanguageSimplifierController {
       }
 
       const result = await LanguageSimplifierService.simplifyInstruction(text);
-      res.json({ success: true, data: result });
+      return res.json({ success: true, data: result });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to simplify text" });
+      return res.status(500).json({ success: false, message: "Failed to simplify text" });
     }
   }
 
@@ -36,9 +36,9 @@ export class LanguageSimplifierController {
         return res.status(404).json({ success: false, message: "Term not found" });
       }
 
-      res.json({ success: true, data: { term, meaning } });
+      return res.json({ success: true, data: { term, meaning } });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to lookup term" });
+      return res.status(500).json({ success: false, message: "Failed to lookup term" });
     }
   }
 }
