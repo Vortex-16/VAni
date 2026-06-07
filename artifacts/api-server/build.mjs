@@ -65,6 +65,7 @@ async function buildAll() {
       "@opentelemetry/*",
       "@google-cloud/*",
       "@google/*",
+      "google-auth-library",
       "googleapis",
       "firebase-admin",
       "@parcel/watcher",
