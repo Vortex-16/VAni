@@ -282,3 +282,318 @@ EXPO_PUBLIC_DOMAIN="localhost:8081" pnpm run build
 - `discharge-buddy/components/assistant/VoiceOrb.tsx` — speaking visual state.
 - `discharge-buddy/hooks/assistant/useVoiceSession.ts` — `onTranscript` callback, per-platform format, language hint.
 - `discharge-buddy/context/{types.ts,ApiProvider.ts,MockProvider.ts}` — `transcribeAudio(audioBase64, fileExtension?, language?)`.
+
+## PROJECT VISION
+
+We are building:
+
+**Bora**
+
+A voice-first care companion connecting:
+
+* patients
+* caregivers
+* families
+
+The goal is:
+
+Users should eventually operate the application primarily through voice.
+
+This is NOT only a chatbot.
+
+This is a care ecosystem.
+
+Core philosophy:
+
+- Reduce cognitive burden.
+- Reduce caregiver burden.
+- Increase family connection.
+- Make users feel less alone.
+- Support elderly and non-technical users.
+
+---
+
+## MOST IMPORTANT RULE
+
+Do not break:
+
+* authentication
+* OCR
+* navigation
+* medicine systems
+* journal systems
+* chatbot
+* multilingual systems
+* APIs
+* existing flows
+
+Every new feature must be modular.
+
+Avoid chatbot-specific implementations.
+
+---
+
+## SECTION 1 — Analyze Existing Repository
+
+Analyze repository and update docs.md with:
+
+* existing architecture
+* existing providers
+* navigation
+* APIs
+* OCR
+* voice system
+* multilingual support
+* medicine modules
+* journal modules
+* settings
+* storage layers
+
+Create table:
+
+| Module | Current Status | Verified? | Risks | Dependencies |
+|--------|----------------|-----------|-------|--------------|
+|        |                |           |       |              |
+
+---
+
+## SECTION 2 — Current Voice System Status
+
+Document current implementation.
+
+Include:
+
+**Phase 1:**
+
+* STT
+* permissions
+* auto-send
+* chatbot integration
+* speech pipeline
+
+**Phase 2:**
+
+* assistant provider
+* global overlay
+* orb/blob
+* state machine
+* context foundation
+* voice session manager
+
+Create table:
+
+| Voice Feature | Status | Files | Missing Parts | Risk |
+|--------------|--------|-------|---------------|------|
+|              |        |       |               |      |
+
+---
+
+## SECTION 3 — PRIORITY FEATURE MATRIX
+
+Create feature tables.
+
+Columns:
+
+| Feature | Why Needed | Priority | Dependencies | Suggested Architecture | Demo Value | Complexity |
+|---------|------------|----------|--------------|------------------------|------------|------------|
+|         |            |          |              |                        |            |            |
+
+Priority labels:
+
+- P0 = Critical
+- P1 = High
+- P2 = Medium
+- P3 = Nice to Have
+
+---
+
+### P0 FEATURES (Highest Priority)
+
+1. **Family Voice Notes + Smart Notifications**
+
+Highest Priority.
+
+Goal:
+
+Caregivers and family members should be able to send voice notes or reminders.
+
+Patient should receive:
+
+* notifications
+* scheduled reminders
+* voice playback
+* text fallback
+
+Example:
+
+"Dad, don't forget medicine ❤️"
+
+OR
+
+Patient:
+
+"Bora, tell my daughter I had lunch."
+
+Flow:
+
+Voice → Intent detection → Store event → Create family update → Send push notification → Store timeline event
+
+Include implementation details:
+
+* notification system
+* audio storage
+* transcript storage
+* scheduling
+* reminder engine
+* push notifications
+* database schema
+
+Explain why this is emotionally powerful.
+
+2. **Shared Care Timeline**
+
+Include:
+
+- medicine logs
+- meal logs
+- journal logs
+- voice note events
+- activity logs
+- family interactions
+
+3. **Medication Companion**
+
+Include:
+
+- voice reminders
+- missed medicine detection
+- confirmation loops
+- caregiver updates
+
+4. **Multilingual Voice Pipeline**
+
+Support:
+
+- Bengali
+- English
+- Mixed speech
+- Language persistence
+- Guardian preferences
+
+---
+
+## P1 FEATURES
+
+- Context engine
+- intent routing
+- voice journaling
+- daily companion mode
+- family presence layer
+- routine detection
+- caregiver dashboard
+- memory support
+
+---
+
+## P2 FEATURES
+
+- wake word
+- emotional adaptation
+- analytics
+- offline mode
+- battery optimization
+
+---
+
+## SECTION 4 — IMPLEMENTATION DETAILS
+
+For EVERY pending feature provide:
+
+| Feature | Backend Changes | Frontend Changes | DB Changes | APIs Needed | Risks | Dependencies |
+|---------|----------------|----------------|-----------|-------------|-------|--------------|
+|         |                |                |           |             |       |              |
+
+Explain:
+
+- where code should live
+- which modules should change
+- how to avoid regressions
+
+---
+
+## SECTION 5 — PHASE ROADMAP
+
+Create roadmap.
+
+Phase 3:
+
+- TTS + speaking loop
+
+Phase 4:
+
+- Multilingual pipeline
+
+Phase 5:
+
+- Family voice notes + notifications
+
+Phase 6:
+
+- Timeline + caregiver ecosystem
+
+Phase 7:
+
+- Intent routing + actions
+
+Phase 8:
+
+- Context engine
+
+Phase 9:
+
+- Wake word
+
+Phase 10:
+
+- Optimization
+
+For every phase:
+
+- goals
+- files affected
+- risks
+- testing plan
+- rollback plan
+
+---
+
+## SECTION 6 — DEMO STORY
+
+Build story around:
+
+Patient wakes up → Bora reminds medicine → Family reminder voice note plays → Patient speaks Bengali → Bora responds correctly → Patient logs lunch → Family notified automatically → Caregiver sees timeline → Patient feels connected
+
+Explain why this demo creates emotional attachment.
+
+---
+
+## SECTION 7 — CONTRIBUTOR NOTES
+
+Create clear contributor instructions.
+
+Explain:
+
+- how to add features safely
+- regression testing
+- feature isolation
+- provider architecture
+- voice architecture
+
+Goal:
+
+Any teammate should understand:
+
+- what exists
+- what is missing
+- how to build it safely
+- what matters most
