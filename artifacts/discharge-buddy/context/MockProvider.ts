@@ -367,7 +367,7 @@ export class MockProvider implements IDataProvider {
     };
   }
 
-  async transcribeAudio(audioBase64: string, fileExtension?: string): Promise<string> {
+  async transcribeAudio(audioBase64: string, fileExtension?: string, language?: string): Promise<string> {
     return "This is a mocked transcription of your audio.";
   }
 

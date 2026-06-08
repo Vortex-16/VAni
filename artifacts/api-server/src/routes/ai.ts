@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Groq } from "groq-sdk";
+import { Groq, toFile } from "groq-sdk";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
 import { db, patients, medicines, doseLogs, symptomLogs, eq, inArray, desc } from "@workspace/db";
 
@@ -112,6 +112,63 @@ router.post("/tts", async (req: any, res: any) => {
     return res.status(500).json({ 
       error: "Failed to generate voice.",
       details: error.message 
+    });
+  }
+});
+
+/**
+ * @route POST /api/ai/stt
+ * @desc Transcribe recorded speech to text using Groq's Whisper model.
+ *       The mobile/web client records audio, base64-encodes it and posts it here.
+ *       Supports multilingual transcription (en/hi/es/ur and more) via Whisper.
+ */
+// ISO-639-1 codes Whisper accepts. Anything outside this list is treated as
+// auto-detect to avoid the model rejecting an unsupported hint.
+const WHISPER_LANGS = new Set([
+  "en", "hi", "es", "ur", "bn", "ta", "te", "mr", "gu", "kn", "ml", "pa",
+  "fr", "de", "pt", "ar", "zh", "ja", "ru",
+]);
+
+router.post("/stt", optionalAuth, async (req: any, res: any) => {
+  const { audioBase64, fileExtension, language } = req.body;
+
+  if (!audioBase64 || typeof audioBase64 !== "string") {
+    return res.status(400).json({ error: "audioBase64 is required" });
+  }
+
+  if (!GROQ_API_KEY || GROQ_API_KEY.includes("your_")) {
+    return res.status(500).json({ error: "Speech recognition is not configured on the server." });
+  }
+
+  try {
+    // Strip a possible data-URI prefix (e.g. "data:audio/m4a;base64,....").
+    const cleaned = audioBase64.includes(",") ? audioBase64.split(",").pop()! : audioBase64;
+    const buffer = Buffer.from(cleaned, "base64");
+
+    if (buffer.length < 1000) {
+      return res.status(400).json({ error: "Audio recording is too short or empty." });
+    }
+
+    const ext = (typeof fileExtension === "string" && fileExtension.replace(/^\./, "")) || "m4a";
+    const file = await toFile(buffer, `speech.${ext}`);
+
+    const langHint = typeof language === "string" && WHISPER_LANGS.has(language) ? language : undefined;
+
+    const transcription = await groq.audio.transcriptions.create({
+      file,
+      model: "whisper-large-v3-turbo",
+      ...(langHint ? { language: langHint } : {}),
+      temperature: 0,
+      response_format: "json",
+    });
+
+    const text = (transcription.text || "").trim();
+    return res.json({ text });
+  } catch (error: any) {
+    console.error("[STT Error]", error?.message || error);
+    return res.status(500).json({
+      error: "Failed to transcribe audio.",
+      details: error?.message,
     });
   }
 });
@@ -281,28 +338,55 @@ router.post("/intent", optionalAuth, async (req: any, res: any) => {
       messages: [
         {
           role: "system",
-          content: `You are an AI command router for a medical app called Discharge Buddy.
-Your job is to map user speech to specific app actions.
-Return ONLY valid JSON. No other text.
-Format: {"intent": "NAVIGATE" | "ACTION" | "UNKNOWN", "target": "ROUTE_PATH_OR_ACTION_NAME", "confidence": 0.0_to_1.0}
+          content: `You are the command router for "Buddy", the voice assistant inside a medical recovery app called Discharge Buddy.
+Map the user's natural-language speech to ONE app action.
+Return ONLY valid JSON. No prose, no markdown.
+Format: {"intent": "NAVIGATE" | "ACTION" | "CHAT" | "UNKNOWN", "target": "TARGET", "confidence": 0.0_to_1.0}
 
-Available Navigate Targets:
-- "medicines" (matches: go to medicines, show meds, medicine page, meds)
-- "journal" (matches: open journal, journal page)
-- "scan" (matches: scan prescription, open ocr, ocr page, add medicine by picture)
-- "symptoms" (matches: symptom page, activity, log symptom)
-- "home" (matches: go home, dashboard)
+NAVIGATE targets (just move the user to a screen):
+- "medicines"      (go to medicines / show my meds / medicine list)
+- "symptoms"       (symptom screen / activity / how am I doing)
+- "progress"       (my progress / adherence / streak / stats)
+- "schedule"       (my schedule / today's plan / timeline)
+- "followups"      (follow ups / appointments / next visit)
+- "journal"        (open journal / my diary)
+- "scan"           (scan a prescription / open camera / read this bottle)
+- "chat"           (talk to Mr Meddy / open chat / ask a question by typing)
+- "profile"        (my profile / account)
+- "settings"       (settings / preferences)
+- "notifications"  (my notifications / alerts)
+- "emergency"      (emergency screen / SOS screen)
+- "home"           (home / dashboard / main screen)
 
-Available Action Targets:
-- "LOG_SYMPTOM" (matches: log a symptom, I have pain)
-- "ADD_MEDICINE" (matches: add a medicine manually)
+ACTION targets (do something, not just navigate):
+- "TAKE_MEDICINE"     (I took my medicine / I took my pill / mark my dose as taken / log my medicine)
+- "LOG_SYMPTOM"       (I have pain / log a symptom / I'm not feeling well / record a symptom)
+- "ADD_MEDICINE"      (add a medicine manually / new medicine)
+- "TRIGGER_EMERGENCY" (call for help now / this is an emergency / I need help urgently / SOS)
+- "LOGOUT"            (log me out / sign out)
+- "LANG_EN"           (change language to english / speak english)
+- "LANG_HI"           (change language to hindi / hindi me baat karo)
+- "LANG_ES"           (change language to spanish / espanol)
+- "LANG_UR"           (change language to urdu)
 
-Context: User is currently on screen: ${context || 'unknown'}
+CHAT intent (a question, feeling, or chit-chat that needs a spoken answer, NOT an app action):
+- Use {"intent":"CHAT","target":"","confidence":0.9} for things like
+  "how are you", "what should I eat", "I feel sad", "what is this medicine for",
+  "tell me about my recovery", "good morning".
 
-Example 1: "take me to the OCR page" -> {"intent": "NAVIGATE", "target": "scan", "confidence": 0.95}
-Example 2: "go to the journal" -> {"intent": "NAVIGATE", "target": "journal", "confidence": 0.95}
-Example 3: "I want to log a symptom" -> {"intent": "ACTION", "target": "LOG_SYMPTOM", "confidence": 0.90}
-Example 4: "how are you" -> {"intent": "UNKNOWN", "target": "", "confidence": 0.1}
+If nothing fits and it is not conversational, use {"intent":"UNKNOWN","target":"","confidence":0.2}.
+
+Context: the user is currently on screen: ${context || "unknown"}
+
+Examples:
+"take me to the scan page"        -> {"intent":"NAVIGATE","target":"scan","confidence":0.95}
+"show my progress"                -> {"intent":"NAVIGATE","target":"progress","confidence":0.94}
+"I took my morning pill"          -> {"intent":"ACTION","target":"TAKE_MEDICINE","confidence":0.93}
+"I have a headache"               -> {"intent":"ACTION","target":"LOG_SYMPTOM","confidence":0.9}
+"log me out"                      -> {"intent":"ACTION","target":"LOGOUT","confidence":0.95}
+"change language to hindi"        -> {"intent":"ACTION","target":"LANG_HI","confidence":0.95}
+"how are you feeling today buddy" -> {"intent":"CHAT","target":"","confidence":0.9}
+"asdfghjkl"                       -> {"intent":"UNKNOWN","target":"","confidence":0.2}
 `
         },
         {

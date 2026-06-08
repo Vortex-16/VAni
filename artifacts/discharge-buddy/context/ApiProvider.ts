@@ -241,12 +241,12 @@ export class ApiProvider implements IDataProvider {
     }
   }
 
-  async transcribeAudio(audioBase64: string, fileExtension?: string): Promise<string> {
+  async transcribeAudio(audioBase64: string, fileExtension?: string, language?: string): Promise<string> {
     console.log("[ApiProvider] Transcribing audio...");
     try {
       const res = await customFetch<{ text: string }>("/api/ai/stt", {
         method: "POST",
-        body: JSON.stringify({ audioBase64, fileExtension })
+        body: JSON.stringify({ audioBase64, fileExtension, language })
       });
       return res.text;
     } catch (err) {

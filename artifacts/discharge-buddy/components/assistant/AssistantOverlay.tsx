@@ -23,10 +23,11 @@ const PURPLE = '#6C47FF';
  */
 export function AssistantOverlay() {
   const { 
-    state, 
-    isVisible, 
-    meteringSharedValue, 
-    lastTranscript, 
+    state,
+    isVisible,
+    meteringSharedValue,
+    lastTranscript,
+    lastReply,
     error,
     startAssistant,
     cancelAssistant,
@@ -110,10 +111,15 @@ export function AssistantOverlay() {
             {state === 'listening'    && <Text style={styles.statusText}>Listening... (stops automatically)</Text>}
             {state === 'transcribing' && <Text style={styles.statusText}>Understanding you...</Text>}
             {state === 'processing'   && <Text style={styles.statusText}>Got it! Working on it...</Text>}
+            {state === 'speaking'     && <Text style={styles.statusText}>Buddy is speaking...</Text>}
             {state === 'error'        && <Text style={styles.errorText}>{error || "Something went wrong"}</Text>}
 
             {lastTranscript && state !== 'error' && (
               <Text style={styles.transcriptText}>"{lastTranscript}"</Text>
+            )}
+
+            {lastReply && (state === 'speaking' || state === 'processing') && (
+              <Text style={styles.replyText}>{lastReply}</Text>
             )}
           </View>
 
@@ -247,6 +253,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  replyText: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    color: '#6C47FF',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 21,
   },
   stopButton: {
     flexDirection: 'row',

@@ -40,6 +40,16 @@ export function VoiceOrb({ state, meteringSharedValue, size = 120 }: VoiceOrbPro
         -1,
         true
       );
+    } else if (state === 'speaking') {
+      // Gentle, steady pulse while Buddy talks back.
+      breathingScale.value = withRepeat(
+        withSequence(
+          withTiming(1.12, { duration: 550 }),
+          withTiming(0.96, { duration: 550 })
+        ),
+        -1,
+        true
+      );
     } else {
       breathingScale.value = withTiming(1, { duration: 300 });
     }
@@ -63,7 +73,9 @@ export function VoiceOrb({ state, meteringSharedValue, size = 120 }: VoiceOrbPro
   const getOrbColors = () => {
     switch (state) {
       case 'listening': return ['rgba(147, 51, 234, 0.4)', 'rgba(108, 71, 255, 1)'];
+      case 'transcribing': return ['rgba(147, 51, 234, 0.4)', 'rgba(108, 71, 255, 1)'];
       case 'processing': return ['rgba(59, 130, 246, 0.4)', 'rgba(37, 99, 235, 1)'];
+      case 'speaking': return ['rgba(16, 185, 129, 0.4)', 'rgba(5, 150, 105, 1)'];
       case 'error': return ['rgba(239, 68, 68, 0.4)', 'rgba(220, 38, 38, 1)'];
       default: return ['rgba(203, 213, 225, 0.4)', 'rgba(148, 163, 184, 1)'];
     }

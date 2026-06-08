@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -14,16 +15,32 @@ export interface VoiceSessionHook {
   cancelSession: () => Promise<void>;
 }
 
+export interface VoiceSessionOptions {
+  /**
+   * Fired exactly once whenever a recording completes — whether it was stopped
+   * automatically by the silence detector (VAD) or manually by the user.
+   * The argument is the transcript, or null if transcription failed / was empty.
+   * This is what lets auto-send actually drive the assistant pipeline.
+   */
+  onTranscript?: (text: string | null) => void;
+}
+
 /**
- * Manages the microphone lifecycle globally without triggering 
+ * Manages the microphone lifecycle globally without triggering
  * re-renders for every decibel change.
  * Uses Reanimated SharedValue for high-performance audio reactivity.
  */
-export function useVoiceSession(): VoiceSessionHook {
-  const { api } = useApp();
+export function useVoiceSession(options?: VoiceSessionOptions): VoiceSessionHook {
+  const { api, language } = useApp();
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Keep the latest callback in a ref so the metering closure always calls fresh code.
+  const onTranscriptRef = useRef<VoiceSessionOptions["onTranscript"]>(options?.onTranscript);
+  useEffect(() => {
+    onTranscriptRef.current = options?.onTranscript;
+  });
 
   // Audio reactive layer - DOES NOT trigger React re-renders
   const meteringSharedValue = useSharedValue(-160);
@@ -88,8 +105,13 @@ export function useVoiceSession(): VoiceSessionHook {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Actually call your API here
-      transcriptionResult = await api.transcribeAudio(base64Audio, "m4a");
+      // Web records WebM; native records M4A. Tell the server which it is so
+      // Whisper decodes the container correctly.
+      const fileExtension = Platform.OS === "web" ? "webm" : "m4a";
+
+      // Actually call your API here. The language hint improves accuracy/latency
+      // for non-English speakers (e.g. Hindi/Urdu/Spanish).
+      transcriptionResult = await api.transcribeAudio(base64Audio, fileExtension, language);
     } catch (err: any) {
       console.warn("[VoiceSession] Transcription error:", err);
       setError(err?.message || "Transcription failed");
@@ -101,8 +123,12 @@ export function useVoiceSession(): VoiceSessionHook {
       }
     }
 
+    // Notify the provider once, regardless of whether this stop was triggered
+    // by the silence detector or a manual "Send Now" tap.
+    onTranscriptRef.current?.(transcriptionResult);
+
     return transcriptionResult;
-  }, [api, meteringSharedValue]);
+  }, [api, language, meteringSharedValue]);
 
   useEffect(() => {
     stopAndTranscribeRef.current = stopAndTranscribe;
