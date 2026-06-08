@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
-import { Language } from "@/constants/translations";
+import { Language, LOCALE_BY_LANG } from "@/constants/translations";
 import { MockProvider } from "./MockProvider";
 import { ApiProvider } from "./ApiProvider";
 import type { IDataProvider } from "./types";
@@ -876,7 +876,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Use device-native speech engine for instant, zero-latency playback
     try {
       Speech.speak(cleanText, {
-        language: language === 'hi' ? 'hi-IN' : 'en-US',
+        language: LOCALE_BY_LANG[language] || 'en-US',
         pitch: 1.0,
         rate: 0.95,
         onDone: () => {

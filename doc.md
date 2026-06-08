@@ -77,7 +77,8 @@ The client called `POST /api/ai/stt` but **the route did not exist**, so the ent
 |---------|--------|-------|----------|----------------|-------|
 | STT Engine | Phase 1 + fix | `hooks/assistant/useVoiceSession.ts`, `api-server/src/routes/ai.ts` (`/stt`) | Yes | Streaming partials | Background termination |
 | Voice Permissions | Phase 1 | `hooks/assistant/useVoiceSession.ts` (`Audio.requestPermissionsAsync`) | Yes | Re-prompt on revocation | OS updates breaking flows |
-| Chatbot Integration | Phase 1 | `app/chat.tsx`, `context/ApiProvider.ts` (`getChatResponse`) | Yes | Shared history with voice | Tight UI coupling |
+| Chatbot Integration | Phase 1 + 4 | `app/chat.tsx`, `context/ApiProvider.ts` (`getChatResponse`), `api-server/src/routes/ai.ts` (`/chat`) | Yes (now language-aware) | Shared history with voice | Tight UI coupling |
+| Multilingual Pipeline | Phase 4 | `constants/translations.ts`, `context/AppContext.tsx` (`speakNeural`), `AssistantProvider.tsx`, `api-server/src/routes/ai.ts` | Yes (STT+chat+TTS in 14 langs incl. `bn`) | Cloud translation for UI strings beyond the dictionary | Device TTS voice availability per locale |
 | Overlay Architecture | Phase 2 | `components/assistant/AssistantOverlay.tsx` | Yes | Z-index conflicts on modals | Performance overhead |
 | Assistant States | Phase 2/3 | `components/assistant/AssistantProvider.tsx`, `VoiceOrb.tsx` | Yes | Barge-in interruption | Race conditions in state transitions |
 | Session / Conversation Loop | Phase 2/3 | `AssistantProvider.tsx` (`continueConversationRef`) | Yes | Long-term context persistence | Loop wedging if TTS callback never fires |
@@ -124,9 +125,10 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 | Medicine Voice Log | "I took my pill" -> Logs it | Ease of use | Medicine Module | High | Medium | ✅ Done (Phase 6) |
 | Emergency Triggers | Voice-activated SOS | Safety | Emergency API | High | Medium | ✅ Done (Phase 6) |
 | Voice Logout / Lang Switch | "Log me out" / "Speak Hindi" | Hands-free control | AppContext | High | Low | ✅ Done (Phase 6) |
-| Multilingual STT | Process native languages (en/hi/es/ur) | Accessibility | Groq Whisper | High | High | ✅ Done (Phase 4, partial) |
-| Multilingual TTS | Speak responses in active language | Accessibility | expo-speech locales | High | Medium | ✅ Done (Phase 4, partial) |
-| Bengali Support | Add `bn` to UI + voice locales | Target demographic | `constants/translations.ts` | High | Medium | ⏳ Pending (Phase 4) |
+| Multilingual STT | Process native languages (en/hi/es/ur/bn +9) | Accessibility | Groq Whisper | High | High | ✅ Done (Phase 4) |
+| Multilingual TTS | Speak responses in active language | Accessibility | expo-speech locales | High | Medium | ✅ Done (Phase 4) |
+| Multilingual Chat | LLM replies in the active language | Accessibility | `/api/ai/chat` | High | Medium | ✅ Done (Phase 4) |
+| Bengali Support | `bn` (+9 regional) in UI + voice + chat | Target demographic | `constants/translations.ts` | High | Medium | ✅ Done (Phase 4) |
 | Context Persistence | Remember past conversation turns | Natural dialogue | DB/Storage | Medium | Medium | ⏳ Pending (Phase 5) |
 | Family Voice Notes | Voice messages to caregivers | Connectivity | Auth/Roles | Low | Medium | ⏳ Pending (Phase 8) |
 | Wake Word | "Hey Buddy" activation | Hands-free init | Native Audio | High | High | ⏳ Pending (Phase 9) |
@@ -152,13 +154,17 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 - **Risks (handled):** Audio ducking — `Audio.setAudioModeAsync` configured at app root; loop getting stuck — `speak()` always resolves (onDone/onStopped/onError) so the loop can never wedge.
 - **Testing Checklist:** ✅ TTS triggers, ✅ UI reflects speaking state, ✅ continuous conversation, ✅ cancel stops speech and loop.
 
-### Phase 4: ⏳ PARTIAL — Multilingual Pipeline
-- **Goals:** Support regional languages for both TTS and STT.
-- **Done:** STT language hint plumbed end-to-end (`useVoiceSession` → `transcribeAudio(…, language)` → Groq Whisper `language`), and TTS speaks in the active locale (en/hi/es/ur). Whisper auto-detects unknown hints.
-- **Remaining:** Bengali (`bn`) is **not yet** in the app's `Language` union — add it to `constants/translations.ts` (currently `"en" | "hi" | "es" | "ur"`) and to `LOCALE_BY_LANG` / `LANG_SWITCH_REPLY` in `AssistantProvider.tsx`. Optional: a cloud translation layer for replies.
-- **Dependencies:** `constants/translations.ts`, `utils/translate.ts`.
-- **Risks:** Latency in any added translation layer.
-- **Testing Checklist:** Speak Hindi/Spanish/Urdu, verify transcript + spoken reply locale; (pending) add and verify Bengali.
+### Phase 4: ✅ COMPLETED — Multilingual Pipeline
+- **Goals:** Support regional languages across STT, the chat reply, and TTS.
+- **Root-cause fix (the reported bug):** Buddy could *transcribe* Bengali but always *replied in English*. Cause was not Whisper — `getChatResponse` never forwarded the active language and the chat prompt never asked the LLM to reply in it. Now `getChatResponse(query, language)` sends the code and `/api/ai/chat` injects a `LANGUAGE` directive (`reply entirely in <Name>, native script, keep action types in English`). The same gap existed for TTS voice and the `Language` union.
+- **What shipped:**
+  - `Language` union expanded from `en|hi|es|ur` to 14 codes (adds `bn` + `te/mr/ta/gu/kn/ml/or/pa/as`) — matching the languages `settings.tsx` already offered but which silently fell back to English.
+  - Single source of truth `LOCALE_BY_LANG` + `LANGUAGE_NAMES` in `constants/translations.ts`; `AppContext.speakNeural` and `AssistantProvider.speak` both consume it (TTS was previously hardcoded to `hi`/`en` only).
+  - Bengali UI dictionary added; `LANG_SWITCH_REPLY` gains a Bengali confirmation; voice command "speak Bengali" works via new `LANG_BN` intent.
+  - STT already accepted `bn` via the Whisper hint allow-list.
+- **Files Affected:** `constants/translations.ts`, `context/{types.ts,ApiProvider.ts,MockProvider.ts,AppContext.tsx}`, `components/assistant/AssistantProvider.tsx`, `app/chat.tsx`, `api-server/src/routes/ai.ts` (`/chat` + `/intent`).
+- **Risks (handled):** New languages only need one edit (the maps in `translations.ts`); unmapped codes still default to English everywhere; device TTS quality for some locales depends on installed OS voices (graceful `en-US` fallback).
+- **Testing Checklist:** ✅ typecheck (api-server + discharge-buddy) clean; ✅ "speak Bengali" switches language; ✅ chat/voice reply rendered + spoken in Bengali (`bn-IN`); ✅ Hindi/Spanish/Urdu unaffected.
 
 ### Phase 5: Memory & Persistence
 - **Goals:** Enable Buddy to remember context across sessions.
@@ -207,7 +213,7 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 **Flow (✅ = supported today, ⏳ = roadmap):**
 1. **Patient taps the mic FAB.** ✅ (wake word "Hey Buddy" is ⏳ Phase 9)
 2. **Buddy greets / answers via TTS.** ✅ Spoken reply in the active language.
-3. **User speaks Hindi:** *"Maine apni dawai le li."* ✅ (STT via Groq Whisper with `hi` hint; Bengali `bn` is ⏳ Phase 4)
+3. **User speaks Bengali/Hindi:** *"Ami amar oshudh kheyechi." / "Maine apni dawai le li."* ✅ (STT via Groq Whisper; Buddy now replies **and speaks in the same language** — Bengali `bn` shipped in Phase 4)
 4. **Assistant responds correctly:** ✅ Intent `TAKE_MEDICINE` marks the pending dose taken in the background and speaks *"Done. I've marked … as taken."*
 5. **OCR scans prescription:** ✅ *"Scan a prescription"* navigates to the scanner (`/scan`); parsing already exists via `POST /api/ocr/scan`.
 6. **Journal / symptoms by voice:** ✅ Navigation + symptom logging; ⏳ free-text "write in my journal that…" dictation is future slot-filling.

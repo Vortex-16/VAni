@@ -226,12 +226,12 @@ export class ApiProvider implements IDataProvider {
     });
   }
 
-  async getChatResponse(userQuery: string): Promise<{ message: string; actions: { type: string; label: string }[] }> {
-    console.log("[ApiProvider] Fetching chat response for:", userQuery);
+  async getChatResponse(userQuery: string, language?: string): Promise<{ message: string; actions: { type: string; label: string }[] }> {
+    console.log("[ApiProvider] Fetching chat response for:", userQuery, "lang:", language);
     try {
       const res = await customFetch<{ message: string; actions: { type: string; label: string }[] }>("/api/ai/chat", {
         method: "POST",
-        body: JSON.stringify({ userQuery })
+        body: JSON.stringify({ userQuery, language })
       });
       console.log("[ApiProvider] Chat response received:", res);
       return res;

@@ -5,7 +5,7 @@ import { useAssistantEvents } from '@/hooks/assistant/useAssistantEvents';
 import { useApp } from '@/context/AppContext';
 import { router } from 'expo-router';
 import * as Speech from 'expo-speech';
-import type { Language } from '@/constants/translations';
+import { LOCALE_BY_LANG, type Language } from '@/constants/translations';
 
 export type AssistantState =
   | 'idle'
@@ -62,18 +62,14 @@ const NAV_ROUTES: Record<string, { path: string; label: string }> = {
   emergency: { path: '/emergency', label: 'the emergency screen' },
 };
 
-const LOCALE_BY_LANG: Record<string, string> = {
-  en: 'en-US',
-  hi: 'hi-IN',
-  es: 'es-ES',
-  ur: 'ur-PK',
-};
+// LOCALE_BY_LANG is the shared source of truth (constants/translations.ts).
 
-const LANG_SWITCH_REPLY: Record<string, string> = {
+const LANG_SWITCH_REPLY: Partial<Record<Language, string>> = {
   en: 'Okay, switching to English.',
   hi: 'ठीक है, अब मैं हिंदी में बात करूँगा।',
   es: 'De acuerdo, ahora hablaré en español.',
   ur: 'ٹھیک ہے، اب میں اردو میں بات کروں گا۔',
+  bn: 'ঠিক আছে, এখন আমি বাংলায় কথা বলব।',
 };
 
 // Strip emojis / pictographs so the TTS engine doesn't read them aloud.
@@ -212,7 +208,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         case 'LANG_EN':
         case 'LANG_HI':
         case 'LANG_ES':
-        case 'LANG_UR': {
+        case 'LANG_UR':
+        case 'LANG_BN': {
           const code = target.replace('LANG_', '').toLowerCase() as Language;
           setLanguage(code);
           reply = LANG_SWITCH_REPLY[code] || 'Okay.';
@@ -239,7 +236,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setState('processing');
       let message = "I'm right here with you.";
       try {
-        const res = await api.getChatResponse(text);
+        const res = await api.getChatResponse(text, language);
         if (res?.message) message = res.message;
       } catch {
         message = "I'm having a little trouble connecting right now. Please try again in a moment.";
@@ -256,7 +253,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         finish();
       }
     },
-    [api, speak, finish],
+    [api, speak, finish, language],
   );
   useEffect(() => {
     handleChatRef.current = handleChat;

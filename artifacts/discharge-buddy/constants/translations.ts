@@ -1,6 +1,48 @@
-export type Language = "en" | "hi" | "es" | "ur";
+export type Language =
+  | "en" | "hi" | "es" | "ur" | "bn"
+  | "te" | "mr" | "ta" | "gu" | "kn" | "ml" | "or" | "pa" | "as";
 
-export const translations: Record<Language, any> = {
+// BCP-47 locale used by the device speech engine (expo-speech) for every
+// supported language. Single source of truth — imported by AppContext.speakNeural
+// and AssistantProvider.speak so a new language only has to be added here.
+export const LOCALE_BY_LANG: Record<Language, string> = {
+  en: "en-US",
+  hi: "hi-IN",
+  es: "es-ES",
+  ur: "ur-PK",
+  bn: "bn-IN",
+  te: "te-IN",
+  mr: "mr-IN",
+  ta: "ta-IN",
+  gu: "gu-IN",
+  kn: "kn-IN",
+  ml: "ml-IN",
+  or: "or-IN",
+  pa: "pa-IN",
+  as: "as-IN",
+};
+
+// English-language name of each language, used to instruct the chat LLM which
+// language to reply in (e.g. "Respond in Bengali").
+export const LANGUAGE_NAMES: Record<Language, string> = {
+  en: "English",
+  hi: "Hindi",
+  es: "Spanish",
+  ur: "Urdu",
+  bn: "Bengali",
+  te: "Telugu",
+  mr: "Marathi",
+  ta: "Tamil",
+  gu: "Gujarati",
+  kn: "Kannada",
+  ml: "Malayalam",
+  or: "Odia",
+  pa: "Punjabi",
+  as: "Assamese",
+};
+
+// Full UI dictionaries. Languages without an entry fall back to English via t().
+export const translations: Partial<Record<Language, any>> = {
   en: {
     dashboard: "Dashboard",
     dashboard_hi: "Hello",
@@ -104,10 +146,36 @@ export const translations: Record<Language, any> = {
     tracked: "ٹریک کیا گیا",
     streak: "دنوں کا سلسلہ",
     xpReward: "اگلی سطح کے لیے XP",
+  },
+  bn: {
+    dashboard: "ড্যাশবোর্ড",
+    dashboard_hi: "নমস্কার",
+    hello: "নমস্কার",
+    morning: "সুপ্রভাত",
+    afternoon: "শুভ অপরাহ্ন",
+    evening: "শুভ সন্ধ্যা",
+    night: "শুভ রাত্রি",
+    medicines: "ওষুধ",
+    symptoms: "উপসর্গ",
+    progress: "অগ্রগতি",
+    takenToday: "আজ নেওয়া হয়েছে",
+    reminders: "অনুস্মারক",
+    emergency: "জরুরি",
+    settings: "সেটিংস",
+    language: "ভাষা",
+    caregiverMode: "পরিচর্যাকারী মোড",
+    patientMode: "রোগী মোড",
+    takeNow: "এখন নিন",
+    snooze: "পরে",
+    scanPrescription: "প্রেসক্রিপশন স্ক্যান করুন",
+    logToday: "আজকের লগ",
+    tracked: "ট্র্যাক করা হয়েছে",
+    streak: "দিনের ধারা",
+    xpReward: "পরবর্তী স্তরের জন্য XP",
   }
 };
 
 export const t = (key: string, lang?: Language) => {
-  const activeLang = lang || "en";
+  const activeLang: Language = lang || "en";
   return translations[activeLang]?.[key] || translations["en"]?.[key] || key;
 };

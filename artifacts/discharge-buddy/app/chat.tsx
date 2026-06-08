@@ -32,7 +32,7 @@ const ACTION_ICONS: Record<string, string> = {
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
-  const { api, user, speakNeural, isSpeaking, speakingTargetId, addNotification } = useApp();
+  const { api, user, speakNeural, isSpeaking, speakingTargetId, addNotification, language } = useApp();
 
   const isAISpeakingGlobal = isSpeaking && speakingTargetId === "chat_ai";
 
@@ -80,7 +80,7 @@ export default function ChatScreen() {
 
     console.log("[ChatScreen] handleSend triggered with input:", userMsg.text);
     try {
-      const response = await api.getChatResponse(userMsg.text);
+      const response = await api.getChatResponse(userMsg.text, language);
       console.log("[ChatScreen] Got response from API:", response);
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),

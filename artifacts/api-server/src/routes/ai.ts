@@ -177,8 +177,15 @@ router.post("/stt", optionalAuth, async (req: any, res: any) => {
  * @route POST /api/ai/chat
  * @desc Context-aware recovery assistant chatbot
  */
+// Map the app's language codes to the human name we instruct the LLM to reply in.
+const CHAT_LANG_NAMES: Record<string, string> = {
+  en: "English", hi: "Hindi", es: "Spanish", ur: "Urdu", bn: "Bengali",
+  te: "Telugu", mr: "Marathi", ta: "Tamil", gu: "Gujarati", kn: "Kannada",
+  ml: "Malayalam", or: "Odia", pa: "Punjabi", as: "Assamese",
+};
+
 router.post("/chat", optionalAuth, async (req: any, res: any) => {
-  const { userQuery } = req.body;
+  const { userQuery, language } = req.body;
   const user = req.user;
   console.log(`[AI Chat] Request received. User: ${user?.name || "Guest"}, Query: ${userQuery}`);
 
@@ -256,21 +263,25 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
 
     console.log(`[AI Chat] Context built in ${Date.now() - start}ms. Risk Score: ${computedRiskScore}`);
 
+    // Resolve the reply language. Default to English; honour any supported code.
+    const langName = (typeof language === "string" && CHAT_LANG_NAMES[language]) || "English";
+    const langDirective = `\nLANGUAGE: The "message" field MUST be written entirely in ${langName}. Use the native script for ${langName}. Do NOT translate or alter the action "type" values (keep them in English). If the user wrote in another language, still reply in ${langName}.`;
+
     // 3. Prompt Groq
     const chatCompletion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: SYSTEM_PROMPT + langDirective },
         {
           role: "user", content: `
           CURRENT_TIME: ${new Date().toISOString()}
           USER_QUERY: "${userQuery}"
-          
+
           PATIENT_CONTEXT:
           ${JSON.stringify(context, null, 2)}
-          
-          Based on the context and query, provide a UNIQUE, specific, and calm response. 
+
+          Based on the context and query, provide a UNIQUE, specific, and calm response.
           Avoid generic greetings. If the user asks a question, answer it directly using the context.
-          Always include 2-3 relevant actions in the actions array.
+          Reply in ${langName}. Always include 2-3 relevant actions in the actions array.
         ` }
       ],
       model: "llama-3.3-70b-versatile",
@@ -368,6 +379,7 @@ ACTION targets (do something, not just navigate):
 - "LANG_HI"           (change language to hindi / hindi me baat karo)
 - "LANG_ES"           (change language to spanish / espanol)
 - "LANG_UR"           (change language to urdu)
+- "LANG_BN"           (change language to bengali / speak bengali / bangla / বাংলায় বলো)
 
 CHAT intent (a question, feeling, or chit-chat that needs a spoken answer, NOT an app action):
 - Use {"intent":"CHAT","target":"","confidence":0.9} for things like
@@ -385,6 +397,7 @@ Examples:
 "I have a headache"               -> {"intent":"ACTION","target":"LOG_SYMPTOM","confidence":0.9}
 "log me out"                      -> {"intent":"ACTION","target":"LOGOUT","confidence":0.95}
 "change language to hindi"        -> {"intent":"ACTION","target":"LANG_HI","confidence":0.95}
+"speak bengali"                   -> {"intent":"ACTION","target":"LANG_BN","confidence":0.95}
 "how are you feeling today buddy" -> {"intent":"CHAT","target":"","confidence":0.9}
 "asdfghjkl"                       -> {"intent":"UNKNOWN","target":"","confidence":0.2}
 `
