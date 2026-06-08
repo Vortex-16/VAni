@@ -202,7 +202,241 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 
 ---
 
+
+## PROJECT VISION
+
+We are building:
+
+**Bora**
+
+A voice‑first care companion connecting:
+
+* patients
+* caregivers
+* families
+
+The goal is:
+
+Users should eventually operate the application primarily through voice.
+
+This is NOT only a chatbot.
+
+This is a care ecosystem.
+
+Core philosophy:
+
+- Reduce cognitive burden.
+- Reduce caregiver burden.
+- Increase family connection.
+- Make users feel less alone.
+- Support elderly and non‑technical users.
+
+---
+
+## MOST IMPORTANT RULE
+
+Do not break:
+
+* authentication
+* OCR
+* navigation
+* medicine systems
+* journal systems
+* chatbot
+* multilingual systems
+* APIs
+* existing flows
+
+Every new feature must be modular.
+
+Avoid chatbot‑specific implementations.
+
+---
+
+## SECTION 1 — Analyze Existing Repository
+
+Analyze repository and update docs.md with:
+
+* existing architecture
+* existing providers
+* navigation
+* APIs
+* OCR
+* voice system
+* multilingual support
+* medicine modules
+* journal modules
+* settings
+* storage layers
+
+Create table:
+
+| Module | Current Status | Verified? | Risks | Dependencies |
+|--------|----------------|-----------|-------|--------------|
+|        |                |           |       |              |
+
+---
+
+## SECTION 2 — Current Voice System Status
+
+Document current implementation.
+
+Include:
+
+**Phase 1:**
+
+* STT
+* permissions
+* auto‑send
+* chatbot integration
+* speech pipeline
+
+**Phase 2:**
+
+* assistant provider
+* global overlay
+* orb/blob
+* state machine
+* context foundation
+* voice session manager
+
+Create table:
+
+| Voice Feature | Status | Files | Missing Parts | Risk |
+|--------------|--------|-------|---------------|------|
+|              |        |       |               |      |
+
+---
+
+## SECTION 3 — PRIORITY FEATURE MATRIX
+
+Create feature tables.
+
+Columns:
+
+| Feature | Why Needed | Priority | Dependencies | Suggested Architecture | Demo Value | Complexity |
+|---------|------------|----------|--------------|------------------------|------------|------------|
+|         |            |          |              |                        |            |            |
+
+Priority labels:
+
+- P0 = Critical
+- P1 = High
+- P2 = Medium
+- P3 = Nice to Have
+
+---
+
+### P0 FEATURES (Highest Priority)
+
+1. **Family Voice Notes + Smart Notifications**
+
+Highest Priority.
+
+Goal:
+
+Caregivers and family members should be able to send voice notes or reminders.
+
+Patient should receive:
+
+* notifications
+* scheduled reminders
+* voice playback
+* text fallback
+
+Example:
+
+"Dad, don't forget medicine ❤️"
+
+OR
+
+Patient:
+
+"Bora, tell my daughter I had lunch."
+
+Flow:
+
+Voice → Intent detection → Store event → Create family update → Send push notification → Store timeline event
+
+Include implementation details:
+
+* notification system
+* audio storage
+* transcript storage
+* scheduling
+* reminder engine
+* push notifications
+* database schema
+
+Explain why this is emotionally powerful.
+
+2. **Shared Care Timeline**
+
+Include:
+
+- medicine logs
+- meal logs
+- journal logs
+- voice note events
+- activity logs
+- family interactions
+
+---
+
+## ARCHITECTURE OVERVIEW
+
+Below is a high‑level diagram of the **Bora** voice‑first care ecosystem, showing the main modules and their interactions.
+
+```mermaid
+graph LR
+    subgraph Frontend[React Native Frontend]
+        UI[UI Components]
+        VoiceProvider[Voice Provider]
+        Overlay[Assistant Overlay & Orb]
+    end
+    subgraph Backend[Node.js / Express Backend]
+        API[REST API]
+        IntentClassifier[Intent Classification]
+        STT[Speech‑to‑Text Service]
+        TTS[Text‑to‑Speech Service]
+    end
+    subgraph Services[Auxiliary Services]
+        OCR[OCR Service]
+        Notification[Push Notification Service]
+        Storage[Database / SecureStore]
+    end
+    UI --> VoiceProvider
+    VoiceProvider --> Overlay
+    VoiceProvider --> API
+    API --> IntentClassifier
+    API --> STT
+    API --> TTS
+    IntentClassifier --> Storage
+    STT --> Storage
+    TTS --> UI
+    OCR --> Backend
+    Notification --> Backend
+    Storage --> Backend
+    Backend --> UI
+```
+
+---
+
 ## SECTION 6 — Demo Narrative
+
+**Flow (✅ = supported today, ⏳ = roadmap):**
+1. **Patient taps the mic FAB.** ✅ (wake word "Hey Buddy" is ⏳ Phase 9)
+2. **Buddy greets / answers via TTS.** ✅ Spoken reply in the active language.
+3. **User speaks Hindi:** *"Maine apni dawai le li."* ✅ (STT via Groq Whisper with `hi` hint; Bengali `bn` is ⏳ Phase 4)
+4. **Assistant responds correctly:** ✅ Intent `TAKE_MEDICINE` marks the pending dose taken in the background and speaks "Done. I've marked … as taken."
+5. **OCR scans prescription:** ✅ "Scan a prescription" navigates to the scanner (`/scan`); parsing already exists via `POST /api/ocr/scan`.
+6. **Journal / symptoms by voice:** ✅ Navigation + symptom logging; ⏳ free‑text "write in my journal that…" dictation is future slot‑filling.
+7. **Caregiver receives updates:** ⏳ Push round‑trip from a voice action (Phase 8 remaining).
+8. **Hands‑free operation:** ✅ Continuous loop keeps the mic open across conversational turns.
+
+**Why this demo is compelling:**
+It demonstrates a complete paradigm shift. The application stops being a digital form the patient has to fill out, and becomes an invisible companion that naturally integrates into their daily life. It solves the core problem of digital literacy and physical limitations for elderly patients, while providing immense peace of mind to the caregiver network.
+
 
 **Flow (✅ = supported today, ⏳ = roadmap):**
 1. **Patient taps the mic FAB.** ✅ (wake word "Hey Buddy" is ⏳ Phase 9)
