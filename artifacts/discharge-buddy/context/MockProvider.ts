@@ -254,8 +254,33 @@ export class MockProvider implements IDataProvider {
   }
 
   async linkPatientByCode(_code: string): Promise<Patient> {
-    // In mock mode, reuse the simulated link behaviour.
-    return this.linkFamilyMember("mock@demo");
+    const normalized = _code.trim().toUpperCase();
+    const patients = DEMO_PATIENTS;
+    let target: Patient | undefined;
+
+    if (normalized === "DB-DEMO12") {
+      target = patients[0];
+    } else if (normalized === "DB-DEMO34") {
+      target = patients[1] || patients[0];
+    } else {
+      // If the code is unknown, simulate an invalid code error.
+      const error: any = new Error("INVALID_CODE");
+      error.status = 404;
+      throw error;
+    }
+
+    const members = await this.getFamilyMembers();
+    const alreadyLinked = members.find(m => m.id === target?.id);
+    if (alreadyLinked && target) {
+      return alreadyLinked;
+    }
+
+    if (target) {
+      await this.saveData({ familyMembers: [...members, target] });
+      return target;
+    }
+
+    throw new Error("Failed to link patient");
   }
 
   async getMyLinkCode(): Promise<string> {

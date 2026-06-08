@@ -1,15 +1,15 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Animated, Platform, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View,  } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import { useApp } from "@/context/AppContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { AnimPressable } from "@/components/AnimPressable";
+import { ShareLinkQRModal } from "@/components/ShareLinkQRModal";
 
 const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
@@ -29,6 +29,7 @@ const MENU_ITEMS = [
 export function Sidebar() {
   const { isOpen, close, translateX, overlayOpacity, SIDEBAR_WIDTH } = useSidebar();
   const { user, role, setRole, setUser } = useApp();
+  const [showLinkQr, setShowLinkQr] = useState(false);
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -111,6 +112,19 @@ export function Sidebar() {
               <Feather name="chevron-right" size={14} color="#94a3b8" />
             </AnimPressable>
           ))}
+
+          {role === 'patient' ? (
+            <AnimPressable
+              style={[styles.menuItem, styles.qrMenuItem]}
+              onPress={() => setShowLinkQr(true)}
+            >
+              <View style={styles.menuIconWrapper}>
+                <Feather name="share-2" size={18} color={TEAL} />
+              </View>
+              <Text style={styles.menuLabel} numberOfLines={1}>Share Link QR</Text>
+              <Feather name="chevron-right" size={14} color="#94a3b8" />
+            </AnimPressable>
+          ) : null}
         </ScrollView>
 
         {/* Logout button at fixed bottom */}
@@ -121,6 +135,7 @@ export function Sidebar() {
           </AnimPressable>
         </View>
       </Animated.View>
+      <ShareLinkQRModal visible={showLinkQr} onClose={() => setShowLinkQr(false)} />
     </View>
   );
 }
@@ -223,6 +238,10 @@ const styles = StyleSheet.create({
     gap: 16,
     marginBottom: 6,
     backgroundColor: "#f8fafc",
+  },
+  qrMenuItem: {
+    marginTop: 8,
+    backgroundColor: "#EFF6FF",
   },
   menuIconWrapper: {
     width: 40,

@@ -32,8 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
 import { TranslateText as Text } from '@/components/TranslateText';
-import { useApp } from "@/context/AppContext";
-import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
+import { useApp } from "@/context/AppContext";import { MockProvider } from '@/context/MockProvider';import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
 import { getApiUrl } from '@/utils/apiUrl';
 import { GlareHover } from '@/components/GlareHover';
 import { RoleSelectModal, AppRole } from '@/components/RoleSelectModal';
@@ -120,7 +119,7 @@ function ParallaxCloud({ scale, top, left, duration }: { scale: number; top: num
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login } = useApp();
+  const { login, switchProvider, setOnboarded } = useApp();
 
   const [error,        setError]        = useState<string | null>(null);
   const [isSignUp,     setIsSignUp]     = useState(false);
@@ -292,6 +291,8 @@ export default function LoginScreen() {
     setTimeout(async () => {
       const mockUser = { id: `demo-${role}-1`, name: `Demo ${role}`, email: `demo@${role}.com`, role, isEmailVerified: true };
       await login(mockUser as any, 'demo_token_123');
+      setOnboarded(true);
+      switchProvider(new MockProvider());
       setIsLoggingIn(false);
       handleTransitionToSuccess(role);
     }, 1500);

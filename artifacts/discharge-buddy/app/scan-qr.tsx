@@ -19,7 +19,35 @@ export default function ScanQR() {
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
-  const { addMedicine, api, refreshData } = useApp();
+  const { addMedicine, api, refreshData, role, linkPatientByCode } = useApp();
+
+  const parseLinkCode = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed?.linkCode && typeof parsed.linkCode === 'string') {
+          return parsed.linkCode.trim().toUpperCase();
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+
+    const urlMatch = trimmed.match(/[?&]code=([A-Za-z0-9\-]+)/);
+    if (urlMatch?.[1]) {
+      return urlMatch[1].toUpperCase();
+    }
+
+    const explicitMatch = trimmed.match(/DB-[A-Z0-9]{6,8}/i);
+    if (explicitMatch?.[0]) {
+      return explicitMatch[0].toUpperCase();
+    }
+
+    return null;
+  };
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -39,7 +67,20 @@ export default function ScanQR() {
     setLoading(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
-      if (data.startsWith('{')) {
+      const linkCode = parseLinkCode(data);
+      if (linkCode) {
+        if (role === 'family' || role === 'caregiver') {
+          await linkPatientByCode(linkCode);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('Patient linked', 'The patient was linked successfully.');
+          router.replace(role === 'family' ? '/family/dashboard' : '/caregiver/dashboard');
+          return;
+        }
+
+        throw new Error('This QR is for family or caregiver accounts only.');
+      }
+
+      if (data.trim().startsWith('{')) {
         const parsed = JSON.parse(data);
         if (parsed.planId) {
           // New backend flow: Fetch plan preview from server
@@ -52,20 +93,20 @@ export default function ScanQR() {
             // Case where plan is returned without nested data wrapper
             setPlan({ ...planData, id: parsed.planId });
           } else {
-            throw new Error("Plan data is missing or malformed.");
+            throw new Error('Plan data is missing or malformed.');
           }
         } else if (parsed.medicines) {
           // Legacy/Mock flow
           setPlan(parsed);
         } else {
-          throw new Error("Invalid format.");
+          throw new Error('Invalid format.');
         }
       } else {
-        throw new Error("Invalid QR code. Please scan a Discharge Buddy QR.");
+        throw new Error('Invalid QR code. Please scan a Discharge Buddy QR.');
       }
     } catch (err: any) {
-      console.error("[ScanQR] Fetch Error:", err);
-      Alert.alert("Scan Failed", getFriendlyErrorMessage(err, 'scan'));
+      console.error('[ScanQR] Fetch Error:', err);
+      Alert.alert('Scan Failed', getFriendlyErrorMessage(err, 'scan'));
       setScanned(false);
     } finally {
       setLoading(false);

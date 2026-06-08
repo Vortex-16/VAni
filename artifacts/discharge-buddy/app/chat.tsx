@@ -32,7 +32,7 @@ const ACTION_ICONS: Record<string, string> = {
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
-  const { api, user, speakNeural, isSpeaking, speakingTargetId, addNotification } = useApp();
+  const { api, user, speakNeural, stopSpeaking, isSpeaking, speakingTargetId, addNotification } = useApp();
 
   const isAISpeakingGlobal = isSpeaking && speakingTargetId === "chat_ai";
 
