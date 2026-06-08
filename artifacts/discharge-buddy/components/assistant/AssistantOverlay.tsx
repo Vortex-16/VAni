@@ -2,12 +2,13 @@ import React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { useAssistant } from './AssistantProvider';
 import { VoiceOrb } from './VoiceOrb';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, ZoomIn, ZoomOut, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { BlurView } from 'expo-blur';
+
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAssistantContext } from '@/hooks/assistant/useAssistantContext';
+import { useApp } from '@/context/AppContext';
 
 const { width } = Dimensions.get('window');
 
@@ -35,11 +36,14 @@ export function AssistantOverlay() {
   } = useAssistant();
 
   const { activeModule, pathname } = useAssistantContext();
+  const { user } = useApp();
   const insets = useSafeAreaInsets();
   const isActive = isVisible && state !== 'idle';
 
-  // Hide the FAB completely when on chat/scan screens that have their own mic UI
+  // Hide the FAB completely when on chat/scan screens or onboarding/auth screens
   const isChatScreen = activeModule === 'chatbot' || pathname?.includes('/scan');
+  const isAuthScreen = !user;
+  const shouldHideFab = isChatScreen || isAuthScreen;
 
   // Drag logic
   const translateX = useSharedValue(0);
@@ -64,31 +68,20 @@ export function AssistantOverlay() {
     ],
   }));
 
-  if (isChatScreen && !isVisible) return null;
+  if (shouldHideFab && !isVisible) return null;
 
   return (
     // box-none: passes touches through to the children but not the container itself
     <View style={styles.root} pointerEvents="box-none">
 
       {/* ── 2. Active Panel (slide up from bottom) ── */}
-      {isVisible && (
-        <Animated.View
-          entering={FadeIn}
-          exiting={FadeOut}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="auto"
-        >
-          <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} />
-        </Animated.View>
-      )}
+      
 
       {isVisible && (
-        <Animated.View
-          entering={SlideInDown.springify().damping(18)}
-          exiting={SlideOutDown}
-          style={[styles.panel, { bottom: insets.bottom + 100 }]}
-          pointerEvents="auto"
-        >
+        <View
+            style={styles.panelCentered}
+            pointerEvents="auto"
+          >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -96,13 +89,18 @@ export function AssistantOverlay() {
               <Text style={styles.title}>Voice Assistant</Text>
             </View>
             <TouchableOpacity onPress={cancelAssistant} style={styles.closeButton}>
-              <Feather name="x" size={20} color="#64748B" />
+              <Feather name="x" size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
 
           {/* Orb */}
           <View style={styles.orbContainer}>
-            <VoiceOrb state={state} meteringSharedValue={meteringSharedValue} size={130} />
+            {/** Compute dynamic orb size based on activity */}
+            <VoiceOrb
+                  state={state}
+                  meteringSharedValue={meteringSharedValue}
+                  size={120}
+                />
           </View>
 
           {/* Status text */}
@@ -130,13 +128,13 @@ export function AssistantOverlay() {
               <Text style={styles.stopButtonText}>Send Now</Text>
             </TouchableOpacity>
           )}
-        </Animated.View>
+        </View>
       )}
 
       {/* ── 1. Floating Action Button (FAB) — ALWAYS visible ── */}
       <GestureDetector gesture={panGesture}>
         <Animated.View
-          style={[styles.fabContainer, { bottom: insets.bottom + 24 }, animatedFabStyle]}
+          style={[styles.fabContainer, { bottom: insets.bottom + 100 }, animatedFabStyle]}
           pointerEvents="auto"
         >
           <TouchableOpacity
@@ -146,8 +144,8 @@ export function AssistantOverlay() {
           >
             <Feather
               name={isActive ? 'x' : 'mic'}
-              size={22}
-              color="#FFF"
+              size={24}
+              color={isActive ? '#FFF' : PURPLE}
             />
           </TouchableOpacity>
         </Animated.View>
@@ -161,23 +159,26 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 9999,
     elevation: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   // FAB
   fabContainer: {
     position: 'absolute',
     right: 20,
+    bottom: 100, // Safe default, overrides the inline style below if needed
     alignItems: 'center',
   },
   fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: PURPLE,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: PURPLE,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -186,18 +187,20 @@ const styles = StyleSheet.create({
     shadowColor: '#EF4444',
   },
   // Active panel
-  panel: {
+  panelCentered: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.97)',
-    borderRadius: 28,
-    padding: 24,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 32,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 24,
     elevation: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -225,10 +228,13 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   orbContainer: {
-    height: 160,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 8,
+    marginVertical: 4,
+    marginBottom: 12,
+    // Ensure it appears above other elements
+    zIndex: 10,
+    elevation: 10,
   },
   statusContainer: {
     alignItems: 'center',
@@ -247,20 +253,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   transcriptText: {
-    fontSize: 15,
+    fontSize: 18,
     fontFamily: 'Inter_600SemiBold',
-    color: '#1E293B',
+    color: '#000',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 12,
     fontStyle: 'italic',
   },
   replyText: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Inter_500Medium',
-    color: '#6C47FF',
+    color: '#1E293B',
     textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 21,
+    marginTop: 16,
+    lineHeight: 24,
   },
   stopButton: {
     flexDirection: 'row',

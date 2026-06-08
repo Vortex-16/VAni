@@ -6,9 +6,13 @@ import Animated, {
   withTiming, 
   withSequence,
   useSharedValue,
-  SharedValue
+  SharedValue,
+  Easing
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { AssistantState } from './AssistantProvider';
+
+const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
 
 interface VoiceOrbProps {
   state: AssistantState;
@@ -55,54 +59,110 @@ export function VoiceOrb({ state, meteringSharedValue, size = 120 }: VoiceOrbPro
     }
   }, [state, breathingScale]);
 
-  const animatedStyle = useAnimatedStyle(() => {
+  const rotation = useSharedValue(0);
+
+  React.useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 10000, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, [rotation]);
+
+  const animatedStyle1 = useAnimatedStyle(() => {
     let scale = breathingScale.value;
-    
-    // If listening, map metering (-160 to 0) to scale (1 to 1.5)
     if (state === 'listening' || state === 'transcribing') {
       const db = Math.max(-60, Math.min(0, meteringSharedValue.value));
-      const normalized = (db + 60) / 60; // 0 to 1
-      scale = 1 + (normalized * 0.5);
+      const normalized = (db + 60) / 60;
+      scale = 1 + (normalized * 0.2);
     }
-
     return {
-      transform: [{ scale }],
+      transform: [
+        { scale },
+        { rotate: `${rotation.value}deg` }
+      ],
     };
   });
 
-  const getOrbColors = () => {
+  const animatedStyle2 = useAnimatedStyle(() => {
+    let scale = breathingScale.value;
+    if (state === 'listening' || state === 'transcribing') {
+      const db = Math.max(-60, Math.min(0, meteringSharedValue.value));
+      const normalized = (db + 60) / 60;
+      scale = 1 + (normalized * 0.2);
+    }
+    return {
+      transform: [
+        { scale: scale * 0.95 },
+        { rotate: `-${rotation.value * 1.5}deg` }
+      ],
+    };
+  });
+
+  const getWaveColors = () => {
     switch (state) {
-      case 'listening': return ['rgba(147, 51, 234, 0.4)', 'rgba(108, 71, 255, 1)'];
-      case 'transcribing': return ['rgba(147, 51, 234, 0.4)', 'rgba(108, 71, 255, 1)'];
-      case 'processing': return ['rgba(59, 130, 246, 0.4)', 'rgba(37, 99, 235, 1)'];
-      case 'speaking': return ['rgba(16, 185, 129, 0.4)', 'rgba(5, 150, 105, 1)'];
-      case 'error': return ['rgba(239, 68, 68, 0.4)', 'rgba(220, 38, 38, 1)'];
-      default: return ['rgba(203, 213, 225, 0.4)', 'rgba(148, 163, 184, 1)'];
+      case 'listening': 
+      case 'transcribing': 
+        return ['rgba(255,255,255,0)', 'rgba(167,139,250,0.8)', 'rgba(108,71,255,0.9)', 'rgba(255,255,255,0)'] as const;
+      case 'processing': 
+        return ['rgba(255,255,255,0)', 'rgba(59,130,246,0.8)', 'rgba(45,212,191,0.9)', 'rgba(255,255,255,0)'] as const;
+      case 'speaking': 
+        return ['rgba(255,255,255,0)', 'rgba(16,185,129,0.8)', 'rgba(59,130,246,0.9)', 'rgba(255,255,255,0)'] as const;
+      case 'error': 
+        return ['rgba(255,255,255,0)', 'rgba(239,68,68,0.8)', 'rgba(245,158,11,0.9)', 'rgba(255,255,255,0)'] as const;
+      default: 
+        return ['rgba(255,255,255,0)', 'rgba(129,140,248,0.5)', 'rgba(167,139,250,0.6)', 'rgba(255,255,255,0)'] as const;
     }
   };
 
-  const [outerColor, innerColor] = getOrbColors();
+  const waveColors = getWaveColors();
+  // Pearl base colors
+  const baseColors = ['#FFFFFF', '#E2E8F0'] as const;
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
-      <Animated.View 
+    <View style={[styles.container, { width: size, height: size }]} pointerEvents="auto">
+      {/* Base Pearl Orb */}
+      <AnimatedGradient
+        colors={baseColors}
+        start={{ x: 0.2, y: 0.1 }}
+        end={{ x: 0.8, y: 0.9 }}
         style={[
-          styles.outerGlow, 
+          styles.layer, 
+          styles.pearlShadow,
           { 
             width: size, height: size, borderRadius: size / 2,
-            backgroundColor: outerColor 
+            opacity: 0.95
           },
-          animatedStyle
+          animatedStyle1
         ]} 
       />
-      <View 
+      {/* Inner Fluid Wave */}
+      <AnimatedGradient
+        colors={waveColors}
+        locations={[0, 0.4, 0.6, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[
-          styles.innerOrb, 
+          styles.layer, 
           { 
-            width: size * 0.4, height: size * 0.4, borderRadius: size * 0.2,
-            backgroundColor: innerColor 
-          }
+            width: size * 0.95, height: size * 0.95, borderRadius: (size * 0.95) / 2,
+          },
+          animatedStyle2
         ]} 
+      />
+      {/* Glossy Highlight Overlay */}
+      <AnimatedGradient
+        colors={['rgba(255,255,255,0.8)', 'transparent', 'rgba(255,255,255,0.1)']}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
+        style={[
+          styles.layer,
+          {
+            width: size, height: size, borderRadius: size / 2,
+            opacity: 0.8
+          },
+          animatedStyle1
+        ]}
       />
     </View>
   );
@@ -113,15 +173,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  outerGlow: {
+  layer: {
     position: 'absolute',
-    opacity: 0.8,
   },
-  innerOrb: {
-    shadowColor: '#FFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 5,
+  pearlShadow: {
+    shadowColor: '#6C47FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
   }
 });
