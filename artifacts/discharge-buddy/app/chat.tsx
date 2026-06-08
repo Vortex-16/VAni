@@ -11,6 +11,9 @@ import Animated, { FadeInUp, LinearTransition, useSharedValue, useAnimatedStyle,
 import { useApp } from "@/context/AppContext";
 import { NeuralOrb } from "@/components/NeuralOrb";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
+import { loadHistory, appendTurns, recentForPrompt, clearHistory } from "@/utils/conversationMemory";
+import { describeScreen } from "@/utils/contextEngine";
+import { useAssistantContext } from "@/hooks/assistant/useAssistantContext";
 
 const { width } = Dimensions.get("window");
 const PURPLE = "#6C47FF";
@@ -51,6 +54,29 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  // Per-user key for the shared conversation memory (Phase 5).
+  const userKey = user?.email || "guest";
+  const { activeModule } = useAssistantContext();
+
+  // Rehydrate prior turns on mount so Buddy remembers across app launches.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const past = await loadHistory(userKey);
+      if (cancelled || past.length === 0) return;
+      const restored: Message[] = past.map((t, i) => ({
+        id: `mem_${t.ts}_${i}`,
+        text: t.text,
+        sender: t.role === "assistant" ? "ai" : "user",
+      }));
+      // Keep the welcome bubble first, then the restored history.
+      setMessages((prev) => [prev[0], ...restored]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userKey]);
+
   /*
   useEffect(() => {
     // Speak the welcome message with a short delay
@@ -80,7 +106,9 @@ export default function ChatScreen() {
 
     console.log("[ChatScreen] handleSend triggered with input:", userMsg.text);
     try {
-      const response = await api.getChatResponse(userMsg.text, language);
+      // Pass recent conversation so Buddy can resolve follow-ups (Phase 5).
+      const priorHistory = await loadHistory(userKey);
+      const response = await api.getChatResponse(userMsg.text, language, recentForPrompt(priorHistory), describeScreen(activeModule).hint);
       console.log("[ChatScreen] Got response from API:", response);
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -93,6 +121,11 @@ export default function ChatScreen() {
         console.log("[ChatScreen] setMessages (AI) -> count:", next.length);
         return next;
       });
+      // Persist both turns so the memory survives navigation and app restarts.
+      appendTurns(userKey, [
+        { role: "user", text: userMsg.text },
+        { role: "assistant", text: response.message },
+      ]).catch(() => {});
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
       console.log("[ChatScreen] AI Message added to state. Now triggering TTS...");
       speakNeural(response.message, aiMsg.id).catch(e => console.error("[ChatScreen] TTS Background Error:", e));
@@ -111,6 +144,12 @@ export default function ChatScreen() {
   };
 
   const handleSend = () => sendMessage(input);
+
+  const handleClearConversation = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await clearHistory(userKey);
+    setMessages((prev) => [prev[0]]);
+  };
 
   const handleAction = (action: { type: string; label: string }) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -169,8 +208,8 @@ export default function ChatScreen() {
           <Text style={styles.headerTitle}>Mr. Meddy</Text>
           <Text style={styles.headerSub}>{isSpeaking ? "Speaking…" : "Recovery Companion"}</Text>
         </View>
-        <TouchableOpacity style={styles.headerBtn}>
-          <Feather name="more-vertical" size={20} color={PURPLE} />
+        <TouchableOpacity style={styles.headerBtn} onPress={handleClearConversation}>
+          <Feather name="trash-2" size={18} color={PURPLE} />
         </TouchableOpacity>
       </View>
 

@@ -6,6 +6,8 @@ import { useApp } from '@/context/AppContext';
 import { router } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { LOCALE_BY_LANG, type Language } from '@/constants/translations';
+import { loadHistory, appendTurns, recentForPrompt } from '@/utils/conversationMemory';
+import { describeScreen } from '@/utils/contextEngine';
 
 export type AssistantState =
   | 'idle'
@@ -93,6 +95,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const events = useAssistantEvents();
   const {
     api,
+    user,
     language,
     setLanguage,
     logout,
@@ -101,6 +104,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     updateDoseStatus,
     stopSpeaking,
   } = useApp();
+
+  const userKey = user?.email || 'guest';
 
   // When true, the assistant keeps the mic open after answering a conversational
   // (CHAT) turn so the user can keep talking hands-free. Any explicit stop,
@@ -236,11 +241,20 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setState('processing');
       let message = "I'm right here with you.";
       try {
-        const res = await api.getChatResponse(text, language);
+        // Share the same persisted memory as the chat screen (Phase 5), and tell
+        // the model which screen the user is on (Phase 7) for "what is this?".
+        const priorHistory = await loadHistory(userKey);
+        const screenHint = describeScreen(activeModule).hint;
+        const res = await api.getChatResponse(text, language, recentForPrompt(priorHistory), screenHint);
         if (res?.message) message = res.message;
       } catch {
         message = "I'm having a little trouble connecting right now. Please try again in a moment.";
       }
+
+      appendTurns(userKey, [
+        { role: 'user', text },
+        { role: 'assistant', text: message },
+      ]).catch(() => {});
 
       setLastReply(message);
       setState('speaking');
@@ -253,7 +267,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         finish();
       }
     },
-    [api, speak, finish, language],
+    [api, speak, finish, language, userKey, activeModule],
   );
   useEffect(() => {
     handleChatRef.current = handleChat;

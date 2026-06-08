@@ -356,7 +356,7 @@ export class MockProvider implements IDataProvider {
     return { audioContent: "" }; // Return empty in mock
   }
 
-  async getChatResponse(query: string, language?: string): Promise<{ message: string; actions: { type: string; label: string }[] }> {
+  async getChatResponse(query: string, language?: string, history?: { role: "user" | "assistant"; text: string }[], screenContext?: string): Promise<{ message: string; actions: { type: string; label: string }[] }> {
     await new Promise(r => setTimeout(r, 1000));
     return {
       message: "I'm Mr. Meddy (Mock Fallback). It looks like I'm not connected to the live server right now, but I can still help you with demo features!",

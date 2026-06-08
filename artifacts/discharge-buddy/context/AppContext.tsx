@@ -10,6 +10,7 @@ import { router } from "expo-router";
 import { scheduleMedicineNotifications, requestNotificationPermissions, getDevicePushToken } from "@/utils/NotificationHelper";
 import { NotificationToast } from "@/components/NotificationToast";
 import { soundHelper } from "@/utils/SoundHelper";
+import { clearHistory as clearConversationHistory } from "@/utils/conversationMemory";
 import { Audio } from "expo-av";
 import { cacheDirectory, writeAsStringAsync, EncodingType } from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
@@ -954,6 +955,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // Wipe conversation memory for this user (privacy — voice transcripts).
+    clearConversationHistory(user?.email || "guest").catch(() => {});
     AsyncStorage.removeItem("discharge_buddy_token");
     AsyncStorage.removeItem(STORAGE_KEY);
     setUserState(null);

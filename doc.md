@@ -81,7 +81,7 @@ The client called `POST /api/ai/stt` but **the route did not exist**, so the ent
 | Multilingual Pipeline | Phase 4 | `constants/translations.ts`, `context/AppContext.tsx` (`speakNeural`), `AssistantProvider.tsx`, `api-server/src/routes/ai.ts` | Yes (STT+chat+TTS in 14 langs incl. `bn`) | Cloud translation for UI strings beyond the dictionary | Device TTS voice availability per locale |
 | Overlay Architecture | Phase 2 | `components/assistant/AssistantOverlay.tsx` | Yes | Z-index conflicts on modals | Performance overhead |
 | Assistant States | Phase 2/3 | `components/assistant/AssistantProvider.tsx`, `VoiceOrb.tsx` | Yes | Barge-in interruption | Race conditions in state transitions |
-| Session / Conversation Loop | Phase 2/3 | `AssistantProvider.tsx` (`continueConversationRef`) | Yes | Long-term context persistence | Loop wedging if TTS callback never fires |
+| Session / Conversation Loop | Phase 2/3 + 5 | `AssistantProvider.tsx` (`continueConversationRef`), `utils/conversationMemory.ts` | Yes (now with persistent memory) | Server-side history store / cross-device sync | Loop wedging if TTS callback never fires |
 | Text-to-Speech | Phase 3 | `AssistantProvider.tsx` (`speak`), `AppContext.tsx` (`speakNeural`) | Yes | Cloud (ElevenLabs) voice on device | Audio ducking |
 | Intent Routing & Actions | Phase 6 | `AssistantProvider.tsx`, `api-server/src/routes/ai.ts` (`/intent`) | Yes | Slot-filling / multi-turn params | Misclassification on noisy audio |
 
@@ -129,7 +129,8 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 | Multilingual TTS | Speak responses in active language | Accessibility | expo-speech locales | High | Medium | ✅ Done (Phase 4) |
 | Multilingual Chat | LLM replies in the active language | Accessibility | `/api/ai/chat` | High | Medium | ✅ Done (Phase 4) |
 | Bengali Support | `bn` (+9 regional) in UI + voice + chat | Target demographic | `constants/translations.ts` | High | Medium | ✅ Done (Phase 4) |
-| Context Persistence | Remember past conversation turns | Natural dialogue | DB/Storage | Medium | Medium | ⏳ Pending (Phase 5) |
+| Context Persistence | Remember past conversation turns | Natural dialogue | AsyncStorage | Medium | Medium | ✅ Done (Phase 5) |
+| Context Engine | Resolve "what is this?" using the active screen | Natural dialogue | `useAssistantContext` | Medium | Low | ✅ Done (Phase 7) |
 | Family Voice Notes | Voice messages to caregivers | Connectivity | Auth/Roles | Low | Medium | ⏳ Pending (Phase 8) |
 | Wake Word | "Hey Buddy" activation | Hands-free init | Native Audio | High | High | ⏳ Pending (Phase 9) |
 | Voice Interruption (barge-in) | Stop speaking when user talks | Natural conversation | TTS Engine | Medium | High | ⏳ Pending (Phase 9) |
@@ -166,12 +167,19 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 - **Risks (handled):** New languages only need one edit (the maps in `translations.ts`); unmapped codes still default to English everywhere; device TTS quality for some locales depends on installed OS voices (graceful `en-US` fallback).
 - **Testing Checklist:** ✅ typecheck (api-server + discharge-buddy) clean; ✅ "speak Bengali" switches language; ✅ chat/voice reply rendered + spoken in Bengali (`bn-IN`); ✅ Hindi/Spanish/Urdu unaffected.
 
-### Phase 5: Memory & Persistence
-- **Goals:** Enable Buddy to remember context across sessions.
-- **Dependencies:** Local SQLite or SecureStore.
-- **Files Affected:** `SessionManager.ts`, `api-server/models`.
-- **Risks:** Privacy and data security of voice transcripts.
-- **Testing Checklist:** Recall previous turns, verify journal linking.
+### Phase 5: ✅ COMPLETED — Memory & Persistence
+- **Goals:** Buddy remembers the conversation across turns and across app restarts, for both the chat screen and the hands-free voice loop, so follow-ups ("and the other one?") resolve correctly.
+- **Storage choice:** Built on **AsyncStorage** — the app's existing persistence layer (`AppContext`, `translate.ts`) — instead of SQLite/SecureStore. SecureStore's ~2KB/value limit is unsuitable for transcript logs and SQLite would add a native dependency; AsyncStorage matches the established pattern and needs no new install.
+- **What shipped:**
+  - New self-contained module `utils/conversationMemory.ts` — per-user keyed history (`load/append/recentForPrompt/clear`), stored turns capped at 40, prompt window of 6. No chatbot-specific coupling; both surfaces import it.
+  - `getChatResponse(query, language?, history?)` now carries recent turns; backend `/api/ai/chat` sanitizes + caps them (8 turns, 600 chars each) and splices them as prior `user`/`assistant` messages between the system prompt and the live query.
+  - `app/chat.tsx` rehydrates history on mount (renders restored bubbles after the welcome message), persists every exchange, and gains a header trash button to clear the thread + memory.
+  - `AssistantProvider.handleChat` shares the **same** store, so a question asked by voice is remembered when the user later opens the text chat (and vice-versa).
+  - **Privacy:** `AppContext.logout` wipes the user's conversation memory (addresses the voice-transcript privacy risk).
+- **Files Affected:** `utils/conversationMemory.ts` (new), `context/{types.ts,ApiProvider.ts,MockProvider.ts,AppContext.tsx}`, `app/chat.tsx`, `components/assistant/AssistantProvider.tsx`, `api-server/src/routes/ai.ts` (`/chat`).
+- **Risks (handled):** Unbounded growth — hard caps on stored + prompt-window + backend turns; stale/oversized client payload — backend re-sanitizes; privacy — cleared on logout, namespaced per user (guests use a `guest` key).
+- **Rollback:** Memory is purely additive — `history` is optional everywhere; deleting `conversationMemory.ts` imports + the optional param reverts to stateless chat with no schema/data migration.
+- **Testing Checklist:** ✅ typecheck (api-server + discharge-buddy) clean; ✅ follow-up turn uses prior context; ✅ history survives app restart; ✅ voice and text share one memory; ✅ clear button + logout wipe it. (Journal-linking from the original checklist is deferred — no existing chat→journal hook exists; out of scope for the memory goal.)
 
 ### Phase 6: ✅ COMPLETED — Intent Routing & Actions
 - **Goals:** Convert speech like "Open medicines" / "I took my pill" / "Log me out" into real app events.
@@ -181,12 +189,17 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 - **Risks (handled):** Breaking navigation — uses the existing route tree, no new navigator; unmapped/unknown intents degrade gracefully to a chat answer instead of erroring.
 - **Testing Checklist:** ✅ Navigation intents route correctly, ✅ "I took my medicine" marks a pending dose taken, ✅ emergency + logout + language switch fire, ✅ chit-chat falls back to chat.
 
-### Phase 7: Context Engine
-- **Goals:** Buddy knows what screen the user is looking at to resolve ambiguous queries ("What is this?").
-- **Dependencies:** Navigation state listener.
-- **Files Affected:** `ContextEngine.ts`.
-- **Risks:** Stale state leading to wrong context.
-- **Testing Checklist:** Ask contextual questions on 3 different screens.
+### Phase 7: ✅ COMPLETED — Context Engine
+- **Goals:** Buddy knows what screen the user is looking at so it can resolve ambiguous, deictic queries ("What is this?", "How much do I take?", "Explain that") against the current screen.
+- **What shipped:**
+  - New `utils/contextEngine.ts` (`describeScreen`) maps the active feature module to a one-line natural-language hint describing the screen and what an unqualified "this"/"it" most likely refers to (e.g. on the medicines screen, "this" → a medicine).
+  - The hint is plumbed through `getChatResponse(query, language?, history?, screenContext?)` and injected by `/api/ai/chat` as a `CURRENT_SCREEN` line in the prompt, alongside the existing `PATIENT_CONTEXT` (which already carries the patient's medicines/symptoms/risk).
+  - Source of the screen state is the existing `useAssistantContext` hook (`activeModule`, derived from `expo-router` `usePathname`) — already used for intent routing, now reused for chat. The voice loop passes the live screen; the chat screen passes its own module.
+- **Dependencies:** `expo-router` navigation state (via `useAssistantContext`), backend Groq chat.
+- **Files Affected:** `utils/contextEngine.ts` (new), `hooks/assistant/useAssistantContext.ts` (reused), `components/assistant/AssistantProvider.tsx`, `app/chat.tsx`, `context/{types.ts,ApiProvider.ts,MockProvider.ts}`, `api-server/src/routes/ai.ts` (`/chat`).
+- **Risks (handled):** Stale state → context is read at send-time from the live router path, not cached; unknown screens → fall back to a neutral "unspecified screen" hint; payload abuse → backend trims `screenContext` to 300 chars.
+- **Rollback:** Purely additive — `screenContext` is optional everywhere; removing the `describeScreen` calls + the optional param reverts to screen-agnostic chat with no migration.
+- **Testing Checklist:** ✅ typecheck (api-server + discharge-buddy) clean; ✅ "what is this medicine?" while on the medicines screen resolves to a medicine; ✅ same question on an unrelated screen degrades gracefully; ✅ context combines with Phase 5 memory and the language directive.
 
 ### Phase 8: ⏳ PARTIAL — Medicine & Caregiver Ecosystem
 - **Goals:** Full voice operation for medicine logging and alerting caregivers.

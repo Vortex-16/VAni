@@ -184,8 +184,21 @@ const CHAT_LANG_NAMES: Record<string, string> = {
   ml: "Malayalam", or: "Odia", pa: "Punjabi", as: "Assamese",
 };
 
+// Normalise the client-supplied conversation history into safe chat messages.
+// Caps length and per-message size so a malformed/huge client payload can't blow
+// up the prompt. Returns oldest→newest, ready to splice before the live query.
+function buildHistoryMessages(history: any): Array<{ role: "user" | "assistant"; content: string }> {
+  if (!Array.isArray(history)) return [];
+  const MAX_TURNS = 8;
+  const MAX_CHARS = 600;
+  return history
+    .filter((t) => t && (t.role === "user" || t.role === "assistant") && typeof t.text === "string" && t.text.trim())
+    .slice(-MAX_TURNS)
+    .map((t) => ({ role: t.role as "user" | "assistant", content: String(t.text).slice(0, MAX_CHARS) }));
+}
+
 router.post("/chat", optionalAuth, async (req: any, res: any) => {
-  const { userQuery, language } = req.body;
+  const { userQuery, language, history, screenContext } = req.body;
   const user = req.user;
   console.log(`[AI Chat] Request received. User: ${user?.name || "Guest"}, Query: ${userQuery}`);
 
@@ -267,13 +280,24 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
     const langName = (typeof language === "string" && CHAT_LANG_NAMES[language]) || "English";
     const langDirective = `\nLANGUAGE: The "message" field MUST be written entirely in ${langName}. Use the native script for ${langName}. Do NOT translate or alter the action "type" values (keep them in English). If the user wrote in another language, still reply in ${langName}.`;
 
+    // Prior conversation turns (Phase 5 memory), oldest→newest, before the live query.
+    const historyMessages = buildHistoryMessages(history);
+    console.log(`[AI Chat] Including ${historyMessages.length} history turns.`);
+
+    // Screen context (Phase 7) — lets the model resolve deictic queries like
+    // "what is this?" against whatever the user is currently looking at.
+    const screenLine = typeof screenContext === "string" && screenContext.trim()
+      ? `\n          CURRENT_SCREEN: The user is currently viewing ${screenContext.trim().slice(0, 300)} Use this to resolve vague references like "this", "that", or "it".`
+      : "";
+
     // 3. Prompt Groq
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: "system", content: SYSTEM_PROMPT + langDirective },
+        ...historyMessages,
         {
           role: "user", content: `
-          CURRENT_TIME: ${new Date().toISOString()}
+          CURRENT_TIME: ${new Date().toISOString()}${screenLine}
           USER_QUERY: "${userQuery}"
 
           PATIENT_CONTEXT:
