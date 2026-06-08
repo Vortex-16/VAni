@@ -133,8 +133,6 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 | Voice Interruption (barge-in) | Stop speaking when user talks | Natural conversation | TTS Engine | Medium | High | ⏳ Pending (Phase 9) |
 | Simplified Mode | Large text, high contrast | Accessibility | Settings Context | Medium | Low | ⏳ Pending (Phase 10) |
 | Offline Mode | Basic STT without internet | Reliability | Local ML Models | Low | High | ⏳ Pending (Phase 10) |
-| Feature            | Backend Changes     | Frontend Changes | DB Changes       | APIs Needed   | Risks         | Dependencies  |
-| ------------------ | ------------------- | ---------------- | ---------------- | ------------- | ------------- | ------------- |
 | Family Voice Notes | audio event APIs    | recording UI     | voice_note table | notifications | storage costs | push system   |
 | Timeline           | aggregation service | timeline screens | event tables     | timeline APIs | duplication   | medicine APIs |
 
