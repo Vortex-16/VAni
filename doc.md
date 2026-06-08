@@ -328,6 +328,8 @@ graph LR
     Notification --> Backend
     Storage --> Backend
     Backend --> UI
+
+    
 ```
 
 13. **Medication Companion**
