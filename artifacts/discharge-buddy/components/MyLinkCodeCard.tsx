@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useApp } from '@/context/AppContext';
+import { ShareLinkQRModal } from '@/components/ShareLinkQRModal';
 
 const PRIMARY      = '#7C3AED';
 const PRIMARY_DARK = '#5B21B6';
@@ -20,6 +21,7 @@ export function MyLinkCodeCard() {
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -97,10 +99,11 @@ export function MyLinkCodeCard() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={reset} style={styles.resetBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Feather name="refresh-cw" size={12} color="rgba(255,255,255,0.85)" />
-        <Text style={styles.resetText}>Reset code</Text>
+      <TouchableOpacity onPress={() => setShowQrModal(true)} style={[styles.resetBtn, styles.qrBtn]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Feather name="code" size={12} color="rgba(255,255,255,0.85)" />
+        <Text style={styles.resetText}>View QR</Text>
       </TouchableOpacity>
+      <ShareLinkQRModal visible={showQrModal} onClose={() => setShowQrModal(false)} />
     </LinearGradient>
   );
 }
@@ -126,5 +129,6 @@ const styles = StyleSheet.create({
   },
   copyText: { color: PRIMARY, fontSize: 13, fontFamily: 'Inter_700Bold' },
   resetBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 12 },
+  qrBtn: { backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 10 },
   resetText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
 });

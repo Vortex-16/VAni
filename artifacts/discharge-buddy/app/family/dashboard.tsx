@@ -156,7 +156,7 @@ export default function FamilyDashboard() {
   const insets = useSafeAreaInsets();
   const {
     user, familyMembers, addFamilyMember, linkFamilyMember, linkPatientByCode,
-    setActivePatientId, activePatientId, logout, speakNeural, isOnboarded
+    setActivePatientId, activePatientId, logout, speakNeural, isOnboarded, setOnboarded
   } = useApp();
   const { open: openSidebar } = useSidebar();
 
@@ -254,7 +254,7 @@ export default function FamilyDashboard() {
               <Text style={styles.badgeText}>3</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.avatarBtn} onPress={logout}>
+          <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/profile')}>
              {/* Use a default avatar or user's photo */}
             <View style={styles.avatarSmall}>
                <Text style={styles.avatarSmallText}>{user?.name?.charAt(0) || 'U'}</Text>

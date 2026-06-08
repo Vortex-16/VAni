@@ -146,25 +146,51 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   // ── Handlers for ACTION-type intents (things that DO something). ──
   const handleAction = useCallback(
-    async (target: string): Promise<void> => {
+    async (target: string, currentTranscript: string): Promise<void> => {
       let reply = '';
 
       switch (target) {
         case 'TAKE_MEDICINE': {
-          const dose = todayDoses.find((d) => d.status === 'pending');
-          if (dose) {
-            try {
-              await updateDoseStatus(dose.id, 'taken');
-              reply = `Done. I've marked ${dose.medicineName} as taken. Great job staying on track!`;
-            } catch {
-              reply = `I couldn't update that dose just now. Please try from the medicines screen.`;
-            }
-          } else {
+          const lowerTranscript = currentTranscript.toLowerCase();
+          const isAll = lowerTranscript.includes('all');
+          let pendingDoses = todayDoses.filter((d) => d.status === 'pending');
+          
+          if (pendingDoses.length === 0) {
             reply = `I don't see any pending doses right now — you're all caught up!`;
+          } else {
+            const mentionedMed = pendingDoses.find(d => lowerTranscript.includes(d.medicineName.toLowerCase()));
+            
+            let dosesToMark = [];
+            if (mentionedMed && isAll) {
+              dosesToMark = pendingDoses.filter(d => d.medicineName.toLowerCase() === mentionedMed.medicineName.toLowerCase());
+            } else if (mentionedMed) {
+              dosesToMark = [mentionedMed];
+            } else if (isAll) {
+              dosesToMark = pendingDoses;
+            } else {
+              dosesToMark = [pendingDoses[0]];
+            }
+
+            try {
+              await Promise.all(dosesToMark.map(d => updateDoseStatus(d.id, 'taken')));
+              const names = Array.from(new Set(dosesToMark.map(d => d.medicineName))).join(' and ');
+              reply = `Done. I've marked ${names} as taken. Great job staying on track!`;
+            } catch {
+              reply = `I couldn't update those doses just now. Please try from the medicines screen.`;
+            }
           }
           setLastReply(reply);
           setState('speaking');
           await speak(reply);
+          finish();
+          return;
+        }
+        case 'NAVIGATE_TO_MEDICINES': {
+          reply = `I cannot update schedules directly, but I am taking you to the medicines page where you can change the timings.`;
+          setLastReply(reply);
+          setState('speaking');
+          await speak(reply);
+          router.push('/(tabs)/medicines');
           finish();
           return;
         }
@@ -226,12 +252,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         }
         default: {
           // Unrecognised action → treat as a conversation so the user still gets a reply.
-          await handleChatRef.current(lastTranscript || '');
+          await handleChatRef.current(currentTranscript || '');
           return;
         }
       }
     },
-    [todayDoses, updateDoseStatus, triggerEmergency, logout, setLanguage, speak, finish, lastTranscript],
+    [todayDoses, updateDoseStatus, triggerEmergency, logout, setLanguage, speak, finish],
   );
 
   // ── Conversational fallback: ask Mr. Meddy and speak the answer. ──
@@ -313,7 +339,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (intent === 'ACTION' && target) {
-        await handleAction(target);
+        await handleAction(target, transcript);
         return;
       }
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator,  } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -35,7 +35,7 @@ const ACTION_ICONS: Record<string, string> = {
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
-  const { api, user, speakNeural, isSpeaking, speakingTargetId, addNotification, language } = useApp();
+  const { api, user, speakNeural, stopSpeaking, isSpeaking, speakingTargetId, addNotification, language } = useApp();
 
   const isAISpeakingGlobal = isSpeaking && speakingTargetId === "chat_ai";
 
@@ -125,7 +125,7 @@ export default function ChatScreen() {
       appendTurns(userKey, [
         { role: "user", text: userMsg.text },
         { role: "assistant", text: response.message },
-      ]).catch(() => {});
+      ]).catch(() => { });
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
       console.log("[ChatScreen] AI Message added to state. Now triggering TTS...");
       speakNeural(response.message, aiMsg.id).catch(e => console.error("[ChatScreen] TTS Background Error:", e));
@@ -261,14 +261,14 @@ export default function ChatScreen() {
                         {msg.text}
                       </Text>
                     </View>
-                    
+
                     {msg.sender === "ai" && (
-                      <VoiceButton 
-                        text={msg.text} 
-                        msgId={msg.id} 
-                        isSpeaking={isSpeaking} 
-                        speakingTargetId={speakingTargetId} 
-                        speakNeural={speakNeural} 
+                      <VoiceButton
+                        text={msg.text}
+                        msgId={msg.id}
+                        isSpeaking={isSpeaking}
+                        speakingTargetId={speakingTargetId}
+                        speakNeural={speakNeural}
                       />
                     )}
                   </View>
@@ -325,7 +325,7 @@ export default function ChatScreen() {
               editable={!isTranscribing && !isLoading && !isListening}
             />
             {input.trim() ? (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleSend}
                 style={[styles.sendBtn, isLoading && styles.sendBtnDisabled]}
                 disabled={isLoading}

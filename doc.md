@@ -136,6 +136,9 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 | Voice Interruption (barge-in) | Stop speaking when user talks | Natural conversation | TTS Engine | Medium | High | ⏳ Pending (Phase 9) |
 | Simplified Mode | Large text, high contrast | Accessibility | Settings Context | Medium | Low | ⏳ Pending (Phase 10) |
 | Offline Mode | Basic STT without internet | Reliability | Local ML Models | Low | High | ⏳ Pending (Phase 10) |
+| Family Voice Notes | audio event APIs    | recording UI     | voice_note table | notifications | storage costs | push system ⏳ Pending  |
+| Timeline           | aggregation service | timeline screens | event tables     | timeline APIs | duplication   | medicine APIs ⏳ Pending |
+
 
 ---
 
@@ -221,6 +224,225 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 
 ---
 
+## PROJECT VISION
+
+We are building:
+
+**Bora**
+
+A voice-first care companion connecting:
+
+* patients
+* caregivers
+* families
+
+The goal is:
+
+Users should eventually operate the application primarily through voice.
+
+This is NOT only a chatbot.
+
+This is a care ecosystem.
+
+Core philosophy:
+
+- Reduce cognitive burden.
+- Reduce caregiver burden.
+- Increase family connection.
+- Make users feel less alone.
+- Support elderly and non-technical users.
+
+---
+
+### Phase 11
+### P0 FEATURES (Highest Priority)
+
+1. **Family Voice Notes + Smart Notifications**
+
+Highest Priority.
+
+Goal:
+
+Caregivers and family members should be able to send voice notes or reminders.
+
+Patient should receive:
+
+* notifications
+* scheduled reminders
+* voice playback
+* text fallback
+
+Example:
+
+"Dad, don't forget medicine ❤️"
+
+OR
+
+Patient:
+
+"Bora, tell my daughter I had lunch."
+
+Flow:
+
+Voice → Intent detection → Store event → Create family update → Send push notification → Store timeline event
+
+Include implementation details:
+
+* notification system
+* audio storage
+* transcript storage
+* scheduling
+* reminder engine
+* push notifications
+* database schema
+
+Explain why this is emotionally powerful.
+
+### Phase 12
+2. **Shared Care Timeline**
+
+Include:
+
+- medicine logs
+- meal logs
+- journal logs
+- voice note events
+- activity logs
+- family interactions
+
+---
+
+## ARCHITECTURE OVERVIEW
+
+Below is a high‑level diagram of the **Bora** voice‑first care ecosystem, showing the main modules and their interactions.
+
+```mermaid
+graph LR
+    subgraph Frontend[React Native Frontend]
+        UI[UI Components]
+        VoiceProvider[Voice Provider]
+        Overlay[Assistant Overlay & Orb]
+    end
+    subgraph Backend[Node.js / Express Backend]
+        API[REST API]
+        IntentClassifier[Intent Classification]
+        STT[Speech‑to‑Text Service]
+        TTS[Text‑to‑Speech Service]
+    end
+    subgraph Services[Auxiliary Services]
+        OCR[OCR Service]
+        Notification[Push Notification Service]
+        Storage[Database / SecureStore]
+    end
+    UI --> VoiceProvider
+    VoiceProvider --> Overlay
+    VoiceProvider --> API
+    API --> IntentClassifier
+    API --> STT
+    API --> TTS
+    IntentClassifier --> Storage
+    STT --> Storage
+    TTS --> UI
+    OCR --> Backend
+    Notification --> Backend
+    Storage --> Backend
+    Backend --> UI
+
+    
+```
+
+13. **Medication Companion**
+
+Include:
+
+- voice reminders
+- missed medicine detection
+- confirmation loops
+- caregiver updates
+
+14. **Multilingual Voice Pipeline**
+
+Support:
+
+- Bengali
+- English
+- Mixed speech
+- Language persistence
+- Guardian preferences
+
+---
+
+## P1 FEATURES
+
+- Context engine
+- intent routing
+- voice journaling
+- daily companion mode
+- family presence layer
+- routine detection
+- caregiver dashboard
+- memory support
+
+---
+
+## P2 FEATURES
+
+- wake word
+- emotional adaptation
+- analytics
+- offline mode
+- battery optimization
+
+---
+
+## MOST IMPORTANT RULE
+
+Do not break:
+
+* authentication
+* OCR
+* navigation
+* medicine systems
+* journal systems
+* chatbot
+* multilingual systems
+* APIs
+* existing flows
+
+Every new feature must be modular.
+
+Avoid chatbot‑specific implementations.
+
+---
+
+
+## Current Voice System Status
+
+Document current implementation.
+
+Include:
+
+**Phase 1:**
+
+* STT
+* permissions
+* auto‑send
+* chatbot integration
+* speech pipeline
+
+**Phase 2:**
+
+* assistant provider
+* global overlay
+* orb/blob
+* state machine
+* context foundation
+* voice session manager
+
+
+---
+
+
 ## SECTION 6 — Demo Narrative
 
 **Flow (✅ = supported today, ⏳ = roadmap):**
@@ -301,3 +523,5 @@ EXPO_PUBLIC_DOMAIN="localhost:8081" pnpm run build
 - `discharge-buddy/components/assistant/VoiceOrb.tsx` — speaking visual state.
 - `discharge-buddy/hooks/assistant/useVoiceSession.ts` — `onTranscript` callback, per-platform format, language hint.
 - `discharge-buddy/context/{types.ts,ApiProvider.ts,MockProvider.ts}` — `transcribeAudio(audioBase64, fileExtension?, language?)`.
+
+
