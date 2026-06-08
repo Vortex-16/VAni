@@ -225,38 +225,6 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 ### Phase 10: Optimization
 - **Goals:** Offline mode, battery profiling, animation cleanup.
 
----
-
-## PROJECT VISION
-
-We are building:
-
-**Bora**
-
-A voice-first care companion connecting:
-
-* patients
-* caregivers
-* families
-
-The goal is:
-
-Users should eventually operate the application primarily through voice.
-
-This is NOT only a chatbot.
-
-This is a care ecosystem.
-
-Core philosophy:
-
-- Reduce cognitive burden.
-- Reduce caregiver burden.
-- Increase family connection.
-- Make users feel less alone.
-- Support elderly and non-technical users.
-
----
-
 ### Phase 11
 ### P0 FEATURES (Highest Priority)
 
@@ -397,6 +365,37 @@ Support:
 - battery optimization
 
 ---
+---
+
+## PROJECT VISION
+
+We are building:
+
+**Bora**
+
+A voice-first care companion connecting:
+
+* patients
+* caregivers
+* families
+
+The goal is:
+
+Users should eventually operate the application primarily through voice.
+
+This is NOT only a chatbot.
+
+This is a care ecosystem.
+
+Core philosophy:
+
+- Reduce cognitive burden.
+- Reduce caregiver burden.
+- Increase family connection.
+- Make users feel less alone.
+- Support elderly and non-technical users.
+
+---
 
 ## MOST IMPORTANT RULE
 
@@ -527,4 +526,4 @@ EXPO_PUBLIC_DOMAIN="localhost:8081" pnpm run build
 - `discharge-buddy/hooks/assistant/useVoiceSession.ts` — `onTranscript` callback, per-platform format, language hint.
 - `discharge-buddy/context/{types.ts,ApiProvider.ts,MockProvider.ts}` — `transcribeAudio(audioBase64, fileExtension?, language?)`.
 
-
+
