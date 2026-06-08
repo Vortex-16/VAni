@@ -399,4 +399,9 @@ export class MockProvider implements IDataProvider {
   async getIntent(text: string, context?: string): Promise<{ intent: string, target: string, confidence: number }> {
     return { intent: "UNKNOWN", target: "", confidence: 1.0 };
   }
+
+  async sendVoiceNote(transcript: string, patientNote?: string): Promise<{ success: boolean; message: string }> {
+    console.log("[MockProvider] sendVoiceNote:", transcript, patientNote);
+    return { success: true, message: "Note sent (mock)" };
+  }
 }

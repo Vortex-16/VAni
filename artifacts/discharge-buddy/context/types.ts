@@ -43,4 +43,5 @@ export interface IDataProvider {
   getChatResponse(query: string, language?: string, history?: { role: "user" | "assistant"; text: string }[], screenContext?: string): Promise<{ message: string; actions: { type: string; label: string }[] }>;
   transcribeAudio(audioBase64: string, fileExtension?: string, language?: string): Promise<string>;
   getIntent(text: string, context?: string): Promise<{ intent: string, target: string, confidence: number }>;
+  sendVoiceNote(transcript: string, patientNote?: string): Promise<{ success: boolean; message: string }>;
 }

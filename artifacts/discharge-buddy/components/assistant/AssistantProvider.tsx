@@ -62,6 +62,7 @@ const NAV_ROUTES: Record<string, { path: string; label: string }> = {
   settings: { path: '/settings', label: 'settings' },
   notifications: { path: '/notifications', label: 'your notifications' },
   emergency: { path: '/emergency', label: 'the emergency screen' },
+  family: { path: '/family/dashboard', label: 'the family dashboard' },
 };
 
 // LOCALE_BY_LANG is the shared source of truth (constants/translations.ts).
@@ -250,6 +251,31 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           finish();
           return;
         }
+        case 'SEND_NOTE_TO_FAMILY': {
+          // Extract the core message from the transcript. Typical patterns:
+          //  "Tell my daughter I had lunch" → "I had lunch"
+          //  "Let my son know that I took my medicine" → "I took my medicine"
+          //  "Inform family I am feeling better" → "I am feeling better"
+          const noteMatch = currentTranscript.match(
+            /(?:tell|let|inform|notify)\s+(?:my\s+\w+|family|caregiver)\s+(?:that\s+|to\s+)?(.+)/i
+          );
+          const noteText = noteMatch?.[1]?.trim() || currentTranscript;
+
+          setState('processing');
+          try {
+            const result = await api.sendVoiceNote(currentTranscript, noteText);
+            reply = result.success
+              ? `Done. I've sent your message to your family: "${noteText}".`
+              : `I recorded your note, but couldn't reach your family right now. They'll see it when they're online.`;
+          } catch {
+            reply = `I wasn't able to send the note right now. Please try again in a moment.`;
+          }
+          setLastReply(reply);
+          setState('speaking');
+          await speak(reply);
+          finish();
+          return;
+        }
         default: {
           // Unrecognised action → treat as a conversation so the user still gets a reply.
           await handleChatRef.current(currentTranscript || '');
@@ -257,7 +283,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [todayDoses, updateDoseStatus, triggerEmergency, logout, setLanguage, speak, finish],
+    [todayDoses, updateDoseStatus, triggerEmergency, logout, setLanguage, speak, finish, api],
   );
 
   // ── Conversational fallback: ask Mr. Meddy and speak the answer. ──

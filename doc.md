@@ -131,13 +131,11 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 | Bengali Support | `bn` (+9 regional) in UI + voice + chat | Target demographic | `constants/translations.ts` | High | Medium | ✅ Done (Phase 4) |
 | Context Persistence | Remember past conversation turns | Natural dialogue | AsyncStorage | Medium | Medium | ✅ Done (Phase 5) |
 | Context Engine | Resolve "what is this?" using the active screen | Natural dialogue | `useAssistantContext` | Medium | Low | ✅ Done (Phase 7) |
-| Family Voice Notes | Voice messages to caregivers | Connectivity | Auth/Roles | Low | Medium | ⏳ Pending (Phase 8) |
+| Family Voice Notes | Voice messages to caregivers + push to family | Connectivity | Auth/Roles + push | Low | Medium | ✅ Done (Phase 8) |
 | Wake Word | "Hey Buddy" activation | Hands-free init | Native Audio | High | High | ⏳ Pending (Phase 9) |
 | Voice Interruption (barge-in) | Stop speaking when user talks | Natural conversation | TTS Engine | Medium | High | ⏳ Pending (Phase 9) |
 | Simplified Mode | Large text, high contrast | Accessibility | Settings Context | Medium | Low | ⏳ Pending (Phase 10) |
 | Offline Mode | Basic STT without internet | Reliability | Local ML Models | Low | High | ⏳ Pending (Phase 10) |
-| Family Voice Notes | audio event APIs    | recording UI     | voice_note table | notifications | storage costs | push system ⏳ Pending  |
-| Timeline           | aggregation service | timeline screens | event tables     | timeline APIs | duplication   | medicine APIs ⏳ Pending |
 
 
 ---
@@ -204,13 +202,18 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 - **Rollback:** Purely additive — `screenContext` is optional everywhere; removing the `describeScreen` calls + the optional param reverts to screen-agnostic chat with no migration.
 - **Testing Checklist:** ✅ typecheck (api-server + discharge-buddy) clean; ✅ "what is this medicine?" while on the medicines screen resolves to a medicine; ✅ same question on an unrelated screen degrades gracefully; ✅ context combines with Phase 5 memory and the language directive.
 
-### Phase 8: ⏳ PARTIAL — Medicine & Caregiver Ecosystem
-- **Goals:** Full voice operation for medicine logging and alerting caregivers.
-- **Done:** Voice medicine logging (`TAKE_MEDICINE` → `updateDoseStatus`) and voice emergency SOS (`TRIGGER_EMERGENCY` → `triggerEmergency` + navigate) ship in Phase 6.
-- **Remaining:** Voice messages/notes to caregivers, and confirming the caregiver push round-trip from a voice action.
-- **Dependencies:** Medicine API (done), `utils/NotificationHelper.ts`, caregiver routes.
-- **Risks:** Logging the wrong dose when multiple are pending — current logic picks the first pending dose; add disambiguation ("which one?") in a future slot-filling turn.
-- **Testing Checklist:** ✅ Voice-log a dose; (pending) verify caregiver receives push notification.
+### Phase 8: ✅ COMPLETED — Medicine & Caregiver Ecosystem
+- **Goals:** Full voice operation for medicine logging, alerting caregivers, and sending voice notes to family members.
+- **Done (Phase 6):** Voice medicine logging (`TAKE_MEDICINE` → `updateDoseStatus`) and voice emergency SOS (`TRIGGER_EMERGENCY`).
+- **Done (Phase 8):**
+  - **Caregiver push round-trip** — `MedicineController.updateDoseStatus` calls `NotificationService.sendDoseTakenNotification(id)` when `status === "taken"`. Fires a real-time push to the caregiver’s device when Buddy marks a dose taken by voice.
+  - **Family Voice Notes** — New `POST /api/voice-notes` backend route stores the spoken note and dispatches push notifications to all linked caregivers. Patient says *"Tell my daughter I had lunch"* → Buddy extracts the core message, posts it to the backend, caregivers receive a push.
+  - **`SEND_NOTE_TO_FAMILY` intent** — Added to the backend intent classifier and to the frontend `handleAction` switch in `AssistantProvider`. Handler extracts note text via regex, calls `api.sendVoiceNote()`, speaks confirmation back.
+  - **`sendVoiceNote()` contract** — Added to `IDataProvider`, `ApiProvider` (live), and `MockProvider` (stub).
+  - **`family` NAVIGATE intent** — Added to backend classifier and `NAV_ROUTES` so “open family dashboard” navigates to `/family/dashboard`.
+- **Files Affected:** `api-server/src/routes/voiceNotes.ts` (new), `api-server/src/routes/index.ts`, `api-server/src/routes/ai.ts`, `discharge-buddy/context/types.ts`, `discharge-buddy/context/ApiProvider.ts`, `discharge-buddy/context/MockProvider.ts`, `discharge-buddy/components/assistant/AssistantProvider.tsx`.
+- **Risks (handled):** No push token → graceful message, no error. No patient linked → 400. Push failure → fire-and-forget via `Promise.allSettled`.
+- **Testing Checklist:** ✅ typecheck (api-server + discharge-buddy) clean; ✅ "Tell my daughter I had lunch" → `SEND_NOTE_TO_FAMILY`; ✅ "I took my medicine" → caregiver push fires; ✅ "Open family dashboard" navigates correctly.
 
 ### Phase 9: Wake Word System
 - **Goals:** Hands-free activation.

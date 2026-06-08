@@ -393,6 +393,7 @@ NAVIGATE targets (just move the user to a screen):
 - "notifications"  (my notifications / alerts)
 - "emergency"      (emergency screen / SOS screen)
 - "home"           (home / dashboard / main screen)
+- "family"         (family dashboard / family view / my family members / caregiver dashboard)
 
 ACTION targets (do something, not just navigate):
 - "TAKE_MEDICINE"     (I took my medicine / I took my pill / mark my dose as taken / log my medicine)
@@ -405,6 +406,7 @@ ACTION targets (do something, not just navigate):
 - "LANG_ES"           (change language to spanish / espanol)
 - "LANG_UR"           (change language to urdu)
 - "LANG_BN"           (change language to bengali / speak bengali / bangla / বাংলায় বলো)
+- "SEND_NOTE_TO_FAMILY" (tell my daughter / send a message to family / let my son know / tell my caregiver / inform family / notify my family that)
 
 CHAT intent (a question, feeling, or chit-chat that needs a spoken answer, NOT an app action):
 - Use {"intent":"CHAT","target":"","confidence":0.9} for things like

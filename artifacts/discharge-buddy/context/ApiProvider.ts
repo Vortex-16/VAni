@@ -262,4 +262,11 @@ export class ApiProvider implements IDataProvider {
     });
   }
 
+  async sendVoiceNote(transcript: string, patientNote?: string): Promise<{ success: boolean; message: string }> {
+    return await customFetch<{ success: boolean; message: string }>("/api/voice-notes", {
+      method: "POST",
+      body: JSON.stringify({ transcript, patientNote }),
+    });
+  }
+
 }

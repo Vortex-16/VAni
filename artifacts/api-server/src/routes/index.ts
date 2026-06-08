@@ -16,6 +16,7 @@ import dischargeRouter from "./discharge";
 import aiRouter from "./ai";
 import familyRouter from "./family";
 import linksRouter from "./links";
+import voiceNotesRouter from "./voiceNotes";
 
 const router: IRouter = Router();
 
@@ -39,5 +40,6 @@ router.use("/discharge", dischargeRouter);
 router.use("/ai", aiRouter);
 router.use("/family", familyRouter);
 router.use("/links", linksRouter);
+router.use("/voice-notes", voiceNotesRouter);
 
 export default router;
