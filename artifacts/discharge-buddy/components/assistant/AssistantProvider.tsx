@@ -123,18 +123,46 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           resolve();
           return;
         }
+
+        let resolved = false;
+        const safeResolve = () => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
+
+        // Safety timeout: average reading rate is ~12-15 chars per second.
+        // We set the timeout to clean.length / 12 * 1000 + 3000ms buffer.
+        const estimatedDurationMs = Math.max(3000, (clean.length / 12) * 1000);
+        const timeoutId = setTimeout(() => {
+          console.warn("[Assistant] TTS playback timed out after estimated duration:", estimatedDurationMs);
+          safeResolve();
+        }, estimatedDurationMs);
+
         try {
           Speech.stop();
           Speech.speak(clean, {
             language: localeOverride || LOCALE_BY_LANG[language] || 'en-US',
             pitch: 1.0,
             rate: 0.95,
-            onDone: () => resolve(),
-            onStopped: () => resolve(),
-            onError: () => resolve(),
+            onDone: () => {
+              clearTimeout(timeoutId);
+              safeResolve();
+            },
+            onStopped: () => {
+              clearTimeout(timeoutId);
+              safeResolve();
+            },
+            onError: () => {
+              clearTimeout(timeoutId);
+              safeResolve();
+            },
           });
-        } catch {
-          resolve();
+        } catch (e) {
+          console.warn("[Assistant] Speech.speak threw error:", e);
+          clearTimeout(timeoutId);
+          safeResolve();
         }
       }),
     [language],
@@ -314,7 +342,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
       // Keep the conversation going hands-free if the user hasn't cancelled.
       if (continueConversationRef.current) {
-        startAssistantRef.current();
+        setTimeout(() => {
+          if (continueConversationRef.current) {
+            startAssistantRef.current();
+          }
+        }, 500);
       } else {
         finish();
       }
@@ -333,7 +365,15 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         setLastReply(null);
         setState('speaking');
         await speak("Sorry, I didn't catch that. Please try again.");
-        finish();
+        if (continueConversationRef.current) {
+          setTimeout(() => {
+            if (continueConversationRef.current) {
+              startAssistantRef.current();
+            }
+          }, 500);
+        } else {
+          finish();
+        }
         return;
       }
 
