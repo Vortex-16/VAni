@@ -516,12 +516,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (role === 'family') {
         try {
           const dbFamilyMembers = await dataProvider.getFamilyMembers();
-          // If API returns empty and we're in demo mode, use mock data
-          setFamilyMembers(dbFamilyMembers.length > 0 ? dbFamilyMembers : MOCK_FAMILY_MEMBERS);
+          // Only fall back to mock data in demo (MockProvider) mode, NOT for real users
+          if (dbFamilyMembers.length > 0) {
+            setFamilyMembers(dbFamilyMembers);
+          } else if (dataProvider instanceof MockProvider) {
+            setFamilyMembers(MOCK_FAMILY_MEMBERS);
+          } else {
+            // Real user with no family members yet — show empty state
+            setFamilyMembers([]);
+          }
         } catch (e) {
-          // API unavailable (404, network error, etc.) → use rich mock data for demo
-          console.warn("Family API unavailable, using mock data:", (e as any)?.message ?? e);
-          setFamilyMembers(MOCK_FAMILY_MEMBERS);
+          // API unavailable — only use mock data in demo mode
+          console.warn("Family API unavailable:", (e as any)?.message ?? e);
+          if (dataProvider instanceof MockProvider) {
+            setFamilyMembers(MOCK_FAMILY_MEMBERS);
+          } else {
+            setFamilyMembers([]);
+          }
         }
       }
 

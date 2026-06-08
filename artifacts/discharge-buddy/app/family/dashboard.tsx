@@ -390,39 +390,39 @@ export default function FamilyDashboard() {
         </View>
 
         <View style={styles.alertsContainer}>
-            {/* Example Alert 1 */}
-            <View style={styles.alertCard}>
-               <View style={styles.alertLeft}>
-                  <View style={[styles.alertAvatar, { backgroundColor: '#E0E7FF' }]}>
-                     <RNText style={[styles.familyInitials, { fontSize: 14 }]} numberOfLines={1} adjustsFontSizeToFit>RS</RNText>
-                  </View>
-                  <View style={styles.alertInfo}>
-                     <Text style={styles.alertName}>Rajesh Sharma</Text>
-                     <Text style={styles.alertDesc}>Take Metformin 500mg</Text>
-                  </View>
-               </View>
-               <View style={styles.alertRight}>
-                  <Text style={styles.alertTime}>9:00 AM</Text>
-                  <Feather name="bell" size={16} color={TEXT_MUTED} style={{ marginLeft: 8 }} />
-               </View>
-            </View>
-
-            {/* Example Alert 2 */}
-            <View style={styles.alertCard}>
-               <View style={styles.alertLeft}>
-                  <View style={[styles.alertAvatar, { backgroundColor: '#FCE7F3' }]}>
-                     <RNText style={[styles.familyInitials, { fontSize: 14 }]} numberOfLines={1} adjustsFontSizeToFit>SS</RNText>
-                  </View>
-                  <View style={styles.alertInfo}>
-                     <Text style={styles.alertName}>Sunita Sharma</Text>
-                     <Text style={[styles.alertDesc, { color: '#D97706' }]}>Amlodipine 5mg is pending</Text>
-                  </View>
-               </View>
-               <View style={styles.alertRight}>
-                  <Text style={styles.alertTime}>8:30 AM</Text>
-                  <Feather name="bell" size={16} color="#D97706" style={{ marginLeft: 8 }} />
-               </View>
-            </View>
+            {familyMembers.length === 0 ? (
+              <View style={styles.emptyAlerts}>
+                <Feather name="bell-off" size={28} color={TEXT_MUTED} />
+                <Text style={styles.emptyAlertsText}>No alerts yet. Add a family member to get started.</Text>
+              </View>
+            ) : (
+              familyMembers.flatMap((m, i) =>
+                (m.doseLogs || [])
+                  .filter(d => d.status === 'pending' || d.status === 'missed')
+                  .slice(0, 2)
+                  .map((d, j) => (
+                    <View key={`${m.id}-${d.id}`} style={styles.alertCard}>
+                      <View style={styles.alertLeft}>
+                        <View style={[styles.alertAvatar, { backgroundColor: ['#E0E7FF','#FCE7F3','#FEF3C7','#D1FAE5'][i % 4] }]}>
+                          <RNText style={[styles.familyInitials, { fontSize: 14 }]} numberOfLines={1} adjustsFontSizeToFit>
+                            {m.name.substring(0, 2).toUpperCase()}
+                          </RNText>
+                        </View>
+                        <View style={styles.alertInfo}>
+                          <Text style={styles.alertName}>{m.name}</Text>
+                          <Text style={[styles.alertDesc, d.status === 'missed' ? { color: '#D97706' } : {}]}>
+                            {d.status === 'missed' ? `${d.medicineName} is overdue` : `Take ${d.medicineName}`}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.alertRight}>
+                        <Text style={styles.alertTime}>{d.scheduledTime}</Text>
+                        <Feather name="bell" size={16} color={d.status === 'missed' ? '#D97706' : TEXT_MUTED} style={{ marginLeft: 8 }} />
+                      </View>
+                    </View>
+                  ))
+              ).filter((_, idx) => idx < 5) // cap at 5 total alerts
+            )}
         </View>
 
       </ScrollView>
@@ -524,6 +524,12 @@ const styles = StyleSheet.create({
 
   // Alerts
   alertsContainer: { gap: 12 },
+  emptyAlerts: {
+    alignItems: 'center', justifyContent: 'center', gap: 10,
+    paddingVertical: 28, backgroundColor: CARD_BG, borderRadius: 20,
+    borderWidth: 1, borderColor: '#F1F5F9',
+  },
+  emptyAlertsText: { fontSize: 13, color: TEXT_MUTED, fontFamily: 'Inter_500Medium', textAlign: 'center', maxWidth: '80%' },
   alertCard: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
      backgroundColor: CARD_BG, padding: 16, borderRadius: 20,
