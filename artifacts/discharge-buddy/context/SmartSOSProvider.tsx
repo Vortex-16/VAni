@@ -15,6 +15,8 @@ import { AnimPressable } from "@/components/AnimPressable";
 import { TranslateText as Text } from "@/components/TranslateText";
 import { useApp } from "@/context/AppContext";
 import { useShakeDetection } from "@/hooks/useShakeDetection";
+import { getApiUrl } from "@/utils/apiUrl";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DEFAULT_SOS_SETTINGS,
   loadSosSettings,
@@ -131,7 +133,25 @@ export function SmartSOSProvider({ children }: { children: React.ReactNode }) {
     setStatus("sent");
     buzz("ok");
 
-    // 3) SMS the emergency contact with the location link
+    // 3) Notify family members via email (async, best-effort)
+    (async () => {
+      try {
+        const token = await AsyncStorage.getItem("discharge_buddy_token");
+        const apiUrl = getApiUrl();
+        const locPayload = mapsLink
+          ? { lat: mapsLink.split("q=")[1]?.split(",")[0], lng: mapsLink.split(",")[1] }
+          : undefined;
+        await fetch(`${apiUrl}/api/auth/sos-notify-family`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ location: locPayload }),
+        });
+      } catch (e) {
+        console.warn("[SOS] Family email notification failed:", e);
+      }
+    })();
+
+    // 4) SMS the emergency contact with the location link
     const contact = patient?.emergencyContact?.replace(/[^+\d]/g, "");
     if (s.sendSms && contact) {
       const body = encodeURIComponent(

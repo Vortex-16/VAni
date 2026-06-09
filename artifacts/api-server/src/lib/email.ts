@@ -28,6 +28,8 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
   logger.info("SMTP credentials not fully configured. Email verification codes will be logged to the console.");
 }
 
+export { transporter };
+
 /**
  * Send email verification code.
  *

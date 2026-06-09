@@ -249,7 +249,7 @@ export default function SmartSosScreen() {
         <View style={[styles.infoCard, { backgroundColor: `${SUCCESS}10`, borderColor: `${SUCCESS}30` }]}>
           <Feather name="info" size={18} color={SUCCESS} />
           <Text style={[styles.infoText, { color: FOREGROUND }]}>
-            Triggering SOS alerts your caregiver, shares your location, and calls for
+            Triggering SOS alerts your caregiver, emails all linked family members with your GPS location, shares your location, and calls for
             help — with a {settings.countdownSeconds}s window to cancel if it was an
             accident.
           </Text>

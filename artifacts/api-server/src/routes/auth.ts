@@ -7,7 +7,7 @@ import { eq, and } from "drizzle-orm";
 import type { AuthRequest } from "../middlewares/auth";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
-import { sendVerificationEmail } from "../lib/email";
+import { sendVerificationEmail, transporter as emailTransporter } from "../lib/email";
 import { generateUniqueLinkCode } from "../lib/linkCode";
 
 const router = Router();
@@ -659,14 +659,23 @@ router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { old, newP } = req.body;
-    
-    // In a real app, we'd verify 'old' password with bcrypt. 
-    // Since the current system is email-only/oauth, we'll just set the new password.
-    await db.update(users)
-      .set({ password: newP })
-      .where(eq(users.id, req.user!.id));
+    const { old: oldPassword, newP } = req.body;
+    if (!oldPassword || !newP) {
+      return res.status(400).json({ error: "Old password and new password are required" });
+    }
 
+    const [user] = await db.select().from(users).where(eq(users.id, req.user!.id));
+    if (!user || !user.password) {
+      return res.status(401).json({ error: "No password set for this account" });
+    }
+
+    const isCorrect = await verifyPassword(oldPassword, user.password, user.id);
+    if (!isCorrect) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    const hashed = await bcrypt.hash(newP, BCRYPT_ROUNDS);
+    await db.update(users).set({ password: hashed }).where(eq(users.id, req.user!.id));
     return res.json({ success: true });
   } catch (error) {
     logger.error({ err: error }, "Password Change Error");
@@ -674,4 +683,170 @@ router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// ── Forgot Password: generate OTP and send to email ──────────────────────────
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    // Security: always respond success even if user not found (prevents enumeration)
+    if (!user) return res.json({ success: true, message: "If that email exists, a reset code has been sent." });
+
+    if (!user.password) {
+      // OAuth-only account — guide them to Google sign-in instead
+      return res.status(400).json({
+        error: "USE_GOOGLE_SIGNIN",
+        message: "This account uses Google Sign-In. Please continue with Google to access your account.",
+      });
+    }
+
+    const resetCode = generateOTPCode();
+    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+    await db.update(users)
+      .set({ emailVerificationCode: resetCode, emailVerificationExpires: resetExpires })
+      .where(eq(users.id, user.id));
+
+    // Reuse email infrastructure with a reset-specific message
+    const subject = "Reset your password - Discharge Buddy";
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #7C3AED; text-align: center;">Password Reset</h2>
+        <p>Hello ${user.name},</p>
+        <p>We received a request to reset your password. Use the code below to proceed:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #7C3AED; background-color: #F5F3FF; padding: 10px 20px; border-radius: 8px; border: 1px dashed #7C3AED;">
+            ${resetCode}
+          </span>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">This code expires in 15 minutes. If you did not request this, please ignore this email — your account is safe.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Discharge Buddy Team</p>
+      </div>
+    `;
+    try {
+      if (emailTransporter) {
+        await emailTransporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, html });
+      } else {
+        throw new Error("no transporter");
+      }
+    } catch {
+      // Fallback console log so the developer can see the code
+      const sep = "=".repeat(60);
+      console.log(`\n${sep}\n🔑 PASSWORD RESET CODE FOR: ${email}\n${sep}\n👉 CODE: ${resetCode}\n👉 EXPIRES IN: 15 minutes\n${sep}\n`);
+      // Also try via sendVerificationEmail which has its own fallback
+      await sendVerificationEmail(email, resetCode, user.name).catch(() => {});
+    }
+
+    return res.json({ success: true, message: "If that email exists, a reset code has been sent." });
+  } catch (error) {
+    logger.error({ err: error }, "Forgot Password Error");
+    return res.status(500).json({ error: "Failed to process password reset" });
+  }
+});
+
+// ── Reset Password: verify OTP and set new password ──────────────────────────
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: "Email, code, and new password are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (!user.emailVerificationCode || user.emailVerificationCode !== code) {
+      return res.status(400).json({ error: "Invalid or expired reset code" });
+    }
+    if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
+      return res.status(400).json({ error: "Reset code has expired. Please request a new one." });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const [updatedUser] = await db.update(users)
+      .set({ password: hashed, emailVerificationCode: null, emailVerificationExpires: null, isEmailVerified: true })
+      .where(eq(users.id, user.id))
+      .returning();
+
+    const token = jwt.sign({ sub: updatedUser.id }, process.env.JWT_SECRET!, { expiresIn: "7d" });
+    return res.json({ success: true, token, user: updatedUser });
+  } catch (error) {
+    logger.error({ err: error }, "Reset Password Error");
+    return res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+
+// ── SOS alert: notify all linked family members via email ─────────────────────
+router.post("/sos-notify-family", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { location } = req.body; // Optional: { lat, lng, address }
+    const user = req.user!;
+
+    // Find the linked patient
+    const patientId = user.linkedPatientId;
+    if (!patientId) return res.json({ success: true, sent: 0 });
+
+    // Find family members (caregivers) linked to this patient
+    const familyUsers = await db
+      .select({ name: users.name, email: users.email, role: users.role })
+      .from(users)
+      .where(and(eq(users.linkedPatientId, patientId)));
+
+    const caregivers = familyUsers.filter(u => u.email !== user.email && (u.role === 'family' || u.role === 'caregiver'));
+
+    if (caregivers.length === 0) {
+      logger.info({ userId: user.id }, "SOS triggered but no family members to notify");
+      return res.json({ success: true, sent: 0 });
+    }
+
+    const locationStr = location?.address
+      ? `\n📍 Last known location: ${location.address}`
+      : location?.lat && location?.lng
+        ? `\n📍 GPS Location: https://maps.google.com/?q=${location.lat},${location.lng}`
+        : "";
+
+    const subject = `🚨 EMERGENCY ALERT — ${user.name} needs help`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #EF4444; border-radius: 8px; background: #FFF5F5;">
+        <h1 style="color: #EF4444; text-align: center;">🚨 Emergency SOS Alert</h1>
+        <p style="font-size: 16px;"><strong>${user.name}</strong> has triggered an emergency SOS through the Discharge Buddy app and may need immediate assistance.</p>
+        <div style="background: #FEE2E2; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; color: #7F1D1D;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+          ${location ? `<p style="margin: 8px 0 0; color: #7F1D1D;">${locationStr.replace(/\n/g, '<br/>')}</p>` : ''}
+        </div>
+        <p>Please try to contact ${user.name} immediately or call emergency services (112) if you cannot reach them.</p>
+        <hr style="border: 0; border-top: 1px solid #FECACA; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">This is an automated alert from Discharge Buddy. Do not reply to this email.</p>
+      </div>
+    `;
+
+    let sent = 0;
+    for (const caregiver of caregivers) {
+      try {
+        if (emailTransporter) {
+          await emailTransporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: caregiver.email, subject, html });
+          sent++;
+        } else {
+          console.log(`\n🚨 SOS EMAIL to ${caregiver.email} (${caregiver.name})\n${subject}\n`);
+        }
+      } catch (err) {
+        logger.warn({ err, to: caregiver.email }, "Failed to send SOS email to family member");
+        console.log(`\n🚨 SOS EMAIL to ${caregiver.email} (${caregiver.name})\n${subject}\n`);
+      }
+    }
+
+    logger.info({ userId: user.id, sent, total: caregivers.length }, "SOS family notifications sent");
+    return res.json({ success: true, sent, total: caregivers.length });
+  } catch (error) {
+    logger.error({ err: error }, "SOS Notify Family Error");
+    return res.status(500).json({ error: "Failed to send SOS notifications" });
+  }
+});
+
 export default router;
+

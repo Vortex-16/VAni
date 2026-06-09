@@ -3,6 +3,7 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
+  TextInput,
   Platform,
   Dimensions,
   StatusBar,
@@ -132,6 +133,12 @@ export default function LoginScreen() {
   const [pendingEmail,  setPendingEmail]  = useState<string | undefined>(undefined);
   const [suggestedRole, setSuggestedRole] = useState<AppRole>('patient');
   const [isExpanded,   setIsExpanded]   = useState(false);
+
+  // ── Email/password form state ──
+  const [emailInput,      setEmailInput]      = useState('');
+  const [passwordInput,   setPasswordInput]   = useState('');
+  const [nameInput,       setNameInput]       = useState('');
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
 
   // ── Gesture / Animation ──
   // translateY: SNAP_COLLAPSED = sheet at 42% height, SNAP_EXPANDED = sheet at 80%
@@ -286,6 +293,58 @@ export default function LoginScreen() {
     if (promptGoogleAsync) promptGoogleAsync();
   };
 
+  // ── Email / Password Auth ──────────────────────────────────────────────────
+  const handleEmailAuth = async () => {
+    if (!emailInput.trim()) { setError('Please enter your email address'); return; }
+    if (!passwordInput) { setError('Please enter your password'); return; }
+    if (isSignUp && !nameInput.trim()) { setError('Please enter your full name'); return; }
+
+    setIsLoggingIn(true); setLoginProgress(0.3); setError(null);
+    try {
+      const apiUrl = getApiUrl();
+      if (isSignUp) {
+        // Registration flow
+        const res = await fetch(`${apiUrl}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput.trim().toLowerCase(), password: passwordInput, name: nameInput.trim(), role: 'patient' }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+        setIsLoggingIn(false); setLoginProgress(0);
+        // Redirect to verify-email screen
+        router.push(`/verify-email?email=${encodeURIComponent(emailInput.trim().toLowerCase())}` as any);
+      } else {
+        // Login flow
+        setLoginProgress(0.6);
+        const res = await fetch(`${apiUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput.trim().toLowerCase(), password: passwordInput }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.error === 'USE_GOOGLE_SIGNIN') {
+            throw new Error('This account uses Google Sign-In. Please tap "Continue with Google" instead.');
+          }
+          if (data.error === 'EMAIL_NOT_VERIFIED') {
+            setIsLoggingIn(false); setLoginProgress(0);
+            router.push(`/verify-email?email=${encodeURIComponent(data.email || emailInput.trim())}` as any);
+            return;
+          }
+          throw new Error(data.error || 'Login failed');
+        }
+        await login(data.user, data.token);
+        setLoginProgress(1);
+        setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed');
+      setIsLoggingIn(false); setLoginProgress(0);
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
   const runDemo = async (role: AppRole) => {
     setIsLoggingIn(true); setShowDemoModal(false);
     setTimeout(async () => {
@@ -342,7 +401,11 @@ export default function LoginScreen() {
           >
             <View style={styles.textContent}>
               <Text style={styles.title}>{isSignUp ? 'Create Account' : 'Sign in'}</Text>
-              <Text style={styles.subtitle}>Use your Google account to log in or create a new account.</Text>
+              <Text style={styles.subtitle}>
+                {isSignUp
+                  ? 'Create your account with email or Google.'
+                  : 'Sign in with your email & password, or continue with Google.'}
+              </Text>
             </View>
 
             {!!error && (
@@ -359,6 +422,76 @@ export default function LoginScreen() {
               </Animated.View>
             ) : (
               <View style={styles.actionContainer}>
+
+                {/* ── Email / Name fields ── */}
+                {isSignUp && (
+                  <>
+                    <View style={styles.inputWrap}>
+                      <Feather name="user" size={16} color={MUTED} style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Full Name"
+                        placeholderTextColor={MUTED}
+                        value={nameInput}
+                        onChangeText={setNameInput}
+                        autoCapitalize="words"
+                      />
+                    </View>
+                  </>
+                )}
+
+                <View style={styles.inputWrap}>
+                  <Feather name="mail" size={16} color={MUTED} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Email Address"
+                    placeholderTextColor={MUTED}
+                    value={emailInput}
+                    onChangeText={setEmailInput}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                </View>
+
+                <View style={styles.inputWrap}>
+                  <Feather name="lock" size={16} color={MUTED} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.textInput, { flex: 1 }]}
+                    placeholder="Password"
+                    placeholderTextColor={MUTED}
+                    value={passwordInput}
+                    onChangeText={setPasswordInput}
+                    secureTextEntry={!showPasswordInput}
+                  />
+                  <TouchableOpacity onPress={() => setShowPasswordInput(!showPasswordInput)} style={{ padding: 4 }}>
+                    <Feather name={showPasswordInput ? "eye-off" : "eye"} size={16} color={MUTED} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Forgot password — only on sign-in */}
+                {!isSignUp && (
+                  <TouchableOpacity onPress={() => router.push('/forgot-password' as any)} style={styles.forgotRow}>
+                    <Text style={styles.forgotText}>Forgot password?</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Primary email/password button */}
+                <TouchableOpacity
+                  onPress={handleEmailAuth}
+                  activeOpacity={0.85}
+                  style={styles.emailBtn}
+                >
+                  <Text style={styles.emailBtnText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Google */}
                 <GlareHover
                   width="100%"
                   glareColor="#ffffff"
@@ -379,7 +512,7 @@ export default function LoginScreen() {
                   <Text style={styles.toggleText}>
                     {isSignUp ? 'Already have an account?' : "Don't have an account?"}
                   </Text>
-                  <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} activeOpacity={0.7}>
+                  <TouchableOpacity onPress={() => { setIsSignUp(!isSignUp); setError(null); }} activeOpacity={0.7}>
                     <Text style={styles.toggleLink}>{isSignUp ? 'Sign in' : 'Sign up'}</Text>
                   </TouchableOpacity>
                 </View>
@@ -528,9 +661,28 @@ const styles = StyleSheet.create({
   },
   googleBtnText: { color: TEXT_DARK, fontSize: 16, fontFamily: 'Inter_600SemiBold', flexShrink: 1 },
 
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
   toggleText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
   toggleLink: { color: PRIMARY_COLOR, fontSize: 14, fontFamily: 'Inter_700Bold' },
+
+  // Email/password input
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 14,
+    backgroundColor: '#F8FAFC', paddingHorizontal: 14, marginBottom: 10, height: 48, width: '100%',
+  },
+  inputIcon: { marginRight: 10 },
+  textInput: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: TEXT_DARK },
+  emailBtn: {
+    width: '100%', height: 50, borderRadius: 25, backgroundColor: PRIMARY_COLOR,
+    alignItems: 'center', justifyContent: 'center', marginTop: 4, marginBottom: 4,
+  },
+  emailBtnText: { color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 15, letterSpacing: 0.4 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', width: '100%', marginVertical: 12, gap: 10 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  dividerText: { color: MUTED, fontFamily: 'Inter_500Medium', fontSize: 12 },
+  forgotRow: { alignSelf: 'flex-end', marginBottom: 6, marginTop: -2 },
+  forgotText: { color: PRIMARY_COLOR, fontFamily: 'Inter_600SemiBold', fontSize: 13 },
 
   devOptions: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 22 },
   devBtn: { padding: 4 },
