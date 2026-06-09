@@ -69,6 +69,36 @@ const NAV_ROUTES: Record<string, { path: string; label: string }> = {
 
 // LOCALE_BY_LANG is the shared source of truth (constants/translations.ts).
 
+// Voice Emergency Mode — deterministic safety net.
+// These phrases trigger the SOS flow immediately, without waiting on the AI
+// intent classifier, so the feature stays fast and works even offline. Covers
+// bare distress words and the critical danger signs from the emergency screen,
+// in the app's supported languages.
+const EMERGENCY_PHRASES: string[] = [
+  // English — distress words
+  "help me", "help help", "emergency", "sos", "save me", "i need help", "call for help",
+  "call ambulance", "call an ambulance", "i'm dying", "im dying",
+  // English — critical danger signs
+  "chest pain", "chest pressure", "can't breathe", "cant breathe", "cannot breathe",
+  "difficulty breathing", "trouble breathing", "short of breath",
+  "heart attack", "stroke", "slurred speech", "face drooping", "severe bleeding",
+  "i collapsed", "i'm choking", "im choking", "unconscious",
+  // Hindi
+  "bachao", "madad", "मदद", "बचाओ", "सीने में दर्द", "साँस नहीं", "दिल का दौरा",
+  // Spanish
+  "ayuda", "emergencia", "dolor de pecho", "no puedo respirar",
+  // Urdu / Bengali
+  "مدد", "بچاؤ", "বাঁচাও", "সাহায্য", "বুকে ব্যথা",
+];
+
+function isEmergencyUtterance(text: string): boolean {
+  const t = text.toLowerCase().trim();
+  if (!t) return false;
+  // A lone "help" or "emergency" is unambiguous enough to act on.
+  if (t === "help" || t === "emergency" || t === "sos") return true;
+  return EMERGENCY_PHRASES.some((p) => t.includes(p));
+}
+
 const LANG_SWITCH_REPLY: Partial<Record<Language, string>> = {
   en: 'Okay, switching to English.',
   hi: 'ठीक है, अब मैं हिंदी में बात करूँगा।',
@@ -654,7 +684,16 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       const transcript = text.trim();
       setLastTranscript(transcript);
       events.publish('TRANSCRIPTION_SUCCESS', { text: transcript, context: activeModule });
-      
+
+      // Voice Emergency Mode: distress phrases bypass the AI classifier and go
+      // straight to the SOS flow — fast, and works even with no connection.
+      if (isEmergencyUtterance(transcript)) {
+        pendingSymptomLogRef.current = null;
+        pendingMeditationRef.current = false;
+        await handleAction('TRIGGER_EMERGENCY', transcript);
+        return;
+      }
+
       if (pendingSymptomLogRef.current) {
         await handleSymptomSeverityRating(transcript);
         return;

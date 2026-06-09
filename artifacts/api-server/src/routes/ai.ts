@@ -471,9 +471,36 @@ router.post("/test-push", requireAuth, async (req: any, res: any) => {
  * @route POST /api/ai/intent
  * @desc Classify a user's natural language command into an actionable app intent
  */
+// Voice Emergency Mode — deterministic server-side guard. The small intent
+// model is unreliable on safety-critical phrasing, so distress words and
+// critical danger signs short-circuit straight to TRIGGER_EMERGENCY (also
+// saves a round-trip to the LLM).
+const EMERGENCY_INTENT_PHRASES = [
+  "help me", "help help", "emergency", "sos", "save me", "i need help", "call for help",
+  "call ambulance", "call an ambulance", "i'm dying", "im dying",
+  "chest pain", "chest pressure", "can't breathe", "cant breathe", "cannot breathe",
+  "difficulty breathing", "trouble breathing", "short of breath",
+  "heart attack", "stroke", "slurred speech", "face drooping", "severe bleeding",
+  "i collapsed", "i'm choking", "im choking", "unconscious",
+  "bachao", "madad", "मदद", "बचाओ", "सीने में दर्द", "साँस नहीं", "दिल का दौरा",
+  "ayuda", "emergencia", "dolor de pecho", "no puedo respirar",
+  "مدد", "بچاؤ", "বাঁচাও", "সাহায্য", "বুকে ব্যথা",
+];
+
+function isEmergencyIntent(text: string): boolean {
+  const t = String(text).toLowerCase().trim();
+  if (!t) return false;
+  if (t === "help" || t === "emergency" || t === "sos") return true;
+  return EMERGENCY_INTENT_PHRASES.some((p) => t.includes(p));
+}
+
 router.post("/intent", optionalAuth, async (req: any, res: any) => {
   const { text, context } = req.body;
   if (!text) return res.status(400).json({ error: "Text is required" });
+
+  if (isEmergencyIntent(text)) {
+    return res.json({ intent: "ACTION", target: "TRIGGER_EMERGENCY", metadata: {}, confidence: 0.99 });
+  }
 
   try {
     const response = await groq.chat.completions.create({
@@ -505,9 +532,9 @@ NAVIGATE targets (just move the user to a screen):
 
 ACTION targets (do something, not just navigate):
 - "TAKE_MEDICINE"     (I took my medicine / I took my pill / mark my dose as taken / log my medicine)
-- "LOG_SYMPTOM"       (I have pain / log a symptom / I'm feeling dizzy / headache today / record nausea). *IMPORTANT*: Implicit symptom statements like "I'm feeling dizzy" MUST map to LOG_SYMPTOM. Try to infer severity (1-10): mild/very mild=3, moderate=5, strong=7, severe=8, unbearable=10.
+- "LOG_SYMPTOM"       (I have pain / log a symptom / I'm feeling dizzy / headache today / record nausea). *IMPORTANT*: Implicit symptom statements like "I'm feeling dizzy" MUST map to LOG_SYMPTOM. Try to infer severity (1-10): mild/very mild=3, moderate=5, strong=7, severe=8, unbearable=10. EXCEPTION: critical danger signs (see TRIGGER_EMERGENCY) must map to TRIGGER_EMERGENCY, NOT LOG_SYMPTOM.
 - "ADD_MEDICINE"      (add a medicine manually / new medicine)
-- "TRIGGER_EMERGENCY" (call for help now / this is an emergency / I need help urgently / SOS)
+- "TRIGGER_EMERGENCY" (Voice Emergency Mode — highest priority. Map here for: bare distress words like "help", "emergency", "SOS", "save me", "call an ambulance"; explicit urgency like "this is an emergency / I need help urgently"; AND critical danger signs spoken as a complaint: "chest pain", "chest pressure", "I can't breathe / difficulty breathing", "heart attack", "stroke", "slurred speech", "face drooping", "severe bleeding", "I'm choking", "I collapsed". When in doubt between a life-threatening symptom and logging it, choose TRIGGER_EMERGENCY.)
 - "LOGOUT"            (log me out / sign out)
 - "LANG_EN"           (change language to english / speak english)
 - "LANG_HI"           (change language to hindi / hindi me baat karo)
@@ -534,6 +561,10 @@ Examples:
 "I took my morning pill"          -> {"intent":"ACTION","target":"TAKE_MEDICINE","metadata":{},"confidence":0.93}
 "I'm feeling mildly dizzy"        -> {"intent":"ACTION","target":"LOG_SYMPTOM","metadata":{"symptom":"dizziness","severity":3},"confidence":0.95}
 "Severe headache today"           -> {"intent":"ACTION","target":"LOG_SYMPTOM","metadata":{"symptom":"headache","severity":8},"confidence":0.95}
+"Help"                            -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
+"Emergency"                       -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
+"I have chest pain"               -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.95}
+"I can't breathe"                 -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
 "I have a stomach ache"           -> {"intent":"ACTION","target":"LOG_SYMPTOM","metadata":{"symptom":"stomach ache","severity":null},"confidence":0.9}
 "log me out"                      -> {"intent":"ACTION","target":"LOGOUT","metadata":{},"confidence":0.95}
 "how are you feeling today buddy" -> {"intent":"CHAT","target":"","metadata":{},"confidence":0.9}
