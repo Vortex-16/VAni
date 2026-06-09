@@ -7,6 +7,9 @@ export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
 export const doseStatusEnum = pgEnum("dose_status", ["taken", "missed", "pending", "snoozed"]);
 export const linkRelationshipEnum = pgEnum("link_relationship", ["family", "caregiver"]);
 export const linkStatusEnum = pgEnum("link_status", ["active", "revoked"]);
+export const bloodTypeEnum = pgEnum("blood_type", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]);
+export const bloodUrgencyEnum = pgEnum("blood_urgency", ["low", "normal", "critical"]);
+export const bloodRequestStatusEnum = pgEnum("blood_request_status", ["open", "fulfilled", "cancelled"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -200,6 +203,43 @@ export const dischargePlans = pgTable("discharge_plans", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Emergency Blood Network — community donor registry (location-aware)
+export const donorProfiles = pgTable("donor_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id), // null for seeded community members
+  name: text("name").notNull(),
+  bloodType: bloodTypeEnum("blood_type").notNull(),
+  phone: text("phone").notNull(),
+  area: text("area"), // neighbourhood / locality
+  city: text("city"),
+  latitude: decimal("latitude", { precision: 9, scale: 6 }),
+  longitude: decimal("longitude", { precision: 9, scale: 6 }),
+  isAvailable: boolean("is_available").default(true).notNull(),
+  lastDonation: date("last_donation"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+  uniqUser: unique("donor_profiles_user_unique").on(t.userId),
+}));
+
+// Emergency Blood Network — blood requests broadcast to the nearby community
+export const bloodRequests = pgTable("blood_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requesterId: uuid("requester_id").references(() => users.id), // null for seeded demo requests
+  patientName: text("patient_name").notNull(),
+  bloodType: bloodTypeEnum("blood_type").notNull(),
+  unitsNeeded: integer("units_needed").default(1).notNull(),
+  hospital: text("hospital").notNull(),
+  area: text("area"),
+  city: text("city"),
+  latitude: decimal("latitude", { precision: 9, scale: 6 }),
+  longitude: decimal("longitude", { precision: 9, scale: 6 }),
+  urgency: bloodUrgencyEnum("urgency").default("normal").notNull(),
+  contactPhone: text("contact_phone").notNull(),
+  note: text("note"),
+  status: bloodRequestStatusEnum("status").default("open").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -215,3 +255,5 @@ export const insertRecoveryLogSchema = createInsertSchema(recoveryLogs);
 export const insertPrescriptionSchema = createInsertSchema(prescriptions);
 export const insertFeedbackSchema = createInsertSchema(feedback);
 export const insertDischargePlanSchema = createInsertSchema(dischargePlans);
+export const insertDonorProfileSchema = createInsertSchema(donorProfiles);
+export const insertBloodRequestSchema = createInsertSchema(bloodRequests);

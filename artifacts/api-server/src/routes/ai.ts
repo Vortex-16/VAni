@@ -338,6 +338,106 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
 });
 
 /**
+ * @route POST /api/ai/drug-check
+ * @desc Check a set of medicines for drug-drug interactions using Groq.
+ *       Accepts an explicit { medicines: string[] } list, otherwise falls back
+ *       to the authenticated patient's active medicines.
+ */
+const DRUG_CHECK_SYSTEM_PROMPT = `
+You are a clinical pharmacology assistant that screens a patient's medication list for drug-drug interactions.
+
+RULES:
+1. Only report interactions between drugs that are ACTUALLY present in the provided list. Never invent a medicine that is not listed.
+2. Match by active ingredient. "Tylenol" = acetaminophen/paracetamol, "Advil" = ibuprofen, etc.
+3. severity must be one of: "mild", "moderate", "high".
+   - "high" = potentially dangerous, needs prompt medical attention / avoid combination.
+   - "moderate" = clinically significant, monitor closely.
+   - "mild" = minor, usually manageable.
+4. Be factual and concise. Use plain language a patient can understand. No emojis.
+5. NEVER give a diagnosis or tell the patient to start/stop/change a dose. Advice = "monitor for X", "space doses", "ask your doctor or pharmacist".
+6. If there are no known interactions, return an empty "interactions" array and an encouraging summary.
+
+OUTPUT FORMAT — respond with ONLY valid JSON, no markdown:
+{
+  "interactions": [
+    { "pair": ["DrugA", "DrugB"], "severity": "mild|moderate|high", "description": "what happens, in plain language", "advice": "what the patient should do" }
+  ],
+  "foodWarnings": ["e.g. avoid grapefruit with X"],
+  "summary": "one or two sentence overall read",
+  "hasCritical": false
+}
+Set "hasCritical" to true if any interaction is "high".
+`;
+
+router.post("/drug-check", optionalAuth, async (req: any, res: any) => {
+  try {
+    const user = req.user;
+    let medList: string[] = Array.isArray(req.body?.medicines)
+      ? req.body.medicines.filter((m: any) => typeof m === "string" && m.trim()).map((m: string) => m.trim())
+      : [];
+
+    // Fall back to the linked patient's active medicines when none supplied.
+    if (medList.length === 0 && user?.linkedPatientId) {
+      const meds = await db
+        .select()
+        .from(medicines)
+        .where(eq(medicines.patientId, user.linkedPatientId));
+      medList = meds.map((m) => `${m.name}${m.dosage ? ` ${m.dosage}` : ""}`);
+    }
+
+    // De-dupe and cap to keep the prompt bounded.
+    medList = Array.from(new Set(medList)).slice(0, 30);
+
+    if (medList.length < 2) {
+      return res.json({
+        interactions: [],
+        foodWarnings: [],
+        summary: "Add at least two medicines to check for interactions.",
+        hasCritical: false,
+        medicinesChecked: medList,
+      });
+    }
+
+    if (!GROQ_API_KEY || GROQ_API_KEY.includes("your_")) {
+      return res.status(500).json({ error: "Drug interaction checking is not configured on the server." });
+    }
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: DRUG_CHECK_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Patient's current medicines:\n${medList.map((m, i) => `${i + 1}. ${m}`).join("\n")}\n\nScreen this list for interactions and respond in the required JSON format.`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+    });
+
+    const raw = completion.choices[0]?.message?.content || "{}";
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = { interactions: [], foodWarnings: [], summary: "Unable to analyse interactions right now.", hasCritical: false };
+    }
+
+    const interactions = Array.isArray(parsed.interactions) ? parsed.interactions : [];
+    return res.json({
+      interactions,
+      foodWarnings: Array.isArray(parsed.foodWarnings) ? parsed.foodWarnings : [],
+      summary: typeof parsed.summary === "string" ? parsed.summary : "",
+      hasCritical: interactions.some((i: any) => i?.severity === "high"),
+      medicinesChecked: medList,
+    });
+  } catch (error: any) {
+    console.error("[Drug Check Error]", error?.message || error);
+    return res.status(500).json({ error: "Failed to check drug interactions.", details: error?.message });
+  }
+});
+
+/**
  * @route POST /api/ai/test-push
  * @desc Manually trigger a push notification to the logged-in user
  */
