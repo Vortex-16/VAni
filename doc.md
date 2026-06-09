@@ -730,3 +730,57 @@ A globally-active panic system: trigger an SOS by **shaking the phone** or
   `components/Sidebar.tsx` — entry points.
 - `discharge-buddy/package.json` — `expo-sensors`, `expo-keep-awake`.
 
+
+
+## SECTION 12 — UX & data-integrity fixes
+
+Follow-up round addressing real-device issues. All frontend; one additive,
+nullable DB-less field on the client `Patient` type. Typecheck clean.
+
+### Auth-aware account actions
+- New `authMethod: 'password' | 'google' | null` on `AppContext` (persisted to
+  AsyncStorage, set in `login()` — Google call sites in `login.tsx` pass
+  `'google'`). **Change Password** is now hidden for Google accounts (no
+  password to change) in both `app/settings.tsx` and `app/profile.tsx`.
+
+### Settings screen (`app/settings.tsx`)
+- **Edit Profile** / **Change Password** rows now navigate (`/profile/edit`,
+  `/profile/change-password`); the dead "Connect Social" row was removed.
+- Removed **Dark Mode** toggle and the non-functional **moon** icon in the
+  header.
+- **Dose Reminders** & **App Notifications** are now functional: persisted to
+  AsyncStorage, request OS permission when enabled, and cancel all scheduled
+  notifications when Dose Reminders is turned off.
+
+### Profile & Emergency Card — no fake data, clearer empty states
+- `app/profile.tsx`: unentered fields (phone, etc.) render in **light gray**
+  ("Not added yet") instead of dark text, so missing info reads as a prompt.
+- `app/emergency-card.tsx`: removed hardcoded placeholders (age `58`,
+  "Post-cardiac surgery recovery", "O+", "Penicillin", "Jane Doe", fake phone).
+  Now shows real `patient`/`user` data with light-gray "Not set" placeholders,
+  and the **Call Emergency Contact** button actually dials the contact.
+
+### Chat keyboard (`app/chat.tsx`)
+- Swapped React Native's `KeyboardAvoidingView` for
+  `react-native-keyboard-controller`'s (works on Android too) with
+  `behavior="padding"`, so the input bar rises above the keyboard while typing
+  and returns when dismissed. Removed leftover debug border, debug message
+  counter, and the per-send "Debug" notification.
+
+### Family dashboard (`app/family/dashboard.tsx`)
+- Member cards now render a real **profile photo** when available
+  (`Patient.avatar`, new optional field), falling back to initials.
+- Added a **Relation** picker (Father/Mother/Brother/Sister/Son/Daughter/
+  Spouse/Grandfather/Grandmother/Other) to the manual "Create" tab; the chosen
+  relation is stored and shown on the member card.
+
+### Real notifications only (`context/AppContext.tsx`)
+- Removed the hardcoded dummy notification seed (Lisinopril/Dr. Smith/etc.).
+  The list now starts empty and populates from real app events; the
+  notifications screen already has an "All caught up!" empty state.
+
+### Duplicate medicine adds on scan (`app/scan.tsx`)
+- The slow OCR confirm allowed multiple taps to each re-run the add loop,
+  creating duplicates. Added an `isConfirming` in-flight guard: the button is
+  disabled and shows an "ADDING…" spinner during the add, re-enabling only on
+  failure.

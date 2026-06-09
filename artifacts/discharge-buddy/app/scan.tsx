@@ -84,6 +84,7 @@ export default function ScanScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [editingMed, setEditingMed] = useState<{ index: number; data: ExtractedMed } | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
@@ -227,6 +228,10 @@ export default function ScanScreen() {
 
   const handleConfirm = async () => {
     if (!scanResult) return;
+    // Guard against rapid repeat taps while the (slow) add is in flight —
+    // otherwise each tap re-runs the loop and adds duplicate medicines.
+    if (isConfirming) return;
+    setIsConfirming(true);
     try {
       for (const med of scanResult.medicines) {
         const times = [];
@@ -253,6 +258,7 @@ export default function ScanScreen() {
       }, 500);
     } catch (err) {
       console.error("Failed to add medicines:", err);
+      setIsConfirming(false); // allow retry on failure
     }
   };
 
@@ -402,15 +408,26 @@ export default function ScanScreen() {
             )}
 
             <View style={{ marginTop: 24, gap: 12 }}>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+              <TouchableOpacity
+                style={[styles.confirmBtn, isConfirming && { opacity: 0.7 }]}
+                onPress={handleConfirm}
+                disabled={isConfirming}
+                activeOpacity={0.8}
+              >
                 <LinearGradient
                   colors={[PURPLE, "#8B5CF6"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.btnGradient}
                 >
-                  <Feather name="check-circle" size={20} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.confirmText}>CONFIRM & ADD MEDICINES</Text>
+                  {isConfirming ? (
+                    <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                  ) : (
+                    <Feather name="check-circle" size={20} color="#fff" style={{ marginRight: 8 }} />
+                  )}
+                  <Text style={styles.confirmText}>
+                    {isConfirming ? "ADDING…" : "CONFIRM & ADD MEDICINES"}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
               

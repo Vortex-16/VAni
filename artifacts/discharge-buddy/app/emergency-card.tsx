@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View,  } from 'react-native';
+  Linking, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View,  } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -19,10 +19,15 @@ export default function EmergencyCardScreen() {
   const topInset = Platform.OS === "web" ? 0 : insets.top;
   const [editing, setEditing] = useState(false);
 
-  const [bloodType, setBloodType] = useState(user?.bloodType ?? "O+");
-  const [allergies, setAllergies] = useState(user?.allergies ?? "Penicillin");
-  const [ecName, setEcName] = useState(user?.emergencyContactName ?? "Jane Doe");
-  const [ecPhone, setEcPhone] = useState(user?.emergencyContactPhone ?? "+1 (555) 911-0000");
+  const [bloodType, setBloodType] = useState(user?.bloodType ?? "");
+  const [allergies, setAllergies] = useState(user?.allergies ?? "");
+  const [ecName, setEcName] = useState(user?.emergencyContactName ?? "");
+  const [ecPhone, setEcPhone] = useState(user?.emergencyContactPhone ?? patient?.emergencyContact ?? "");
+
+  const handleCall = () => {
+    const num = (ecPhone || patient?.emergencyContact || "").replace(/[^+\d]/g, "");
+    if (num) Linking.openURL(`tel:${num}`);
+  };
 
   const handleSave = () => {
     if (user) {
@@ -70,9 +75,9 @@ export default function EmergencyCardScreen() {
             </View>
             <Text style={styles.cardTitle}>Patient Information</Text>
           </View>
-          <Row label="Name" value={user?.name ?? patient?.name ?? "John Doe"} />
-          <Row label="Age" value={`${patient?.age ?? 58} years`} />
-          <Row label="Condition" value={patient?.condition ?? "Post-cardiac surgery recovery"} />
+          <Row label="Name" value={user?.name ?? patient?.name ?? ""} placeholder="Not set" />
+          <Row label="Age" value={patient?.age ? `${patient.age} years` : ""} placeholder="Not set" />
+          <Row label="Condition" value={patient?.condition ?? ""} placeholder="Not set" />
           {editing ? (
             <>
               <EditRow label="Blood Type" value={bloodType} onChange={setBloodType} />
@@ -80,8 +85,8 @@ export default function EmergencyCardScreen() {
             </>
           ) : (
             <>
-              <Row label="Blood Type" value={bloodType} highlight />
-              <Row label="Known Allergies" value={allergies} danger />
+              <Row label="Blood Type" value={bloodType} placeholder="Not set" highlight />
+              <Row label="Known Allergies" value={allergies} placeholder="None recorded" danger />
             </>
           )}
         </View>
@@ -120,8 +125,8 @@ export default function EmergencyCardScreen() {
             </>
           ) : (
             <>
-              <Row label="Name" value={ecName} />
-              <Row label="Phone" value={ecPhone} highlight />
+              <Row label="Name" value={ecName} placeholder="Not set" />
+              <Row label="Phone" value={ecPhone} placeholder="Not set" highlight />
             </>
           )}
         </View>
@@ -139,7 +144,7 @@ export default function EmergencyCardScreen() {
         </View>
 
         {/* Call button */}
-        <AnimPressable style={styles.callBtn} onPress={() => {}}>
+        <AnimPressable style={styles.callBtn} onPress={handleCall}>
           <LinearGradient
             colors={["#4B26C8", PURPLE]}
             start={{ x: 0, y: 0 }}
@@ -159,12 +164,20 @@ export default function EmergencyCardScreen() {
   );
 }
 
-function Row({ label, value, highlight, danger }: { label: string; value: string; highlight?: boolean; danger?: boolean }) {
+function Row({ label, value, highlight, danger, placeholder }: { label: string; value: string; highlight?: boolean; danger?: boolean; placeholder?: string }) {
+  const empty = !value;
   return (
     <View style={rowStyles.row}>
       <Text style={rowStyles.label}>{label}</Text>
-      <Text style={[rowStyles.value, highlight && rowStyles.highlight, danger && rowStyles.danger]}>
-        {value}
+      <Text
+        style={[
+          rowStyles.value,
+          !empty && highlight && rowStyles.highlight,
+          !empty && danger && rowStyles.danger,
+          empty && rowStyles.empty,
+        ]}
+      >
+        {empty ? (placeholder ?? "Not set") : value}
       </Text>
     </View>
   );
@@ -191,6 +204,7 @@ const rowStyles = StyleSheet.create({
   value: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#1E1B4B", flex: 2, textAlign: "right" },
   highlight: { color: PURPLE },
   danger: { color: "#EF4444" },
+  empty: { color: "#cbd5e1", fontFamily: "Inter_400Regular" },
   input: {
     borderWidth: 1.5,
     borderColor: "#E8E4FF",

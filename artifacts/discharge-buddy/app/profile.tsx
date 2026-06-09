@@ -27,7 +27,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { user, role, streak, todayDoses, medicines } = useApp();
+  const { user, role, streak, todayDoses, medicines, authMethod } = useApp();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -142,10 +142,10 @@ export default function ProfileScreen() {
   ];
 
   const FIELDS = [
-    { label: "USERNAME", value: `@${(user?.name ?? "user").toLowerCase().replace(" ", "")}` },
-    { label: "FULL NAME", value: user?.name ?? "—" },
-    { label: "EMAIL ADDRESS", value: user?.email ?? "—" },
-    { label: "PHONE", value: user?.phone ?? "—" },
+    { label: "USERNAME", value: user?.name ? `@${user.name.toLowerCase().replace(/\s/g, "")}` : "" },
+    { label: "FULL NAME", value: user?.name ?? "" },
+    { label: "EMAIL ADDRESS", value: user?.email ?? "" },
+    { label: "PHONE", value: user?.phone ?? "" },
     { label: "ROLE", value: role === "caregiver" ? "Caregiver" : "Patient" },
   ];
 
@@ -214,7 +214,9 @@ export default function ProfileScreen() {
           {FIELDS.map((f, i) => (
             <View key={i} style={[styles.fieldRow, i < FIELDS.length - 1 && styles.fieldBorder]}>
               <Text style={styles.fieldLabel}>{f.label}</Text>
-              <Text style={styles.fieldValue}>{f.value}</Text>
+              <Text style={[styles.fieldValue, !f.value && styles.fieldValueEmpty]}>
+                {f.value || "Not added yet"}
+              </Text>
             </View>
           ))}
         </View>
@@ -237,16 +239,18 @@ export default function ProfileScreen() {
             <Feather name="chevron-right" size={18} color="#94a3b8" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() => router.push("/profile/change-password")}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: `#8b5cf615` }]}>
-              <Feather name="lock" size={18} color="#8b5cf6" />
-            </View>
-            <Text style={styles.actionLabel}>Change Password</Text>
-            <Feather name="chevron-right" size={18} color="#94a3b8" />
-          </TouchableOpacity>
+          {authMethod !== "google" && (
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => router.push("/profile/change-password")}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: `#8b5cf615` }]}>
+                <Feather name="lock" size={18} color="#8b5cf6" />
+              </View>
+              <Text style={styles.actionLabel}>Change Password</Text>
+              <Feather name="chevron-right" size={18} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.actionRow}
@@ -437,6 +441,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_500Medium",
     color: "#1e293b",
+  },
+  fieldValueEmpty: {
+    color: "#cbd5e1",
+    fontFamily: "Inter_400Regular",
   },
   actions: {
     marginHorizontal: 18,

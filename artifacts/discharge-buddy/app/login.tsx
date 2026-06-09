@@ -237,7 +237,7 @@ export default function LoginScreen() {
         setShowRoleModal(true);
         return;
       }
-      await login(data.user, data.token);
+      await login(data.user, data.token, 'google');
       setLoginProgress(1);
       setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
     } catch (err: any) {
@@ -253,7 +253,7 @@ export default function LoginScreen() {
     setIsLoggingIn(true); setLoginProgress(0.8); setError(null);
     try {
       const data = await postOAuth(pendingToken, { role: chosenRole, confirmRole: true, extraData });
-      await login(data.user, data.token);
+      await login(data.user, data.token, 'google');
       setLoginProgress(1);
       setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
     } catch (err: any) {

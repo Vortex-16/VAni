@@ -81,6 +81,7 @@ export interface Patient {
   createdAt?: string;
   // Extended family mock fields
   relation?: string;
+  avatar?: string;
   bloodGroup?: string;
   weight?: string;
   height?: string;
@@ -171,6 +172,8 @@ export const MOCK_FAMILY_MEMBERS: Patient[] = [
     ],
   },
 ];
+
+export type AuthMethod = "password" | "google" | null;
 
 export interface AppUser {
   id: string;
@@ -432,8 +435,9 @@ interface AppContextType {
   changePassword: (old: string, newP: string) => Promise<void>;
   clearAllNotifications: () => void;
   markNotificationRead: (id: string) => void;
-  login: (user: AppUser, token: string) => Promise<void>;
+  login: (user: AppUser, token: string, authMethod?: AuthMethod) => Promise<void>;
   logout: () => void;
+  authMethod: AuthMethod;
   resetOnboarding: () => void;
   switchProvider: (provider: IDataProvider) => void;
   clearRecoverySuggestion: () => void;
@@ -463,6 +467,7 @@ const STORAGE_KEY = "discharge_buddy_data_v2";
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const isOnline = useConnectivity();
   const [user, setUserState] = useState<AppUser | null>(null);
+  const [authMethod, setAuthMethodState] = useState<AuthMethod>(null);
   const [role, setRoleState] = useState<UserRole>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [todayDoses, setTodayDoses] = useState<DoseLog[]>([]);
@@ -532,6 +537,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const data = JSON.parse(raw);
         if (data.role) setRoleState(data.role);
         if (data.user) setUserState(data.user);
+        if (data.authMethod) setAuthMethodState(data.authMethod);
         if (data.isOnboarded !== undefined) setIsOnboardedState(data.isOnboarded);
         if (data.hapticsEnabled !== undefined) setHapticsEnabledState(data.hapticsEnabled);
         if (data.language) setLanguageState(data.language);
@@ -539,40 +545,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (data.xp) setXP(data.xp);
         if (data.achievements) setAchievements(data.achievements);
         if (data.notifications) setNotifications(data.notifications);
-        else {
-          // Default notifications if none saved
-          setNotifications([
-            {
-              group: "Today",
-              items: [
-                { id: "n1", icon: "check-circle", color: "#10b981", title: "Dose Taken", body: "Lisinopril 10mg — marked as taken", time: "8:03 AM", read: false },
-                { id: "n2", icon: "alert-triangle", color: "#f59e0b", title: "Missed Dose", body: "Aspirin 81mg — you missed your evening dose", time: "8:00 PM", read: false },
-                { id: "n3", icon: "calendar", color: "#8b5cf6", title: "Upcoming Appointment", body: "Dr. Smith — tomorrow at 10:00 AM", time: "3:00 PM", read: false },
-              ],
-            },
-            {
-              group: "Yesterday",
-              items: [
-                { id: "n4", icon: "activity", color: "#ef4444", title: "Symptom Alert", body: "Chest pain logged — consider calling your doctor", time: "2:15 PM", read: true },
-                { id: "n5", icon: "check-circle", color: "#10b981", title: "All Doses Taken", body: "Great job! You had 100% adherence yesterday", time: "10:00 PM", read: true },
-              ],
-            },
-          ]);
-        }
+        // No dummy seed data — notifications populate from real app events.
       }
     } catch (err) {
       console.error("Failed to initialize app state", err);
     } finally {
-      // Ensure we have a default state if nothing was loaded
-      setNotifications(prev => prev.length === 0 ? [
-        {
-          group: "Today",
-          items: [
-            { id: "n1", icon: "check-circle", color: "#10b981", title: "Dose Taken", body: "Lisinopril 10mg — marked as taken", time: "8:03 AM", read: false },
-            { id: "n2", icon: "alert-triangle", color: "#f59e0b", title: "Missed Dose", body: "Aspirin 81mg — you missed your evening dose", time: "8:00 PM", read: false },
-          ],
-        }
-      ] : prev);
       setIsInitializing(false);
     }
   }
@@ -1013,19 +990,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return DRUG_INTERACTIONS.filter((i) => i.medIds.every((id) => ids.includes(id)));
   };
 
-  const login = async (userData: AppUser, token: string) => {
+  const login = async (userData: AppUser, token: string, method: AuthMethod = "password") => {
     await AsyncStorage.setItem("discharge_buddy_token", token);
-    
+
     // Batch updates to state and storage to prevent race conditions
     setUserState(userData);
+    setAuthMethodState(method);
     setRoleState(userData.role);
     setIsOnboardedState(true);
     setDataProvider(new ApiProvider());
-    
-    await saveData({ 
-      user: userData, 
+
+    await saveData({
+      user: userData,
+      authMethod: method,
       role: userData.role,
-      isOnboarded: true 
+      isOnboarded: true
     });
 
     // Register Push Token with Backend
@@ -1056,6 +1035,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.removeItem("discharge_buddy_token");
     AsyncStorage.removeItem(STORAGE_KEY);
     setUserState(null);
+    setAuthMethodState(null);
     setRoleState(null);
     setIsOnboardedState(false);
     setDataProvider(new MockProvider());
@@ -1146,6 +1126,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         name: data.name,
         age: data.age ? parseInt(data.age) : 0,
         condition: data.condition || "Healthy",
+        relation: data.relation || undefined,
+        avatar: data.avatar || undefined,
         dischargeDate: new Date().toISOString(),
         emergencyContact: "N/A",
         medicines: [],
@@ -1188,7 +1170,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        user, role, patient: null, medicines, todayDoses, symptomLogs, followUps,
+        user, authMethod, role, patient: null, medicines, todayDoses, symptomLogs, followUps,
         isOnboarded, language, linkedPatients, familyMembers, activePatientId, isProcessingPrescription,
         hapticsEnabled,
         streak, xp, achievements, doseHistory, lastXPGain, journalEntries,

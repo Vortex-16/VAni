@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, } from 'react-native';
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -102,7 +103,6 @@ export default function ChatScreen() {
     setInput("");
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addNotification({ title: "Debug", body: `Sending: ${userMsg.text.substring(0, 20)}`, icon: "message-square", color: "#6C47FF" });
 
     console.log("[ChatScreen] handleSend triggered with input:", userMsg.text);
     try {
@@ -214,9 +214,9 @@ export default function ChatScreen() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1, borderStyle: 'solid', borderColor: 'red', borderWidth: 0 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        behavior="padding"
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollRef}
@@ -240,7 +240,6 @@ export default function ChatScreen() {
 
           {/* Message Thread */}
           <View style={styles.messageList}>
-            <Text style={{ fontSize: 10, color: 'gray', textAlign: 'center' }}>[Debug: {messages.length} messages]</Text>
             {messages.map((msg, idx) => (
               <Animated.View
                 key={msg.id}

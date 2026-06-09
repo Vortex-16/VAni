@@ -1,11 +1,16 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Platform, ScrollView, StyleSheet, Switch, TouchableOpacity, View, Pressable } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 
 import { useApp } from "@/context/AppContext";
+import { requestNotificationPermissions } from "@/utils/NotificationHelper";
+
+const NOTIF_PREFS_KEY = "discharge_buddy_notif_prefs";
 
 const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
@@ -15,11 +20,56 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { logout, hapticsEnabled, setHapticsEnabled, language, setLanguage, resetOnboarding } = useApp();
+  const { logout, hapticsEnabled, setHapticsEnabled, language, setLanguage, resetOnboarding, authMethod } = useApp();
   const [notifications, setNotifications] = useState(true);
   const [appNotifs, setAppNotifs] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
+
+  // Load persisted notification preferences
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIF_PREFS_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const prefs = JSON.parse(raw);
+        if (typeof prefs.doseReminders === "boolean") setNotifications(prefs.doseReminders);
+        if (typeof prefs.appNotifs === "boolean") setAppNotifs(prefs.appNotifs);
+      } catch {
+        // ignore malformed prefs
+      }
+    });
+  }, []);
+
+  const persistNotifPrefs = (next: { doseReminders: boolean; appNotifs: boolean }) => {
+    AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(next)).catch(() => {});
+  };
+
+  const handleDoseReminders = async (value: boolean) => {
+    setNotifications(value);
+    persistNotifPrefs({ doseReminders: value, appNotifs });
+    if (Platform.OS === "web") return;
+    try {
+      if (value) {
+        await requestNotificationPermissions();
+      } else {
+        // Turning reminders off cancels any scheduled dose alerts
+        await Notifications.cancelAllScheduledNotificationsAsync();
+      }
+    } catch {
+      // notifications are best-effort
+    }
+  };
+
+  const handleAppNotifs = async (value: boolean) => {
+    setAppNotifs(value);
+    persistNotifPrefs({ doseReminders: notifications, appNotifs: value });
+    if (value && Platform.OS !== "web") {
+      try {
+        await requestNotificationPermissions();
+      } catch {
+        // best-effort
+      }
+    }
+  };
 
   const languages = [
     { label: "English", value: "en", flag: "🇺🇸" },
@@ -59,9 +109,7 @@ export default function SettingsScreen() {
             <Feather name="arrow-left" size={20} color={WHITE} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Settings</Text>
-          <TouchableOpacity style={styles.backBtn}>
-            <Feather name="moon" size={20} color={WHITE} />
-          </TouchableOpacity>
+          <View style={styles.backBtn} />
         </View>
         <View style={styles.waveDivider} />
 
@@ -75,11 +123,18 @@ export default function SettingsScreen() {
           </View>
 
           {[
-            { label: "Edit Profile", icon: "edit" as const },
-            { label: "Change Password", icon: "lock" as const },
-            { label: "Connect Social", icon: "link" as const },
+            { label: "Edit Profile", route: "/profile/edit" },
+            // Change Password only applies to email/password accounts.
+            // Google accounts have no password to change.
+            ...(authMethod === "google"
+              ? []
+              : [{ label: "Change Password", route: "/profile/change-password" }]),
           ].map((item, i) => (
-            <TouchableOpacity key={i} style={styles.row}>
+            <TouchableOpacity
+              key={i}
+              style={styles.row}
+              onPress={() => router.push(item.route as any)}
+            >
               <Text style={styles.rowLabel}>{item.label}</Text>
               <Feather name="chevron-right" size={18} color="#94a3b8" />
             </TouchableOpacity>
@@ -99,7 +154,7 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>Dose Reminders</Text>
             <Switch
               value={notifications}
-              onValueChange={setNotifications}
+              onValueChange={handleDoseReminders}
               trackColor={{ false: "#e2e8f0", true: `${TEAL}60` }}
               thumbColor={notifications ? TEAL : "#cbd5e1"}
             />
@@ -108,7 +163,7 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>App Notifications</Text>
             <Switch
               value={appNotifs}
-              onValueChange={setAppNotifs}
+              onValueChange={handleAppNotifs}
               trackColor={{ false: "#e2e8f0", true: `${TEAL}60` }}
               thumbColor={appNotifs ? TEAL : "#cbd5e1"}
             />
@@ -124,15 +179,6 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>Display</Text>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Dark Mode</Text>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: "#e2e8f0", true: "#8b5cf640" }}
-              thumbColor={darkMode ? "#8b5cf6" : "#cbd5e1"}
-            />
-          </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Haptic Feedback</Text>
             <Switch

@@ -42,15 +42,18 @@ function AddMemberModal({
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [condition, setCondition] = useState('');
+  const [relation, setRelation] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
 
-  const reset = () => { setName(''); setAge(''); setCondition(''); setEmail(''); setCode(''); };
+  const RELATIONS = ['Father', 'Mother', 'Brother', 'Sister', 'Son', 'Daughter', 'Spouse', 'Grandfather', 'Grandmother', 'Other'];
+
+  const reset = () => { setName(''); setAge(''); setCondition(''); setRelation(''); setEmail(''); setCode(''); };
 
   const handleSubmit = async () => {
     if (tab === 'manual') {
       if (!name.trim()) { Alert.alert('Required', 'Please enter a name.'); return; }
-      await onAdd({ name: name.trim(), age, condition: condition.trim() });
+      await onAdd({ name: name.trim(), age, condition: condition.trim(), relation: relation || undefined });
     } else if (tab === 'link') {
       if (!email.trim()) { Alert.alert('Required', 'Please enter an email address.'); return; }
       await onLink(email.trim());
@@ -97,6 +100,18 @@ function AddMemberModal({
             <>
               <Text style={styles.fieldLabel}>Full Name *</Text>
               <TextInput style={styles.field} placeholder="e.g. Rajesh Kumar" value={name} onChangeText={setName} placeholderTextColor={TEXT_MUTED} />
+              <Text style={styles.fieldLabel}>Relation</Text>
+              <View style={styles.relationWrap}>
+                {RELATIONS.map(r => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[styles.relationChip, relation === r && styles.relationChipActive]}
+                    onPress={() => setRelation(r)}
+                  >
+                    <Text style={[styles.relationChipText, relation === r && styles.relationChipTextActive]}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <Text style={styles.fieldLabel}>Age</Text>
               <TextInput style={styles.field} placeholder="e.g. 62" value={age} onChangeText={setAge} keyboardType="numeric" placeholderTextColor={TEXT_MUTED} />
               <Text style={styles.fieldLabel}>Condition / Notes</Text>
@@ -294,7 +309,11 @@ export default function FamilyDashboard() {
              <TouchableOpacity key={m.id} style={styles.familyItem} onPress={() => handleSelectMember(m)}>
                 <View style={styles.familyAvatarContainer}>
                    <View style={[styles.familyAvatar, { backgroundColor: ['#E0E7FF', '#FCE7F3', '#FEF3C7', '#D1FAE5'][i % 4] }]}>
-                      <RNText style={styles.familyInitials} numberOfLines={1} adjustsFontSizeToFit>{m.name.substring(0,2).toUpperCase()}</RNText>
+                      {m.avatar ? (
+                        <Image source={{ uri: m.avatar }} style={styles.familyAvatarImg} />
+                      ) : (
+                        <RNText style={styles.familyInitials} numberOfLines={1} adjustsFontSizeToFit>{m.name.substring(0,2).toUpperCase()}</RNText>
+                      )}
                    </View>
                 </View>
                 <Text style={styles.familyItemName} numberOfLines={1}>{m.name.split(' ')[0]}</Text>
@@ -491,8 +510,9 @@ const styles = StyleSheet.create({
   },
   familyAvatar: {
      width: 58, height: 58, borderRadius: 29,
-     alignItems: 'center', justifyContent: 'center'
+     alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
   },
+  familyAvatarImg: { width: 58, height: 58, borderRadius: 29 },
   familyInitials: { fontSize: 20, color: '#475569', fontFamily: 'Inter_700Bold' },
   familyItemName: { fontSize: 13, color: TEXT_DARK, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   familyItemRelation: { fontSize: 11, color: TEXT_MUTED, fontFamily: 'Inter_500Medium', textAlign: 'center', marginTop: 2 },
@@ -574,6 +594,14 @@ const styles = StyleSheet.create({
     fontSize: 14, color: TEXT_DARK, fontFamily: 'Inter_400Regular', marginBottom: 14,
     backgroundColor: '#F8FAFC',
   },
+  relationWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  relationChip: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16,
+    borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC',
+  },
+  relationChipActive: { backgroundColor: PURPLE, borderColor: PURPLE },
+  relationChipText: { fontSize: 12, color: TEXT_MUTED, fontFamily: 'Inter_500Medium' },
+  relationChipTextActive: { color: '#fff', fontFamily: 'Inter_600SemiBold' },
   linkNote: {
     flexDirection: 'row', gap: 8, alignItems: 'flex-start',
     backgroundColor: PURPLE_LIGHT, borderRadius: 14, padding: 12, marginBottom: 16,
