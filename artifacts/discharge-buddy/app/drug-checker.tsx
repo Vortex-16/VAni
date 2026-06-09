@@ -30,7 +30,11 @@ export default function DrugCheckerScreen() {
   const topInset = Platform.OS === "web" ? 0 : insets.top;
 
   const initialNames = useMemo(
-    () => medicines.map((m) => (m.dosage ? `${m.name} ${m.dosage}` : m.name)).filter(Boolean),
+    () => [
+      ...new Set(
+        medicines.map((m) => (m.dosage ? `${m.name} ${m.dosage}` : m.name)).filter(Boolean)
+      ),
+    ],
     [medicines]
   );
 
@@ -98,8 +102,8 @@ export default function DrugCheckerScreen() {
           <Text style={styles.cardHint}>Your current medicines are loaded. Add anything else you take.</Text>
 
           <View style={styles.chipWrap}>
-            {meds.map((m) => (
-              <View key={m} style={styles.chip}>
+            {meds.map((m, i) => (
+              <View key={`${m}-${i}`} style={styles.chip}>
                 <Text style={styles.chipText}>{m}</Text>
                 <TouchableOpacity onPress={() => removeMed(m)} hitSlop={8}>
                   <Feather name="x" size={13} color={PURPLE} />

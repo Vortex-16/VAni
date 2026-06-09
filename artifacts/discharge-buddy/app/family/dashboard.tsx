@@ -255,9 +255,12 @@ export default function FamilyDashboard() {
             </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/profile')}>
-             {/* Use a default avatar or user's photo */}
             <View style={styles.avatarSmall}>
-               <Text style={styles.avatarSmallText}>{user?.name?.charAt(0) || 'U'}</Text>
+              {user?.avatar ? (
+                <Image source={{ uri: user.avatar }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+              ) : (
+                <RNText style={styles.avatarSmallText}>{user?.name?.charAt(0) || 'U'}</RNText>
+              )}
             </View>
           </TouchableOpacity>
         </View>

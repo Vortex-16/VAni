@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Animated, Platform, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View,  } from 'react-native';
+  Animated, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View,  } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
@@ -86,7 +86,11 @@ export function Sidebar() {
 
           <AnimPressable onPress={() => handleNav("/profile")} style={styles.avatarContainer}>
             <View style={styles.avatarLarge}>
-              <Feather name={role === "caregiver" ? "users" : "user"} size={32} color={TEAL} />
+              {user?.avatar ? (
+                <Image source={{ uri: user.avatar }} style={{ width: 84, height: 84, borderRadius: 42 }} />
+              ) : (
+                <Feather name={role === "caregiver" ? "users" : "user"} size={32} color={TEAL} />
+              )}
             </View>
             <View style={styles.editBadge}>
               <Feather name="edit-2" size={10} color={WHITE} />
