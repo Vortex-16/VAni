@@ -134,6 +134,8 @@ To achieve this, the architecture will pivot from a Screen-First MVC to an **Int
 | Family Voice Notes | Voice messages to caregivers + push to family | Connectivity | Auth/Roles + push | Low | Medium | ✅ Done (Phase 8) |
 | Wake Word | "Hey Buddy" activation | Hands-free init | Native Audio | High | High | ⏳ Pending (Phase 9) |
 | Voice Interruption (barge-in) | Stop speaking when user talks | Natural conversation | TTS Engine | Medium | High | ⏳ Pending (Phase 9) |
+| CPR Guidance Assistant | Voice-guided CPR + choking, animated 110 BPM coach, compression timer | Safety / demo | `expo-speech`, Reanimated, `expo-keep-awake` | High | Medium | ✅ Done (Section 11) |
+| Smart Emergency Button | Shake + 5×-tap → cancellable SOS (alert + location + call) | Safety / accessibility | `expo-sensors`, `expo-location` | High | High | ✅ Done (Section 11) |
 | Simplified Mode | Large text, high contrast | Accessibility | Settings Context | Medium | Low | ⏳ Pending (Phase 10) |
 | Offline Mode | Basic STT without internet | Reliability | Local ML Models | Low | High | ⏳ Pending (Phase 10) |
 
@@ -623,4 +625,108 @@ solely LLM-dependent:
   blood/drug provider methods, new types, `isOnline`.
 - `discharge-buddy/app/(tabs)/index.tsx`, `app/(tabs)/medicines.tsx`,
   `app/emergency.tsx`, `components/Sidebar.tsx` — entry points.
+
+
+## SECTION 11 — CPR Guidance Assistant & Smart Emergency Button
+
+This iteration adds two demo-grade, safety-focused features. Both are
+**frontend-only** (no backend or DB changes), self-contained, and reuse the
+existing gradient-header screen layout, `TranslateText`, `expo-speech` TTS, and
+`triggerEmergency()` round-trip. Two Expo modules were added with
+`npx expo install`: **`expo-sensors`** (accelerometer / shake) and
+**`expo-keep-awake`** (keep the screen on during a rescue).
+
+### 1. CPR Guidance Assistant (`app/cpr.tsx`)
+A full voice-guided CPR + choking coach. Route registered in `app/_layout.tsx`
+(`cpr`, modal). Uses `useKeepAwake()` so the screen never sleeps mid-rescue.
+
+- **Four modes** (`MODES` array, single source of truth): **Adult**, **Child**
+  (1–puberty), **Infant** (<1 yr), and **Choking response** — each with its own
+  depth, hand placement, compression:breath ratio, spoken intro, and 6-step
+  protocol.
+- **Animated compression coach** — a Reanimated circle pulses in time with the
+  beat (`withRepeat` + `withSequence`, 42%/58% down/up split) at a fixed
+  **110 BPM** (`BEAT_MS = 60000/110 ≈ 545 ms`). The "Push / Ready" (or "Back
+  blows / Abdominal thrusts" for choking) label tracks the live phase.
+- **Compression timer & cycle counter** — live `Compressions x/30`, `Cycles`,
+  and a `mm:ss` elapsed clock. At 30 compressions the cycle rolls over and Buddy
+  speaks *"Thirty. Give two rescue breaths now."* Choking uses a 5-back-blows /
+  5-thrusts rhythm with spoken switch prompts.
+- **Metronome** — every beat fires a `Haptics.impactAsync` tick (native) plus an
+  optional audible click via the existing `soundHelper`. Both toggleable
+  (`Voice` / `Metronome`).
+- **Voice guidance (TTS)** — `expo-speech` localized via `LOCALE_BY_LANG[language]`
+  (so it speaks in the app's active language). Per-step "Read aloud", a tap-to-
+  speak speaker on every step, the spoken intro on Start, and mid-cycle coaching
+  ("Keep pushing hard and fast").
+- **Controls** — Start / Pause / Reset; a persistent **Call 112** button in the
+  header. All timers and speech are torn down on unmount / Back.
+- **Safety framing** — top-of-screen disclaimer that this does not replace
+  professional training and to call emergency services first.
+
+### 2. Smart Emergency Button (`app/smart-sos.tsx` + `context/SmartSOSProvider.tsx`)
+A globally-active panic system: trigger an SOS by **shaking the phone** or
+**tapping a panic button 5× fast**, with a cancellable countdown before it fires.
+
+> **Platform honesty:** the original spec listed *power-button 5× press* and
+> *volume-button patterns*. In a **managed Expo** app (no custom native module)
+> the OS does not expose hardware power/volume key events to JS, so those exact
+> triggers are **not implementable** without ejecting / a native module. The
+> shipped equivalents are a **real accelerometer shake** and an in-app **5×
+> rapid-tap** panic widget — both fully functional today.
+
+- **`SmartSOSProvider`** (mounted in `app/_layout.tsx`, inside `SidebarProvider`,
+  wrapping the assistant) holds the SOS state machine
+  (`idle → counting → sending → sent`) and renders a global countdown `Modal`
+  over the whole app. Exposes `useSmartSOS()` (`startSos`, `fireNow`,
+  `cancelSos`, `status`, `settings`).
+- **Shake detection** (`hooks/useShakeDetection.ts`) — `expo-sensors`
+  `Accelerometer` on native (values already in g), `window` `devicemotion` on
+  web (m/s² → g). Requires 3 jerks above a sensitivity threshold within 1 s,
+  with a 3 s cooldown to avoid repeats. Dynamic `import("expo-sensors")` so it
+  no-ops cleanly where the sensor is unavailable.
+- **5× rapid-tap** — the big SOS panic button on `smart-sos.tsx` counts taps in
+  a 2.5 s window (animated dots show progress); 5 taps start the countdown.
+- **The SOS flow when it fires** (`SmartSOSProvider.fire()`):
+  1. `triggerEmergency()` — caregiver alert via the existing backend route.
+  2. **Location** — `expo-location` `getCurrentPositionAsync` → a
+     `maps.google.com/?q=lat,lng` link (best-effort, permission-gated).
+  3. **SMS** — opens the composer to the patient's `emergencyContact` with the
+     location link (`sms:` deep link, iOS/Android body separator handled).
+  4. **Auto-call** — `tel:` to the configured number (default **112**), delayed
+     slightly so it doesn't clash with the SMS composer.
+  - Every stage is haptic-cued; the overlay shows live status and auto-dismisses.
+- **Settings** (`utils/sosSettings.ts`, AsyncStorage + tiny pub/sub so the
+  provider live-updates on save): master enable, shake on/off + sensitivity
+  (low/medium/high → g threshold), 5×-tap on/off, cancel window (3/5/10 s),
+  share-location, text-contact, auto-call. A **Test SOS (cancellable)** button
+  lets you rehearse safely.
+- **Accident protection** — every trigger runs a countdown (default 5 s) with
+  *"I'm OK — Cancel"* and *"Send Now"* before anything is sent.
+
+### Entry points (both features)
+- Home quick-actions grid (`app/(tabs)/index.tsx`): **CPR Guide** + **Smart SOS**.
+- Emergency screen (`app/emergency.tsx`): **CPR & Choking Guide** and **Smart
+  Emergency Button** cards.
+- Sidebar (`components/Sidebar.tsx`): **CPR & Choking Guide**, **Smart Emergency
+  Button**.
+
+### Verification (this iteration)
+- ✅ `npx expo install expo-sensors expo-keep-awake` — added cleanly.
+- ✅ `discharge-buddy` `pnpm run typecheck` — clean.
+- ✅ No backend / DB / schema changes; existing auth, OCR, navigation, medicine,
+  journal, chatbot, multilingual, and voice flows untouched (purely additive).
+
+### Files changed in this iteration
+- `discharge-buddy/utils/sosSettings.ts` — **new** (settings + persistence + pub/sub).
+- `discharge-buddy/hooks/useShakeDetection.ts` — **new** (cross-platform shake).
+- `discharge-buddy/context/SmartSOSProvider.tsx` — **new** (global SOS state +
+  countdown overlay + fire sequence).
+- `discharge-buddy/app/smart-sos.tsx` — **new** (panic button + settings screen).
+- `discharge-buddy/app/cpr.tsx` — **new** (CPR / choking coach).
+- `discharge-buddy/app/_layout.tsx` — mount `SmartSOSProvider`; register `cpr`
+  and `smart-sos` routes.
+- `discharge-buddy/app/emergency.tsx`, `app/(tabs)/index.tsx`,
+  `components/Sidebar.tsx` — entry points.
+- `discharge-buddy/package.json` — `expo-sensors`, `expo-keep-awake`.
 

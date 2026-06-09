@@ -19,6 +19,7 @@ import { SidebarProvider } from "@/context/SidebarContext";
 import { AssistantProvider } from "@/components/assistant/AssistantProvider";
 import { AssistantOverlay } from "@/components/assistant/AssistantOverlay";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { SmartSOSProvider } from "@/context/SmartSOSProvider";
 import { Audio } from 'expo-av';
 
 SplashScreen.preventAutoHideAsync();
@@ -52,6 +53,8 @@ function RootLayoutNav() {
       <Stack.Screen name="caregiver/patient-detail" options={{ presentation: "card", headerShown: false }} />
       <Stack.Screen name="family" options={{ headerShown: false }} />
       <Stack.Screen name="emergency" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="smart-sos" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="cpr" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="blood-network" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="drug-checker" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="notifications" options={{ presentation: "modal", headerShown: false }} />
@@ -95,11 +98,13 @@ export default function RootLayout() {
             <KeyboardProvider>
               <AppProvider>
                 <SidebarProvider>
-                  <AssistantProvider>
-                    <AssistantOverlay />
-                    <RootLayoutNav />
-                    <OfflineBanner />
-                  </AssistantProvider>
+                  <SmartSOSProvider>
+                    <AssistantProvider>
+                      <AssistantOverlay />
+                      <RootLayoutNav />
+                      <OfflineBanner />
+                    </AssistantProvider>
+                  </SmartSOSProvider>
                 </SidebarProvider>
               </AppProvider>
             </KeyboardProvider>

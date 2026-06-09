@@ -503,6 +503,13 @@ function PatientDashboard({ topInset }: { topInset: number }) {
             <QuickAction icon="phone-call" label="Emergency" color="#EF4444" delay={320}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/emergency" as any); }} />
           </View>
+          <View style={[styles.quickRow, { marginTop: 18 }]}>
+            <QuickAction icon="heart" label="CPR Guide" color="#EF4444" delay={360}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/cpr" as any); }} />
+            <QuickAction icon="zap" label="Smart SOS" color="#F59E0B" delay={400}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/smart-sos" as any); }} />
+            <View style={styles.quickItem} />
+          </View>
         </View>
 
         {upcomingFollowUp && (

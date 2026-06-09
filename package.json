@@ -6,7 +6,10 @@
   "scripts": {
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "services": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/manage-services.ps1",
+    "services:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/manage-services.ps1 -Action stop",
+    "services:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/manage-services.ps1 -Action build"
   },
   "private": true,
   "devDependencies": {

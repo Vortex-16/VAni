@@ -75,6 +75,38 @@ export default function EmergencyScreen() {
         </View>
 
         <AnimPressable
+          onPress={() => router.push("/cpr" as any)}
+          style={[styles.bloodCard, { backgroundColor: `${DESTRUCTIVE}10`, borderColor: `${DESTRUCTIVE}40` }]}
+        >
+          <View style={[styles.contactIcon, { backgroundColor: `${DESTRUCTIVE}15` }]}>
+            <Feather name="heart" size={18} color={DESTRUCTIVE} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitle, { color: DESTRUCTIVE, fontSize: 16 }]}>CPR & Choking Guide</Text>
+            <Text style={[styles.cardSubtitle, { color: MUTED, fontSize: 13, textAlign: "left" }]}>
+              Voice-guided CPR with a live compression timer
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={DESTRUCTIVE} />
+        </AnimPressable>
+
+        <AnimPressable
+          onPress={() => router.push("/smart-sos" as any)}
+          style={[styles.bloodCard, { backgroundColor: `${PURPLE}10`, borderColor: `${PURPLE}40` }]}
+        >
+          <View style={[styles.contactIcon, { backgroundColor: `${PURPLE}15` }]}>
+            <Feather name="zap" size={18} color={PURPLE} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitle, { color: PURPLE, fontSize: 16 }]}>Smart Emergency Button</Text>
+            <Text style={[styles.cardSubtitle, { color: MUTED, fontSize: 13, textAlign: "left" }]}>
+              Shake or tap 5× to instantly call for help
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={PURPLE} />
+        </AnimPressable>
+
+        <AnimPressable
           onPress={() => router.push("/blood-network" as any)}
           style={[styles.bloodCard, { backgroundColor: "#E11D4810", borderColor: "#E11D4840" }]}
         >

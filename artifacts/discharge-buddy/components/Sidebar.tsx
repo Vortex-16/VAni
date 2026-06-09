@@ -20,6 +20,8 @@ const MENU_ITEMS = [
   { icon: "calendar" as const, label: "My Schedule", route: "/(tabs)/schedule" },
   { icon: "bell" as const, label: "Notifications", route: "/notifications" },
   { icon: "activity" as const, label: "Activity Log", route: "/(tabs)/symptoms" },
+  { icon: "heart" as const, label: "CPR & Choking Guide", route: "/cpr" },
+  { icon: "zap" as const, label: "Smart Emergency Button", route: "/smart-sos" },
   { icon: "droplet" as const, label: "Blood Network", route: "/blood-network" },
   { icon: "shield" as const, label: "Drug Interaction Checker", route: "/drug-checker" },
   { icon: "wind" as const, label: "Meditation Timer", route: "/meditation" },
