@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert,  } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, RefreshControl } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -172,12 +172,12 @@ export default function CaregiverDashboard() {
   const insets = useSafeAreaInsets();
   const [showLinkModal, setShowLinkModal] = React.useState(false);
 
-  React.useEffect(() => {
-    // Poll for real-time patient updates every 5 seconds
-    const interval = setInterval(() => {
-      refreshData().catch(console.error);
-    }, 5000);
-    return () => clearInterval(interval);
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refreshData().catch(console.error);
+    setRefreshing(false);
   }, [refreshData]);
 
   const sorted = useMemo(() => {
@@ -257,7 +257,13 @@ export default function CaregiverDashboard() {
         </View>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} />
+        }
+      >
 
         {/* Smart Alerts */}
         {alerts.length > 0 && (

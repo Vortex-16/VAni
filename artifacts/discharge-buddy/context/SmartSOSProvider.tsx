@@ -9,7 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Linking, Modal, Platform, StyleSheet, View } from "react-native";
+import { Linking, Modal, Platform, StyleSheet, View, ActivityIndicator } from "react-native";
 
 import { AnimPressable } from "@/components/AnimPressable";
 import { TranslateText as Text } from "@/components/TranslateText";
@@ -251,11 +251,15 @@ export function SmartSOSProvider({ children }: { children: React.ReactNode }) {
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
             <View style={styles.iconCircle}>
-              <Feather
-                name={status === "sent" ? "check" : "alert-triangle"}
-                size={36}
-                color={WHITE}
-              />
+              {status === "sending" ? (
+                <ActivityIndicator size="large" color={WHITE} />
+              ) : (
+                <Feather
+                  name={status === "sent" ? "check" : "alert-triangle"}
+                  size={36}
+                  color={WHITE}
+                />
+              )}
             </View>
 
             {status === "counting" && (
@@ -346,13 +350,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 10,
     width: "100%",
     paddingVertical: 16,
     borderRadius: 16,
+    marginTop: 4,
   },
-  fireBtn: { backgroundColor: DESTRUCTIVE },
-  fireBtnText: { color: WHITE, fontSize: 16, fontFamily: "Inter_700Bold" },
-  cancelBtn: { backgroundColor: "#F3F0FF" },
-  cancelBtnText: { color: FOREGROUND, fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  fireBtn: { 
+    backgroundColor: DESTRUCTIVE,
+    shadowColor: DESTRUCTIVE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  fireBtnText: { color: WHITE, fontSize: 16, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  cancelBtn: { backgroundColor: "#F1F5F9" },
+  cancelBtnText: { color: "#475569", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });

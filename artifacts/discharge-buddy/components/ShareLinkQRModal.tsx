@@ -149,7 +149,9 @@ export function ShareLinkQRModal({ visible, onClose }: Props) {
               <View style={styles.qrBox}>
                 {linkCode ? (
                   <QRCode value={qrValue} size={220} color={TEXT_DARK} backgroundColor={WHITE} />
-                ) : null}
+                ) : (
+                  <Text style={styles.noteText}>Unable to generate QR. Please try again.</Text>
+                )}
               </View>
 
               <View style={styles.codeCard}>

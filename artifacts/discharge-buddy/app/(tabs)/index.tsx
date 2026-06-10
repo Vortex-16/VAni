@@ -490,10 +490,10 @@ function PatientDashboard({ topInset }: { topInset: number }) {
           <View style={[styles.quickRow, { marginTop: 18 }]}>
             <QuickAction icon="message-circle" label="AI Help" color="#06B6D4" delay={120}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/chat" as any); }} />
-            <QuickAction icon="book" label="Journal" color="#10B981" delay={160}
+            <QuickAction icon="users" label="Care Team" color="#8B5CF6" delay={160}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/caregiver-chat" as any); }} />
+            <QuickAction icon="book" label="Journal" color="#10B981" delay={200}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/journal" as any); }} />
-            <QuickAction icon="alert-triangle" label="Emergency" color="#F59E0B" delay={200}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); Linking.openURL("tel:112"); }} />
           </View>
           <View style={[styles.quickRow, { marginTop: 18 }]}>
             <QuickAction icon="droplet" label="Blood Network" color="#E11D48" delay={240}

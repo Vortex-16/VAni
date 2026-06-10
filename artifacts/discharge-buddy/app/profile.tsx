@@ -11,6 +11,7 @@ import * as Sharing from "expo-sharing";
 
 import { useApp } from "@/context/AppContext";
 import { MyLinkCodeCard } from "@/components/MyLinkCodeCard";
+import { PendingFamilyRequests } from "@/components/PendingFamilyRequests";
 
 const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
@@ -226,6 +227,8 @@ export default function ProfileScreen() {
             <MyLinkCodeCard />
           </View>
         )}
+
+        {role === "patient" && <PendingFamilyRequests />}
 
         <View style={styles.actions}>
           <TouchableOpacity

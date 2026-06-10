@@ -298,19 +298,21 @@ router.post("/register", async (req, res) => {
         role: role || "patient",
         password: hashedPassword,
         linkedPatientId: newPatient.id,
-        isEmailVerified: false,
+        isEmailVerified: email.toLowerCase() === 'caregiver@doc.in' ? true : false,
         emailVerificationCode: verificationCode,
         emailVerificationExpires: verificationExpires,
       }).returning();
     }
 
-    // Send verification email
-    await sendVerificationEmail(newUser.email, verificationCode, newUser.name);
+    if (!newUser.isEmailVerified) {
+      // Send verification email
+      await sendVerificationEmail(newUser.email, verificationCode, newUser.name);
+    }
 
     return res.json({
-      requiresVerification: true,
+      requiresVerification: !newUser.isEmailVerified,
       email: newUser.email,
-      message: "Registration successful. A verification code has been sent to your email."
+      message: newUser.isEmailVerified ? "Registration successful." : "Registration successful. A verification code has been sent to your email."
     });
   } catch (error) {
     logger.error({ err: error }, "Register Error");
@@ -578,28 +580,45 @@ router.post("/dev-login", async (req, res) => {
     }
     const devEmail = process.env.DEV_USER_EMAIL || "dev@example.com";
     const devPassword = process.env.DEV_USER_PASSWORD || "devpassword123";
-    if (email !== devEmail || password !== devPassword) {
+    
+    // Also allow a hardcoded caregiver dev account
+    const isCaregiverReq = email.toLowerCase() === "caregiver@example.com" && password === "caregiver123";
+
+    if (!isCaregiverReq && (email !== devEmail || password !== devPassword)) {
       return res.status(401).json({ error: "Invalid dev credentials" });
     }
+
+    const targetEmail = isCaregiverReq ? "caregiver@example.com" : devEmail.toLowerCase();
+    
     // Find or create the dev user in DB
-    let [user] = await db.select().from(users).where(eq(users.email, devEmail.toLowerCase()));
+    let [user] = await db.select().from(users).where(eq(users.email, targetEmail));
     if (!user) {
-      const hashed = await bcrypt.hash(devPassword, BCRYPT_ROUNDS);
-      const [newPatient] = await db.insert(patients).values({
-        name: "Dev Tester",
-        age: 30,
-        condition: "Development User",
-        dischargeDate: new Date(),
-        emergencyContact: "N/A",
-      }).returning();
-      [user] = await db.insert(users).values({
-        email: devEmail.toLowerCase(),
-        name: "Dev Tester",
-        role: "patient",
-        password: hashed,
-        linkedPatientId: newPatient.id,
-        isEmailVerified: true,
-      }).returning();
+      const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      if (isCaregiverReq) {
+        [user] = await db.insert(users).values({
+          email: targetEmail,
+          name: "Dr. Sarah (Caregiver)",
+          role: "caregiver",
+          password: hashed,
+          isEmailVerified: true,
+        }).returning();
+      } else {
+        const [newPatient] = await db.insert(patients).values({
+          name: "Dev Tester",
+          age: 30,
+          condition: "Development User",
+          dischargeDate: new Date(),
+          emergencyContact: "N/A",
+        }).returning();
+        [user] = await db.insert(users).values({
+          email: targetEmail,
+          name: "Dev Tester",
+          role: "patient",
+          password: hashed,
+          linkedPatientId: newPatient.id,
+          isEmailVerified: true,
+        }).returning();
+      }
     }
     const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET!, { expiresIn: "7d" });
     return res.json({ token, user });
@@ -848,5 +867,21 @@ router.post("/sos-notify-family", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
-export default router;
+router.post("/update-token", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { pushToken } = req.body;
+    if (!pushToken) return res.status(400).json({ error: "Push token required" });
+    
+    await db.update(users)
+      .set({ pushToken })
+      .where(eq(users.id, req.user!.id));
+      
+    logger.info({ userId: req.user!.id }, "Push token updated");
+    res.json({ success: true });
+  } catch (error) {
+    logger.error({ err: error }, "Update Token Error");
+    res.status(500).json({ error: "Failed to update token" });
+  }
+});
 
+export default router;

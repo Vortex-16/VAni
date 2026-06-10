@@ -18,13 +18,17 @@ export function getApiUrl(): string {
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (configuredUrl) return configuredUrl.replace(/\/$/, '');
 
-  if (Platform.OS === 'web') return `http://localhost:${DEFAULT_PORT}`;
+  if (Platform.OS === 'web') return `http://127.0.0.1:${DEFAULT_PORT}`;
 
   const expoHost = getExpoHost();
-  if (expoHost) return `http://${expoHost}:${DEFAULT_PORT}`;
+  if (expoHost) {
+    const url = `http://${expoHost}:${DEFAULT_PORT}`;
+    console.log('Using Expo host URL:', url);
+    return url;
+  }
 
-  if (Platform.OS === 'android') return `http://10.0.2.2:${DEFAULT_PORT}`;
-  if (Platform.OS === 'ios') return `http://localhost:${DEFAULT_PORT}`;
-
-  return `http://localhost:${DEFAULT_PORT}`;
+  const fallbackUrl = Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost';
+  const url = `${fallbackUrl}:${DEFAULT_PORT}`;
+  console.log('Using fallback URL:', url);
+  return url;
 }

@@ -547,6 +547,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (data.notifications) setNotifications(data.notifications);
         // No dummy seed data — notifications populate from real app events.
       }
+      
+      // Register push token if logged in
+      if (token) {
+        const pushToken = await getDevicePushToken();
+        if (pushToken && dataProvider.registerPushToken) {
+          await dataProvider.registerPushToken(pushToken).catch(console.error);
+        }
+      }
     } catch (err) {
       console.error("Failed to initialize app state", err);
     } finally {
@@ -909,6 +917,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const stopSpeaking = useCallback(async () => {
     try {
+      // Stop device TTS
+      Speech.stop();
+      
       // Stop remote audio
       if (audioRef.current) {
         await audioRef.current.stopAsync();
@@ -1030,6 +1041,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    stopSpeaking();
     // Wipe conversation memory for this user (privacy — voice transcripts).
     clearConversationHistory(user?.email || "guest").catch(() => {});
     AsyncStorage.removeItem("discharge_buddy_token");

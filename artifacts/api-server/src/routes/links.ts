@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { db, patients, careLinks, eq, and } from "@workspace/db";
+import { db, patients, careLinks, users, eq, and } from "@workspace/db";
 import type { AuthRequest } from "../middlewares/auth";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { ensureLinkCode, generateUniqueLinkCode } from "../lib/linkCode";
 import { getManagedPatients } from "../lib/managedPatients";
+import * as admin from 'firebase-admin';
 
 const router = Router();
 router.use(requireAuth);
@@ -85,26 +86,54 @@ router.post("/", async (req: AuthRequest, res) => {
     }
 
     const relationship = me.role === "caregiver" ? "caregiver" : "family";
+    const status = relationship === "caregiver" ? "active" : "pending";
 
-    // Upsert the link (re-activates a previously revoked link).
+    // Upsert the link
     await db.insert(careLinks)
-      .values({ patientId: patient.id, managerId: me.id, relationship, status: "active" })
+      .values({ patientId: patient.id, managerId: me.id, relationship, status })
       .onConflictDoUpdate({
         target: [careLinks.patientId, careLinks.managerId],
-        set: { status: "active", relationship },
+        set: { status, relationship },
       });
 
-    // Dual-write the legacy single-manager column so push notifications keep working.
-    await db.update(patients).set({ caregiverId: me.id }).where(eq(patients.id, patient.id));
+    // Notify the patient
+    const [patientUser] = await db.select().from(users).where(eq(users.linkedPatientId, patient.id));
+    if (patientUser?.pushToken) {
+      try {
+        await admin.messaging().send({
+          token: patientUser.pushToken,
+          notification: {
+            title: status === 'active' ? 'New Caregiver Linked' : 'Family Connection Request',
+            body: status === 'active' 
+              ? `${me.name} is now managing your care.` 
+              : `${me.name} wants to connect with your profile. Please approve.`
+          },
+          data: {
+            type: 'link_request',
+            managerId: me.id
+          }
+        });
+      } catch (err) {
+        logger.error({ err }, "Failed to send link push notification to patient");
+      }
+    }
 
-    logger.info({ managerId: me.id, patientId: patient.id, relationship }, "Patient linked via code");
-    return res.json({
-      patient: {
-        id: patient.id,
-        name: patient.name,
-        condition: patient.condition,
-        age: patient.age,
-      },
+    if (status === "active") {
+      // Dual-write the legacy single-manager column
+      await db.update(patients).set({ caregiverId: me.id }).where(eq(patients.id, patient.id));
+    }
+
+    logger.info({ managerId: me.id, patientId: patient.id, relationship, status }, "Patient linked via code");
+    return res.json({ 
+        success: true, 
+        patientId: patient.id, 
+        status,
+        patient: {
+          id: patient.id,
+          name: patient.name,
+          condition: patient.condition,
+          age: patient.age,
+        },
     });
   } catch (error) {
     logger.error({ err: error }, "link by code failed");
@@ -135,6 +164,88 @@ router.delete("/:patientId", async (req: AuthRequest, res) => {
   } catch (error) {
     logger.error({ err: error }, "revoke link failed");
     return res.status(500).json({ error: "Failed to revoke link" });
+  }
+});
+
+/**
+ * GET /api/links/pending
+ * Lists the pending link requests for the caller's patient profile.
+ */
+router.get("/pending", async (req: AuthRequest, res) => {
+  try {
+    const patientId = req.user?.linkedPatientId;
+    if (!patientId) return res.status(400).json({ error: "No patient profile found." });
+
+    const requests = await db.select({
+      id: careLinks.id,
+      managerId: careLinks.managerId,
+      relationship: careLinks.relationship,
+      status: careLinks.status,
+      createdAt: careLinks.createdAt,
+      managerName: users.name,
+      managerEmail: users.email,
+    })
+    .from(careLinks)
+    .innerJoin(users, eq(careLinks.managerId, users.id))
+    .where(and(
+      eq(careLinks.patientId, patientId),
+      eq(careLinks.status, "pending")
+    ));
+
+    return res.json({ requests });
+  } catch (error) {
+    logger.error({ err: error }, "list pending links failed");
+    return res.status(500).json({ error: "Failed to list pending link requests" });
+  }
+});
+
+/**
+ * POST /api/links/:managerId/approve
+ * Approves a pending link request from a manager (family).
+ */
+router.post("/:managerId/approve", async (req: AuthRequest, res) => {
+  try {
+    const patientId = req.user?.linkedPatientId;
+    const managerId = req.params.managerId;
+    if (!patientId) return res.status(400).json({ error: "No patient profile found." });
+
+    await db.update(careLinks)
+      .set({ status: "active" })
+      .where(and(
+        eq(careLinks.patientId, patientId),
+        eq(careLinks.managerId, managerId),
+        eq(careLinks.status, "pending")
+      ));
+
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error({ err: error }, "approve link failed");
+    return res.status(500).json({ error: "Failed to approve link" });
+  }
+});
+
+/**
+ * POST /api/links/:managerId/reject
+ * Rejects a pending link request from a manager.
+ */
+router.post("/:managerId/reject", async (req: AuthRequest, res) => {
+  try {
+    const patientId = req.user?.linkedPatientId;
+    const managerId = req.params.managerId;
+    if (!patientId) return res.status(400).json({ error: "No patient profile found." });
+
+    await db.update(careLinks)
+      .set({ status: "rejected" })
+      .where(and(
+        eq(careLinks.patientId, patientId),
+        eq(careLinks.managerId, managerId),
+        eq(careLinks.status, "pending")
+      ));
+
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error({ err: error }, "reject link failed");
+    return res.status(500).json({ error: "Failed to reject link" });
   }
 });
 

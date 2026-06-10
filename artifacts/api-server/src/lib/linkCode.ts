@@ -8,8 +8,9 @@ const CODE_LEN = 6;
 /** Generate a shareable patient code like "DB-7G4K2P" (not checked for uniqueness). */
 export function generateLinkCode(): string {
   let body = "";
+  const randomBytes = crypto.randomBytes(CODE_LEN);
   for (let i = 0; i < CODE_LEN; i++) {
-    body += ALPHABET[crypto.randomInt(ALPHABET.length)];
+    body += ALPHABET[randomBytes[i] % ALPHABET.length];
   }
   return `DB-${body}`;
 }

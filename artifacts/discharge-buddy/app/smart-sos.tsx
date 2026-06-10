@@ -111,10 +111,14 @@ export default function SmartSosScreen() {
             Tap {RAPID_TAP_COUNT} times fast to start the SOS countdown
           </Text>
 
-          <AnimPressable onPress={handlePanicTap} style={styles.panicBtn}>
-            <Feather name="alert-octagon" size={48} color={WHITE} />
-            <Text style={styles.panicBtnText}>SOS</Text>
-          </AnimPressable>
+          <View style={styles.panicBtnOuter}>
+            <View style={styles.panicBtnInner}>
+              <AnimPressable onPress={handlePanicTap} style={styles.panicBtn}>
+                <Feather name="alert-octagon" size={56} color={WHITE} />
+                <Text style={styles.panicBtnText}>SOS</Text>
+              </AnimPressable>
+            </View>
+          </View>
 
           <View style={styles.dotsRow}>
             {Array.from({ length: RAPID_TAP_COUNT }).map((_, i) => (
@@ -345,21 +349,37 @@ const styles = StyleSheet.create({
   },
   panicTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   panicSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  panicBtn: {
+  panicBtnOuter: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: `${DESTRUCTIVE}15`,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 16,
+  },
+  panicBtnInner: {
     width: 150,
     height: 150,
     borderRadius: 75,
+    backgroundColor: `${DESTRUCTIVE}30`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  panicBtn: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: DESTRUCTIVE,
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 12,
     shadowColor: DESTRUCTIVE,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 12,
   },
-  panicBtnText: { color: WHITE, fontSize: 26, fontFamily: "Inter_700Bold", marginTop: 2 },
+  panicBtnText: { color: WHITE, fontSize: 32, fontFamily: "Inter_800ExtraBold", marginTop: 2, letterSpacing: 1 },
   dotsRow: { flexDirection: "row", gap: 10, marginTop: 4 },
   dot: { width: 12, height: 12, borderRadius: 6 },
   tapHint: { fontSize: 13, fontFamily: "Inter_500Medium", height: 18 },
@@ -380,7 +400,10 @@ const styles = StyleSheet.create({
   card: { padding: 16, borderRadius: 18, borderWidth: 1.5, marginBottom: 12, gap: 10 },
   cardLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   cardHint: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: -4 },
-  segment: { flexDirection: "row", backgroundColor: "#F3F0FF", borderRadius: 14, padding: 4 },
+  segment: {
+    flexDirection: "row", backgroundColor: "#F3F0FF", borderRadius: 16, padding: 6, gap: 8,
+    marginTop: 8
+  },
   segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
   segmentText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
@@ -399,11 +422,12 @@ const styles = StyleSheet.create({
 
   testBtn: {
     flexDirection: "row",
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 16,
+    borderRadius: 18,
     borderWidth: 1.5,
   },
   testBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },

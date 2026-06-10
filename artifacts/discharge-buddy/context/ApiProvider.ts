@@ -106,9 +106,9 @@ export class ApiProvider implements IDataProvider {
   }
 
   async registerPushToken(token: string): Promise<void> {
-    await customFetch("/api/auth/push-token", {
+    await customFetch("/api/auth/update-token", {
       method: "POST",
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ pushToken: token })
     });
   }
 

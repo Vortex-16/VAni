@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Animated, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View,  } from 'react-native';
+  Animated, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View, Alert } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
@@ -32,7 +32,7 @@ const MENU_ITEMS = [
 
 export function Sidebar() {
   const { isOpen, close, translateX, overlayOpacity, SIDEBAR_WIDTH } = useSidebar();
-  const { user, role, setRole, setUser } = useApp();
+  const { user, role, setRole, setUser, logout } = useApp();
   const [showLinkQr, setShowLinkQr] = useState(false);
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
@@ -48,9 +48,7 @@ export function Sidebar() {
   const handleLogout = () => {
     close();
     setTimeout(() => {
-      setRole(null as any);
-      setUser(null as any);
-      router.replace("/login");
+      logout();
     }, 300);
   };
 

@@ -4,31 +4,39 @@ import { getApiUrl } from "@/utils/apiUrl";
 
 /**
  * Lightweight online/offline detection without adding native dependencies.
- *
- * - Web: trusts `navigator.onLine` and the window online/offline events, and
- *   confirms with a periodic reachability ping to the API health endpoint.
- * - Native: there is no reliable zero-dep signal, so we poll a fast HEAD/GET
- *   against the API with a short timeout and treat success as "online".
- *
- * Designed for "poor network / rural area" resilience: a failed ping flips the
- * app into offline mode so screens can fall back to cached data.
+ * Includes debouncing and stability thresholds.
  */
 export function useConnectivity(pingIntervalMs = 20000): boolean {
-  const [isOnline, setIsOnline] = useState<boolean>(() => {
+  // Raw instantaneous connectivity state
+  const [rawIsOnline, setRawIsOnline] = useState<boolean>(() => {
     if (Platform.OS === "web" && typeof navigator !== "undefined" && typeof navigator.onLine === "boolean") {
       return navigator.onLine;
     }
-    return true; // optimistic until the first ping resolves
+    return true; // optimistic
   });
+
+  // Debounced stable state that we actually return
+  const [isOnline, setIsOnline] = useState<boolean>(rawIsOnline);
+
   const mounted = useRef(true);
+
+  // Debounce logic: wait for state to be stable for 3 seconds before reporting
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mounted.current) {
+        setIsOnline(rawIsOnline);
+      }
+    }, 3000); // 3 seconds stability threshold
+
+    return () => clearTimeout(timer);
+  }, [rawIsOnline]);
 
   useEffect(() => {
     mounted.current = true;
 
     const ping = async () => {
-      // On web, if the browser says we're offline, believe it immediately.
       if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.onLine === false) {
-        if (mounted.current) setIsOnline(false);
+        if (mounted.current) setRawIsOnline(false);
         return;
       }
       try {
@@ -39,9 +47,9 @@ export function useConnectivity(pingIntervalMs = 20000): boolean {
           signal: controller.signal,
         });
         clearTimeout(timer);
-        if (mounted.current) setIsOnline(res.ok);
+        if (mounted.current) setRawIsOnline(res.ok);
       } catch {
-        if (mounted.current) setIsOnline(false);
+        if (mounted.current) setRawIsOnline(false);
       }
     };
 
@@ -51,8 +59,8 @@ export function useConnectivity(pingIntervalMs = 20000): boolean {
     let onUp: (() => void) | undefined;
     let onDown: (() => void) | undefined;
     if (Platform.OS === "web" && typeof window !== "undefined" && window.addEventListener) {
-      onUp = () => { setIsOnline(true); ping(); };
-      onDown = () => setIsOnline(false);
+      onUp = () => { setRawIsOnline(true); ping(); };
+      onDown = () => setRawIsOnline(false);
       window.addEventListener("online", onUp);
       window.addEventListener("offline", onDown);
     }

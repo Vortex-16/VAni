@@ -6,7 +6,7 @@ export const userRoleEnum = pgEnum("user_role", ["patient", "caregiver", "family
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
 export const doseStatusEnum = pgEnum("dose_status", ["taken", "missed", "pending", "snoozed"]);
 export const linkRelationshipEnum = pgEnum("link_relationship", ["family", "caregiver"]);
-export const linkStatusEnum = pgEnum("link_status", ["active", "revoked"]);
+export const linkStatusEnum = pgEnum("link_status", ["active", "revoked", "pending", "rejected"]);
 export const bloodTypeEnum = pgEnum("blood_type", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]);
 export const bloodUrgencyEnum = pgEnum("blood_urgency", ["low", "normal", "critical"]);
 export const bloodRequestStatusEnum = pgEnum("blood_request_status", ["open", "fulfilled", "cancelled"]);
@@ -240,6 +240,49 @@ export const bloodRequests = pgTable("blood_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Real-Time Chat Messages
+export const messages = pgTable("messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  senderId: uuid("sender_id").references(() => users.id).notNull(),
+  receiverId: uuid("receiver_id").references(() => users.id).notNull(),
+  patientContextId: uuid("patient_context_id").references(() => patients.id).notNull(),
+  text: text("text").notNull(),
+  audioBase64: text("audio_base64"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Voice-Driven Scheduled Messages & Voice Reminders
+
+export const scheduleTypeEnum = pgEnum("schedule_type", ["ONCE", "RECURRING", "MEDICATION_LINKED"]);
+export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "delivered", "failed", "cancelled"]);
+
+export const scheduledMessages = pgTable("scheduled_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  senderId: uuid("sender_id").references(() => users.id).notNull(),
+  recipientId: uuid("recipient_id").references(() => users.id).notNull(),
+  message: text("message").notNull(),
+  voiceEnabled: boolean("voice_enabled").default(false),
+  scheduleType: scheduleTypeEnum("schedule_type").notNull(),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  recurrence: text("recurrence"), // cron string or rule
+  status: reminderStatusEnum("status").default("pending").notNull(),
+  deliveredAt: timestamp("delivered_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const voiceReminders = pgTable("voice_reminders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  senderId: uuid("sender_id").references(() => users.id).notNull(),
+  recipientId: uuid("recipient_id").references(() => users.id).notNull(),
+  audioBase64: text("audio_base64").notNull(),
+  transcript: text("transcript").notNull(),
+  scheduleType: scheduleTypeEnum("schedule_type").notNull(),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  recurrence: text("recurrence"),
+  status: reminderStatusEnum("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -257,3 +300,6 @@ export const insertFeedbackSchema = createInsertSchema(feedback);
 export const insertDischargePlanSchema = createInsertSchema(dischargePlans);
 export const insertDonorProfileSchema = createInsertSchema(donorProfiles);
 export const insertBloodRequestSchema = createInsertSchema(bloodRequests);
+export const insertMessageSchema = createInsertSchema(messages);
+export const insertScheduledMessageSchema = createInsertSchema(scheduledMessages);
+export const insertVoiceReminderSchema = createInsertSchema(voiceReminders);

@@ -23,6 +23,9 @@ export function OfflineBanner() {
     }).start();
   }, [isOnline, translateY]);
 
+  // Commented out to hide the offline banner completely
+  return null;
+  /*
   return (
     <Animated.View
       pointerEvents="none"
@@ -34,6 +37,7 @@ export function OfflineBanner() {
       </View>
     </Animated.View>
   );
+  */
 }
 
 const styles = StyleSheet.create({

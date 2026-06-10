@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Modal, Platform, ScrollView, StyleSheet, Switch, TouchableOpacity, View, Pressable } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Switch, TouchableOpacity, View, Pressable, Alert } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -240,16 +240,16 @@ export default function SettingsScreen() {
         </View>
 
         {/* Logout button */}
-        <View style={styles.logoutSection}>
+        <TouchableOpacity style={styles.logoutSection} onPress={handleLogout}>
           <View style={[styles.sectionHeader, { marginBottom: 0 }]}>
             <View style={[styles.sectionIcon, { backgroundColor: "#ef444420" }]}>
               <Feather name="log-out" size={20} color="#ef4444" />
             </View>
-            <TouchableOpacity onPress={handleLogout} style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
               <Text style={[styles.sectionTitle, { color: "#ef4444" }]}>Logout</Text>
-            </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Language Modal */}
         <Modal
