@@ -1066,3 +1066,46 @@ for patients).
 - ✅ `discharge-buddy` typecheck clean (0 errors).
 - ⚠️ Messaging/push live runs still require a real DB + dev build (encrypted env,
   Expo Go push limitation) — use `smoke-test-messaging.mjs`.
+
+
+## SECTION 15 — Cloud Run deploy fix (container failed to start on PORT 8080)
+
+**Symptom:** `gcloud run deploy` built the image but the revision failed:
+> The user-provided container failed to start and listen on the port defined by
+> the PORT=8080 environment variable… within the allocated timeout.
+
+**Root cause:** the container crashed at **startup**, before it could listen.
+`lib/db/src/index.ts` throws at *import* time when `DATABASE_URL` is unset:
+```ts
+if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL must be set…");
+```
+The deploy command (`scripts/deploy.ps1`) ran
+`gcloud run deploy … --source . --allow-unauthenticated` with **no env vars** —
+Cloud Run does not read the local `.env`, so `DATABASE_URL` (and `GROQ_API_KEY`,
+`JWT_SECRET`, etc.) were never provided → import throw → no `listen()` → health
+check fails. (Port binding itself was already correct: `app.listen(PORT,"0.0.0.0")`.)
+Verified nothing else throws at boot — `NotificationService.init()` guards
+Firebase and only the DB module throws unconditionally.
+
+**Fix:**
+- `scripts/cloudrun.env.example.yaml` — template of every backend env var
+  (DATABASE_URL required; AI keys, JWT, Firebase, OCR URL, SMTP, …).
+  **Excludes `PORT`** — Cloud Run injects it and rejects deploys that set it.
+- `scripts/deploy.ps1` — Cloud Run deploy now passes
+  `--env-vars-file scripts/cloudrun.env.yaml`; if that file is missing it warns
+  loudly (the deploy will crash without it) and requires confirmation. Also fixed
+  a script bug where it printed "[SUCCESS]" even when `gcloud` failed (native
+  non-zero exits aren't caught by PowerShell `try/catch`) — now checks
+  `$LASTEXITCODE`.
+- `.gitignore` — ignores `scripts/cloudrun.env.yaml` (real secrets).
+
+**To deploy now:**
+```powershell
+Copy-Item scripts\cloudrun.env.example.yaml scripts\cloudrun.env.yaml
+# edit scripts\cloudrun.env.yaml — set DATABASE_URL + keys
+gcloud run deploy discharge-buddy-backend --source . --region asia-south1 `
+  --allow-unauthenticated --env-vars-file scripts\cloudrun.env.yaml
+```
+`DATABASE_URL` must point to a Postgres reachable from Cloud Run (e.g. Neon /
+Supabase / Cloud SQL public IP or the Cloud SQL connector). After it boots, apply
+the chat table once: `node artifacts/api-server/apply-messages-schema.mjs`.

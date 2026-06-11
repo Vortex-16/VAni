@@ -69,12 +69,38 @@ function Deploy-Backend-CloudRun {
     $region = Read-Host "Enter deployment region [default: asia-south1]"
     if ([string]::IsNullOrWhiteSpace($region)) { $region = "asia-south1" }
 
+    # Cloud Run does NOT read the local .env — env vars must be passed explicitly.
+    # Without DATABASE_URL the container throws at startup and Cloud Run reports
+    # "failed to start and listen on PORT 8080". We pass scripts/cloudrun.env.yaml.
+    $EnvFile = Join-Path $ScriptDir "cloudrun.env.yaml"
+    if (-not (Test-Path $EnvFile)) {
+        Write-ErrorMsg "Missing env file: $EnvFile"
+        Write-WarningMsg "Cloud Run gets NO environment variables without it, so the"
+        Write-WarningMsg "container will crash on startup (needs DATABASE_URL, GROQ_API_KEY, etc.)."
+        Write-Info "Create it by copying the template:"
+        Write-Info "  Copy-Item `"$ScriptDir\cloudrun.env.example.yaml`" `"$EnvFile`""
+        Write-Info "then fill in the real values and re-run."
+        $cont = Read-Host "Deploy WITHOUT env vars anyway? (will almost certainly fail) (y/n)"
+        if ($cont.ToLower() -ne 'y') { Write-Info "Aborted."; return }
+        $EnvFile = $null
+    }
+
     Write-Info "Initiating Cloud Run deployment from source..."
-    Write-Info "Command: gcloud run deploy $serviceName --source . --region $region --allow-unauthenticated"
-    
+
     Set-Location $WorkspaceRoot
     try {
-        gcloud run deploy $serviceName --source . --region $region --allow-unauthenticated
+        # --timeout extends the startup window; the env file supplies the runtime config.
+        if ($EnvFile) {
+            Write-Info "Command: gcloud run deploy $serviceName --source . --region $region --allow-unauthenticated --env-vars-file `"$EnvFile`""
+            gcloud run deploy $serviceName --source . --region $region --allow-unauthenticated --env-vars-file "$EnvFile"
+        } else {
+            Write-Info "Command: gcloud run deploy $serviceName --source . --region $region --allow-unauthenticated"
+            gcloud run deploy $serviceName --source . --region $region --allow-unauthenticated
+        }
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMsg "Cloud Run deployment failed (gcloud exit code $LASTEXITCODE). Check the build/revision logs URL above."
+            return
+        }
         Write-Success "Backend successfully deployed to Google Cloud Run!"
     } catch {
         Write-ErrorMsg "Cloud Run deployment failed: $($_.Exception.Message)"

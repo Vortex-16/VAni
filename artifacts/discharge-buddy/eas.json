@@ -11,7 +11,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://d-buddy-718686428495.asia-south1.run.app",
+        "EXPO_PUBLIC_API_URL": "https://discharge-buddy-backend-136620410695.asia-south1.run.app",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "294320272880-n69lce6o1nas43m16bkdk7kipj67sgfr.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "294320272880-6d1l8hjl1lgtj6b5g86ontvbdv6iokgs.apps.googleusercontent.com"
       }
@@ -19,7 +19,7 @@
 
     "preview": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://d-buddy-718686428495.asia-south1.run.app",
+        "EXPO_PUBLIC_API_URL": "https://discharge-buddy-backend-136620410695.asia-south1.run.app",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "294320272880-n69lce6o1nas43m16bkdk7kipj67sgfr.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "294320272880-6d1l8hjl1lgtj6b5g86ontvbdv6iokgs.apps.googleusercontent.com"
       },
@@ -30,7 +30,7 @@
 
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://d-buddy-718686428495.asia-south1.run.app",
+        "EXPO_PUBLIC_API_URL": "https://discharge-buddy-backend-136620410695.asia-south1.run.app",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "294320272880-n69lce6o1nas43m16bkdk7kipj67sgfr.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "294320272880-6d1l8hjl1lgtj6b5g86ontvbdv6iokgs.apps.googleusercontent.com"
       }
