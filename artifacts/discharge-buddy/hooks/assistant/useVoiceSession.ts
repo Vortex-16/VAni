@@ -96,23 +96,52 @@ export function useVoiceSession(options?: VoiceSessionOptions): VoiceSessionHook
         throw new Error("No audio file found");
       }
 
-      const fileInfo = await FileSystem.getInfoAsync(localUri);
-      const fileSizeBytes = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0;
-      if (fileSizeBytes < 1000) {
-        throw new Error("Recording empty");
+      // Read the recording as base64. `expo-file-system`'s getInfoAsync /
+      // readAsStringAsync are NOT implemented on web, so we use the blob URL the
+      // MediaRecorder produced there; on native we use the file APIs.
+      let base64Audio: string;
+      if (Platform.OS === "web") {
+        const resp = await fetch(localUri);
+        const blob = await resp.blob();
+        if (blob.size < 1000) {
+          throw new Error("Recording empty");
+        }
+        base64Audio = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = String(reader.result || "");
+            // Strip the "data:audio/...;base64," prefix.
+            resolve(result.includes(",") ? result.split(",").pop()! : result);
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const fileInfo = await FileSystem.getInfoAsync(localUri);
+        const fileSizeBytes = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0;
+        if (fileSizeBytes < 1000) {
+          throw new Error("Recording empty");
+        }
+        base64Audio = await FileSystem.readAsStringAsync(localUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
       }
-
-      const base64Audio = await FileSystem.readAsStringAsync(localUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
 
       // Web records WebM; native records M4A. Tell the server which it is so
       // Whisper decodes the container correctly.
       const fileExtension = Platform.OS === "web" ? "webm" : "m4a";
 
-      // Actually call your API here. The language hint improves accuracy/latency
-      // for non-English speakers (e.g. Hindi/Urdu/Spanish).
-      transcriptionResult = await api.transcribeAudio(base64Audio, fileExtension, language);
+      // Language hint policy:
+      //  • If the user has EXPLICITLY chosen a non-English app language, force
+      //    that language so Whisper transcribes in the correct script. (A user
+      //    who set the app to Bengali speaks Bengali — auto-detect would
+      //    sometimes mis-detect short Bengali clips as Hindi.)
+      //  • If the app is on the default English, AUTO-DETECT instead, so a user
+      //    who hasn't changed the language but speaks Hindi/Bengali still gets a
+      //    correct transcript (forcing "en" would romanize/translate it).
+      const sttLanguage = language && language !== "en" ? language : undefined;
+
+      transcriptionResult = await api.transcribeAudio(base64Audio, fileExtension, sttLanguage);
     } catch (err: any) {
       console.warn("[VoiceSession] Transcription error:", err);
       setError(err?.message || "Transcription failed");

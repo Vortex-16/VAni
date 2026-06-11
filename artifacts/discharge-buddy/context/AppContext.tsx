@@ -922,32 +922,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSpeakingTargetId(null);
   }, []);
 
-  const speakNeural = async (text: string, targetId?: string) => {
-    if (!text) return;
-
-    // If already speaking the same thing, stop it
-    if (isSpeaking && speakingTargetId === targetId) {
-      stopSpeaking();
-      return;
-    }
-
-    // Stop any current speech before starting new
-    await stopSpeaking();
-
-    if (hapticsEnabled && Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    setIsSpeaking(true);
-    if (targetId) setSpeakingTargetId(targetId);
-    
-    // Strip ALL emojis and special symbols so they aren't read aloud
-    const cleanText = text
-      .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA9F}\u{1FAA0}-\u{1FAFF}\u{200D}\u{20E3}\u{FE0F}]/gu, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // Use device-native speech engine for instant, zero-latency playback
+  // On-device speech engine — fallback when Edge TTS server audio is
+  // unavailable (offline, server error). Zero-latency but lower quality.
+  const speakOnDevice = (cleanText: string) => {
     try {
       Speech.speak(cleanText, {
         language: LOCALE_BY_LANG[language] || 'en-US',
@@ -966,6 +943,81 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.error("[Local Speech Error]", speechErr);
       setIsSpeaking(false);
       setSpeakingTargetId(null);
+    }
+  };
+
+  const speakNeural = async (text: string, targetId?: string) => {
+    if (!text) return;
+
+    // If already speaking the same thing, stop it
+    if (isSpeaking && speakingTargetId === targetId) {
+      stopSpeaking();
+      return;
+    }
+
+    // Stop any current speech before starting new
+    await stopSpeaking();
+
+    if (hapticsEnabled && Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    setIsSpeaking(true);
+    if (targetId) setSpeakingTargetId(targetId);
+
+    // Strip ALL emojis and special symbols so they aren't read aloud
+    const cleanText = text
+      .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA9F}\u{1FAA0}-\u{1FAFF}\u{200D}\u{20E3}\u{FE0F}]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleanText) {
+      setIsSpeaking(false);
+      setSpeakingTargetId(null);
+      return;
+    }
+
+    // Primary path: Microsoft Edge TTS (high-quality neural Indian-language
+    // voices) generated server-side, played here via expo-av. Falls back to the
+    // on-device engine if the network/server fails so SOS audio never goes silent.
+    try {
+      const { audioContent } = await dataProvider.generateTTS(cleanText, language);
+
+      if (!audioContent) {
+        speakOnDevice(cleanText);
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:audio/mp3;base64,${audioContent}` },
+        { shouldPlay: true }
+      );
+      audioRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) {
+          if ((status as any).error) {
+            setIsSpeaking(false);
+            setSpeakingTargetId(null);
+          }
+          return;
+        }
+        if (status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+          if (audioRef.current === sound) audioRef.current = null;
+          setIsSpeaking(false);
+          setSpeakingTargetId(null);
+        }
+      });
+    } catch (ttsErr) {
+      console.warn("[Edge TTS] Falling back to on-device speech:", ttsErr);
+      speakOnDevice(cleanText);
     }
   };
 

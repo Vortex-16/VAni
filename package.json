@@ -9,7 +9,9 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "services": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/manage-services.ps1",
     "services:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/manage-services.ps1 -Action stop",
-    "services:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/manage-services.ps1 -Action build"
+    "services:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/manage-services.ps1 -Action build",
+    "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
+    "deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy.ps1"
   },
   "private": true,
   "devDependencies": {

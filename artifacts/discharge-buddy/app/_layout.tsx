@@ -60,6 +60,7 @@ function RootLayoutNav() {
       <Stack.Screen name="notifications" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="profile" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="settings" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="caregiver-chat" options={{ headerShown: false }} />
     </Stack>
   );
 }

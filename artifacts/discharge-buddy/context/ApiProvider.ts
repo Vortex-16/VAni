@@ -229,10 +229,10 @@ export class ApiProvider implements IDataProvider {
     });
   }
 
-  async generateTTS(text: string): Promise<{ audioContent: string }> {
+  async generateTTS(text: string, language?: string): Promise<{ audioContent: string }> {
     return await customFetch<{ audioContent: string }>("/api/ai/tts", {
       method: "POST",
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ text, language })
     });
   }
 

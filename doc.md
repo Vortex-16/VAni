@@ -497,7 +497,9 @@ Do not build features that can only be accessed via deep, nested UI menus. Ensur
 
 ### Required environment (api-server `.env`)
 - `GROQ_API_KEY` — **required** for STT, intent, and chat (Groq Llama + Whisper).
-- `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` — optional, only for the cloud TTS route (`/api/ai/tts`); on-device TTS via `expo-speech` needs no key.
+- ~~`ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`~~ — **no longer used.** TTS now runs on
+  Microsoft Edge TTS via `@andresaya/edge-tts`, which needs **no API key** (see SECTION 13).
+  Optional per-language voice overrides: `EDGE_TTS_VOICE_<LANG>` (e.g. `EDGE_TTS_VOICE_HI`).
 - `EXPO_PUBLIC_API_URL` — frontend → backend base URL.
 
 ### Build / verify commands
@@ -784,3 +786,194 @@ nullable DB-less field on the client `Patient` type. Typecheck clean.
   creating duplicates. Added an `isConfirming` in-flight guard: the button is
   disabled and shows an "ADDING…" spinner during the add, re-enabling only on
   failure.
+
+
+## SECTION 13 — Edge TTS Switch, Multilingual STT Fixes & Messaging Smoke-Test
+
+Iteration on branch **`ttsServiceDone`** (based on `18987d1`). Frontend + api-server;
+no DB changes. Typecheck clean on both packages; api-server bundles; Edge TTS
+verified against the live Microsoft voice catalog.
+
+### 1. Voice TTS engine switched: ElevenLabs → Microsoft Edge TTS
+**Why:** Move off the paid/keyed ElevenLabs service to free, high-quality neural
+voices with first-class Indian-language coverage. The user referenced the
+*innoai "Edge-TTS-Text-to-Speech"* Hugging Face Space — but that Space launches
+with `show_api=False`, so it has **no callable API**. It is only a Gradio wrapper
+around Microsoft Edge's online TTS, which is available directly as the no-API-key
+Node package **`@andresaya/edge-tts`** (v1.8.0). We integrate that package
+server-side — same engine, no Hugging Face dependency, no rate-limited Space.
+
+- **Server** (`api-server/src/routes/ai.ts`): replaced the entire ElevenLabs
+  `/api/ai/tts` handler. New endpoint accepts
+  `{ text, language?, voice?, rate?, pitch? }` and synthesizes via
+  `new EdgeTTS().synthesize(text, voice, opts)` → `toBase64()`, returning the
+  existing `{ audioContent, format: "mp3", voiceId }` contract (1 retry kept).
+- **Per-language Indian voice map** (`EDGE_VOICE_BY_LANG`), resolved by
+  `resolveEdgeVoice(language)` (splits a BCP-47 locale to its primary subtag;
+  honours `EDGE_TTS_VOICE_<LANG>` env overrides):
+
+  | en→`en-IN-Neerja` · hi→`hi-IN-Swara` · bn→`bn-IN-Tanishaa` · ta→`ta-IN-Pallavi` |
+  | te→`te-IN-Shruti` · mr→`mr-IN-Aarohi` · gu→`gu-IN-Dhwani` · kn→`kn-IN-Sapna` |
+  | ml→`ml-IN-Sobhana` · ur→`ur-IN-Gul` · es→`es-ES-Elvira` |
+
+  Microsoft has **no native neural voice** for Punjabi / Odia / Assamese yet, so
+  those map to the closest available Indic voice (pa→Hindi, or/as→Bengali) —
+  far better pronunciation than the English default. Verified all mapped voices
+  exist in the live catalog; `pa-IN`/`or-IN`/`as-IN` confirmed absent.
+- **Client — full switch to server audio** (was on-device `expo-speech`):
+  - `generateTTS(text, language?)` now forwards the language
+    (`types.ts`, `ApiProvider.ts`, `MockProvider.ts`).
+  - `AppContext.speakNeural` and `AssistantProvider.speak` fetch the Edge TTS
+    base64 mp3 and play it via `expo-av` (`Audio.Sound`), reusing the existing
+    `audioRef` / `stopSpeaking` plumbing. **Both fall back to `expo-speech`** if
+    the network/server fails so SOS audio never goes silent.
+  - Assistant stop/cancel paths tear down the new `expo-av` sound
+    (`stopAssistantSpeech` helper).
+  - CPR coach (`app/cpr.tsx`) intentionally **kept on instant on-device speech**
+    (latency-critical metronome cues).
+
+### 2. STT language fixes (multilingual accuracy)
+**Bug A — "asked in Hindi, got English":** `useVoiceSession` forced the Whisper
+hint to the app's **UI language**, which defaults to `en`. A user speaking Hindi
+with the app on English made Whisper romanize/translate the audio to English; the
+assistant's downstream script-detection (`isHindiText`/`isBengaliText`) then
+never saw Devanagari and stayed in English end-to-end.
+
+**Bug B — regression "Bengali answered in Hindi":** pure auto-detect mis-detects
+short Bengali clips as Hindi.
+
+**Fix — hybrid hint policy** (`hooks/assistant/useVoiceSession.ts`):
+- If the user has **explicitly selected a non-English language**, force that
+  language as the Whisper hint (a Bengali-UI user speaks Bengali → accurate
+  script, no hi/bn confusion).
+- If the app is on the **default English**, **auto-detect** (so a Hindi/Bengali
+  speaker who never changed the setting still gets a correct transcript).
+- `sttLanguage = language && language !== "en" ? language : undefined`.
+
+The server `/api/ai/stt` already treats a missing hint as auto-detect, so no
+server change was needed. Downstream reply-language is still derived from the
+transcript script in `AssistantProvider` (Hindi/Bengali); other Indic languages
+fall back to the UI language.
+
+### 3. Web crash fix — `expo-file-system.getInfoAsync` not available on web
+`useVoiceSession` called `FileSystem.getInfoAsync` / `readAsStringAsync`, which
+throw on web ("not available on web", fine on native). Web now reads the
+`MediaRecorder` blob URL directly: `fetch(localUri)` → `blob` → `FileReader`
+`readAsDataURL` → base64 (data-URI prefix stripped); native keeps the
+`expo-file-system` path. Size guard (`< 1000` bytes) applied per platform.
+
+### 4. Messaging (family ↔ patient ↔ caregiver) — brought into this branch + fixed
+The messaging feature originally lived only in the **"Messaging UI" commit
+`28efea8` on `main`** and was absent from `ttsServiceDone` (based on `18987d1`).
+Rather than a full `git merge` (which would also drag in unrelated `login.tsx` /
+`auth.ts` rewrites and conflict with the TTS work), the **chat** pieces were
+materialised surgically into this branch and **rewritten to fix the real-time
+bugs** found in the static review. The scheduled-messages / voice-reminders
+sub-feature (`schedules.ts`, `voiceScheduleService.ts`, the
+`scheduled_messages` / `voice_reminders` tables) was **deliberately deferred** —
+out of scope for the patient/caregiver/family chat.
+
+**Architecture:** real-time delivery via **SSE** (`GET /api/chat/stream`) with an
+**Expo push fallback** (`POST /api/chat/send` pushes only when the receiver has no
+live SSE connection). History via `GET /api/chat/history/:patientContextId`
+(optional `?withUserId=` for a 1:1 thread). Push reuses the existing
+`notificationService.sendPushNotification` (no duplicate `pushService.ts`).
+
+**Bugs fixed vs the original `main` code:**
+1. **Patient ↔ family now works.** Receiver resolution builds the full participant
+   set — patient user + every active `care_links` manager (caregiver **and**
+   family) + legacy `patients.caregiverId` / `linkedPatientId` — and **honours a
+   validated `receiverId`** from the client, so a patient can reply to the right
+   person instead of always hitting a caregiver.
+2. **Privacy leak removed.** The *"first caregiver in the system"* fallback is
+   gone; senders/receivers must be participants of the patient context (403/400
+   otherwise).
+3. **Multi-device SSE.** `clients` is now `Map<userId, Set<Response>>`; every live
+   connection receives the message (was one-per-user, second device stole it).
+4. **SSE keepalive.** A 25 s comment heartbeat (+ `X-Accel-Buffering: no`) keeps
+   idle connections alive so the server's online/offline view stays accurate and
+   the push fallback fires correctly.
+5. **`receiverId` is now honoured** (validated against the participant set).
+6. **`patientContextId` correct for all roles.** Client uses
+   `params.patientContextId || user.linkedPatientId`; the screen accepts an
+   explicit patient/peer so caregivers managing multiple patients target the
+   right conversation.
+
+**Still true / accepted limitations:**
+- Push needs a **dev/standalone build** (`expo-server-sdk` tokens; Expo Go SDK 53+
+  cannot obtain them). SSE itself works in Expo Go.
+- SSE `clients` map is per-process (fine for single instance; needs Redis
+  pub/sub to scale horizontally).
+- No read/delivery receipts or unread badge (`messages` has no status column).
+
+**DB:** added the `messages` table to `lib/db/src/schema/index.ts` (+ indexes).
+Apply it with `node artifacts/api-server/apply-messages-schema.mjs` (idempotent,
+mirrors the blood-network pattern — `drizzle-kit push` needs a TTY).
+
+**Entry points wired:** caregiver dashboard / patient-detail / home "Message"
+buttons, a patient "Care Team" quick-action, and a family "Message" button on the
+selected-member bar — all route to `/caregiver-chat`.
+
+**Live smoke test:** not runnable in this sandbox (the API requires `DATABASE_URL`
+and the `.env` is dotenvx-encrypted, so the server cannot boot here). A runnable
+end-to-end script is provided — `artifacts/api-server/smoke-test-messaging.mjs` —
+which logs in two linked accounts, opens the receiver's SSE stream, sends a
+message, and asserts real-time delivery + history persistence. Run it where the
+API + Postgres are up (see the header comment).
+
+### 5. Emergency / ambulance — current state (audit, asked separately)
+There is **no ambulance dispatch or booking integration** (no 108/Twilio/maps
+ETA). What exists:
+- **Smart SOS** (`context/SmartSOSProvider.tsx`): after a shake / 5× tap and a
+  countdown, dials `tel:${callNumber||"112"}` and SMSes the emergency contact.
+- **CPR coach** (`app/cpr.tsx`): a one-tap `tel:112` button.
+- **Voice intent**: "call ambulance" / "i'm dying" etc. are emergency phrases
+  (`AssistantProvider`, `ai.ts`) → `TRIGGER_EMERGENCY` → `triggerEmergency()`.
+- **Backend** (`services/emergencyService.ts`): `triggerEmergency` only
+  **inserts an `emergency_alerts` row** — a stub with the literal comment *"In a
+  real production system, this is where we would trigger Twilio/FCM SMS or push
+  notifications to caregivers."* It does **not** notify anyone or dispatch.
+
+**Bugs/gaps found:**
+- `app/emergency.tsx` — the Emergency Contacts call buttons (incl. "Emergency
+  Services 112/911", Hospital Helpline) are **no-ops**: `onPress={() => {}}`.
+  Tapping them does nothing.
+- Hospital Helpline number is a placeholder (`1800-XXX-XXXX`).
+- The voice/SOS emergency alert reaches the DB but **never notifies the
+  caregiver/family** (the notification step is unimplemented), even though
+  `notificationService.sendPushNotification` already exists and could be wired in.
+
+**Suggested fixes (not yet applied — flagged for the user):** make the
+`emergency.tsx` contact buttons dial via `Linking.openURL('tel:…')`, and have
+`emergencyService.triggerEmergency` push to the patient's linked managers using
+the existing notification service.
+
+### Files changed in this iteration
+- `lib/db/src/schema/index.ts` — `messages` table + `insertMessageSchema`.
+- `api-server/src/routes/chat.ts` — **new**, fixed SSE/push chat route.
+- `api-server/src/routes/index.ts` — register `/chat`.
+- `api-server/apply-messages-schema.mjs`, `smoke-test-messaging.mjs` — **new**.
+- `api-server/src/routes/ai.ts` — Edge TTS `/tts` (replaces ElevenLabs); voice map.
+- `api-server/package.json` — `@andresaya/edge-tts`.
+- `discharge-buddy/app/caregiver-chat.tsx` — **new**, fixed SSE chat screen.
+- `discharge-buddy/app/_layout.tsx` — register `caregiver-chat` route.
+- `discharge-buddy/app/(tabs)/index.tsx`, `caregiver/dashboard.tsx`,
+  `caregiver/patient-detail.tsx` — "Message" entry points → `/caregiver-chat`.
+- `discharge-buddy/package.json` — `react-native-sse`.
+- `discharge-buddy/context/{types.ts,ApiProvider.ts,MockProvider.ts}` —
+  `generateTTS(text, language?)`.
+- `discharge-buddy/context/AppContext.tsx` — `speakNeural` plays Edge TTS via
+  `expo-av`, on-device fallback.
+- `discharge-buddy/components/assistant/AssistantProvider.tsx` — `speak` plays
+  Edge TTS via `expo-av`; `stopAssistantSpeech` teardown.
+- `discharge-buddy/hooks/assistant/useVoiceSession.ts` — hybrid STT language
+  hint; cross-platform base64 read (web blob vs native file).
+
+### Verification (this iteration)
+- ✅ `api-server` typecheck + esbuild bundle clean (chat route present in bundle).
+- ✅ `lib/db` composite project rebuilt (`messages` in emitted `.d.ts`).
+- ✅ `discharge-buddy` typecheck clean (0 errors).
+- ✅ Edge TTS runtime: Hindi (`hi-IN-Swara`) produced valid MP3; all 13 mapped
+  voices confirmed present in the live catalog; pa/or/as confirmed absent → remapped.
+- ⚠️ Messaging live run: not possible in-sandbox (no DB / encrypted env). Run
+  `smoke-test-messaging.mjs` against a live API + Postgres to confirm end-to-end.

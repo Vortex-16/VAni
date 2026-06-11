@@ -9,6 +9,7 @@ import {
   StatusBar,
   Image,
   Modal,
+  ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -377,27 +378,33 @@ export default function LoginScreen() {
       </Animated.View>
 
       {/* ── Draggable Bottom Sheet ── */}
-      <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.sheet, sheetAnimStyle]}>
-          {/* Handle bar — tap also toggles */}
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {
-              if (isExpanded) {
-                translateY.value = withSpring(SNAP_COLLAPSED, { damping: 20, stiffness: 180 });
-                setIsExpanded(false);
-              } else {
-                translateY.value = withSpring(SNAP_EXPANDED, { damping: 20, stiffness: 180 });
-                setIsExpanded(true);
-              }
-            }}
-            style={styles.handleWrap}
-          >
-            <Animated.View style={[styles.handleBar, handleAnimStyle]} />
-          </TouchableOpacity>
+          {/* Handle bar — drag to resize, tap to toggle. The pan gesture lives
+              on the handle only so the content below can scroll freely. */}
+          <GestureDetector gesture={panGesture}>
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => {
+                if (isExpanded) {
+                  translateY.value = withSpring(SNAP_COLLAPSED, { damping: 20, stiffness: 180 });
+                  setIsExpanded(false);
+                } else {
+                  translateY.value = withSpring(SNAP_EXPANDED, { damping: 20, stiffness: 180 });
+                  setIsExpanded(true);
+                }
+              }}
+              style={styles.handleWrap}
+            >
+              <Animated.View style={[styles.handleBar, handleAnimStyle]} />
+            </TouchableOpacity>
+          </GestureDetector>
 
-          <View
-            style={[styles.sheetContent, { paddingBottom: Math.max(insets.bottom + 48, 64) }]}
+          <ScrollView
+            style={styles.sheetScroll}
+            contentContainerStyle={[styles.sheetContent, { paddingBottom: Math.max(insets.bottom + 48, 64) }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets
           >
             <View style={styles.textContent}>
               <Text style={styles.title}>{isSignUp ? 'Create Account' : 'Sign in'}</Text>
@@ -533,9 +540,8 @@ export default function LoginScreen() {
                 </View>
               </View>
             )}
-          </View>
+          </ScrollView>
         </Animated.View>
-      </GestureDetector>
 
       {/* ── Demo Role Modal ── */}
       <Modal visible={showDemoModal} transparent animationType="fade" onRequestClose={() => setShowDemoModal(false)}>
@@ -637,9 +643,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#CBD5E1',
   },
 
+  sheetScroll: {
+    flex: 1,
+    width: '100%',
+  },
   sheetContent: {
     paddingHorizontal: 32,
     alignItems: 'center',
+    flexGrow: 1,
   },
 
   // Text

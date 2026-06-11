@@ -259,7 +259,7 @@ export default function PatientDetail() {
               </View>
               <Text style={styles.actionBtnText}>Call Contact</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/caregiver/message' as any)}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => router.push(`/caregiver-chat?patientContextId=${id}&peerName=${encodeURIComponent(patient?.name ?? 'Patient')}` as any)}>
               <View style={[styles.actionBtnIcon, { backgroundColor: '#fffbeb' }]}>
                 <Feather name="message-circle" size={20} color="#f59e0b" />
               </View>
