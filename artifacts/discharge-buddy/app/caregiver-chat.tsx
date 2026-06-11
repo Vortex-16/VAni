@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Keyboard } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -29,24 +30,7 @@ export default function CaregiverChatPage() {
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-
-  // Track the keyboard so we can drop the safe-area bottom padding while it's
-  // up — adding both at once is what makes the input bar jump/jitter.
-  useEffect(() => {
-    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvt, () => {
-      setKeyboardVisible(true);
-      requestAnimationFrame(() => scrollViewRef.current?.scrollToEnd({ animated: true }));
-    });
-    const hide = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   // The conversation is always scoped to a patient. Resolve it in priority order:
   //   1. explicit ?patientContextId= (e.g. from a patient card)
@@ -230,10 +214,8 @@ export default function CaregiverChatPage() {
   const peerName = params.peerName || 'Care Team';
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.container}>
+      {/* Header stays fixed outside the keyboard-avoiding area. */}
       <LinearGradient colors={['#6C47FF', '#8B6CFF']} style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#fff" />
@@ -242,54 +224,60 @@ export default function CaregiverChatPage() {
         <View style={{ width: 26 }} />
       </LinearGradient>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#6C47FF" />
-        </View>
-      ) : (
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messages}
-          contentContainerStyle={styles.messagesContent}
-          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: false })}
-        >
-          {messages.length === 0 ? (
-            <Text style={styles.empty}>No messages yet. Say hello 👋</Text>
-          ) : (
-            messages.map((m) => {
-              const mine = m.senderId === user?.id;
-              return (
-                <View key={m.id} style={[styles.bubbleRow, mine ? styles.rowRight : styles.rowLeft]}>
-                  <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-                    <Text style={[styles.bubbleText, mine && { color: '#fff' }]}>{m.text}</Text>
+      {/* Only the messages + input rise with the keyboard. The keyboard-controller
+          KeyboardAvoidingView works reliably on Android too (RN's does not). */}
+      <KeyboardAvoidingView behavior="padding" style={styles.kav} keyboardVerticalOffset={0}>
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#6C47FF" />
+          </View>
+        ) : (
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messages}
+            contentContainerStyle={styles.messagesContent}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: false })}
+          >
+            {messages.length === 0 ? (
+              <Text style={styles.empty}>No messages yet. Say hello 👋</Text>
+            ) : (
+              messages.map((m) => {
+                const mine = m.senderId === user?.id;
+                return (
+                  <View key={m.id} style={[styles.bubbleRow, mine ? styles.rowRight : styles.rowLeft]}>
+                    <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
+                      <Text style={[styles.bubbleText, mine && { color: '#fff' }]}>{m.text}</Text>
+                    </View>
                   </View>
-                </View>
-              );
-            })
-          )}
-        </ScrollView>
-      )}
+                );
+              })
+            )}
+          </ScrollView>
+        )}
 
-      <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 8 : insets.bottom + 8 }]}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Type a message…"
-          placeholderTextColor="#9CA3AF"
-          multiline
-          onSubmitEditing={sendMessage}
-        />
-        <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={!inputText.trim()}>
-          <Feather name="send" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+        <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Type a message…"
+            placeholderTextColor="#9CA3AF"
+            multiline
+            onSubmitEditing={sendMessage}
+          />
+          <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={!inputText.trim()}>
+            <Feather name="send" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F3FF' },
+  kav: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 14 },
   backBtn: { padding: 2 },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },

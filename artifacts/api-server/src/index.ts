@@ -1,11 +1,16 @@
 import "./env";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { ensureSchema } from "./ensureSchema";
 
 import { NotificationService } from "./services/notificationService";
 
 // Start background services
 NotificationService.init();
+
+// Ensure additive schema (chat messages table) exists. Non-blocking: a failure
+// is logged but never prevents the server from listening.
+ensureSchema();
 
 const rawPort = process.env["PORT"];
 
