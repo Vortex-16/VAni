@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React from "react";
-import { Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -125,10 +125,13 @@ export default function EmergencyScreen() {
         <View style={[styles.contactCard, { backgroundColor: CARD_BG, borderColor: BORDER }]}>
           <Text style={[styles.contactTitle, { color: FOREGROUND }]}>Emergency Contacts</Text>
           {[
-            { label: "Emergency Contact", number: patient?.emergencyContact ?? "Not set", icon: "user" as const },
-            { label: "Emergency Services", number: "112 / 911", icon: "phone-call" as const },
-            { label: "Hospital Helpline", number: "1800-XXX-XXXX", icon: "home" as const },
-          ].map((c, i) => (
+            { label: "Emergency Contact", number: patient?.emergencyContact ?? "Not set", dial: patient?.emergencyContact, icon: "user" as const },
+            { label: "Emergency Services", number: "112", dial: "112", icon: "phone-call" as const },
+            { label: "Ambulance", number: "108", dial: "108", icon: "home" as const },
+          ].map((c, i) => {
+            const dialable = (c.dial ?? "").replace(/[^+\d]/g, "");
+            const canCall = dialable.length >= 3;
+            return (
             <View key={i} style={[styles.contactRow, { borderBottomColor: BORDER }]}>
               <View style={[styles.contactIcon, { backgroundColor: `${PURPLE}15` }]}>
                 <Feather name={c.icon} size={16} color={PURPLE} />
@@ -137,11 +140,15 @@ export default function EmergencyScreen() {
                 <Text style={[styles.contactLabel, { color: MUTED }]}>{c.label}</Text>
                 <Text style={[styles.contactNumber, { color: FOREGROUND }]}>{c.number}</Text>
               </View>
-              <AnimPressable style={[styles.callBtn, { backgroundColor: `${SUCCESS}15` }]} onPress={() => {}}>
-                <Feather name="phone" size={16} color={SUCCESS} />
+              <AnimPressable
+                style={[styles.callBtn, { backgroundColor: canCall ? `${SUCCESS}15` : `${MUTED}15` }]}
+                onPress={() => { if (canCall) Linking.openURL(`tel:${dialable}`).catch(() => {}); }}
+              >
+                <Feather name="phone" size={16} color={canCall ? SUCCESS : MUTED} />
               </AnimPressable>
             </View>
-          ))}
+            );
+          })}
         </View>
 
         <Text style={[styles.sectionTitle, { color: FOREGROUND }]}>Danger Signs — Seek Help Immediately</Text>

@@ -415,8 +415,8 @@ export class MockProvider implements IDataProvider {
     return { planId: "mock-plan-id" };
   }
 
-  async generateTTS(text: string): Promise<{ audioContent: string }> {
-    console.log("Mock TTS generating for:", text);
+  async generateTTS(text: string, language?: string): Promise<{ audioContent: string }> {
+    console.log("Mock TTS generating for:", text, "lang:", language);
     return { audioContent: "" }; // Return empty in mock
   }
 

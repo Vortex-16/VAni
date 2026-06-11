@@ -9,6 +9,7 @@ import {
   StatusBar,
   Image,
   Modal,
+  ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -22,7 +23,7 @@ import Animated, {
   runOnJS,
   Extrapolation,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { Animated as RNAnimated, Easing as RNEasing } from "react-native";
 import { router } from "expo-router";
 import * as WebBrowser from 'expo-web-browser';
@@ -33,7 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
 import { TranslateText as Text } from '@/components/TranslateText';
-import { useApp } from "@/context/AppContext";import { MockProvider } from '@/context/MockProvider';import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
+import { useApp } from "@/context/AppContext"; import { MockProvider } from '@/context/MockProvider'; import { LiquidCapsuleProgress } from "@/components/LiquidCapsuleProgress";
 import { getApiUrl } from '@/utils/apiUrl';
 import { GlareHover } from '@/components/GlareHover';
 import { RoleSelectModal, AppRole } from '@/components/RoleSelectModal';
@@ -44,10 +45,10 @@ const { width, height } = Dimensions.get('window');
 
 // Snap positions as fraction of screen height
 const COLLAPSED_HEIGHT = height * 0.48;  // 48% - default
-const EXPANDED_HEIGHT  = height * 0.65;  // 65% - dragged up
+const EXPANDED_HEIGHT = height * 0.65;  // 65% - dragged up
 
 // translateY values: 0 = at EXPANDED position, positive = slide down toward COLLAPSED
-const SNAP_EXPANDED  = 0;
+const SNAP_EXPANDED = 0;
 const SNAP_COLLAPSED = EXPANDED_HEIGHT - COLLAPSED_HEIGHT;
 
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -71,166 +72,23 @@ const getGoogleAuthConfig = () => {
 };
 
 // ── Colors ────────────────────────────────────────────────────────────────────
-const BG_COLOR      = '#E9DEFE';
+const BG_COLOR = '#E9DEFE';
 const PRIMARY_COLOR = '#6C47FF';
-const TEXT_DARK     = "#1E293B";
-const MUTED         = "#64748B";
-const WHITE         = "#FFFFFF";
+const TEXT_DARK = "#1E293B";
+const MUTED = "#64748B";
+const WHITE = "#FFFFFF";
 
 // ── Google G Icon ─────────────────────────────────────────────────────────────
 const GoogleIcon = ({ size = 22 }) => (
   <Svg width={size} height={size} viewBox="0 0 48 48">
-    <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-    <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-    <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-    <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-    <Path fill="none" d="M0 0h48v48H0z"/>
+    <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+    <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+    <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+    <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    <Path fill="none" d="M0 0h48v48H0z" />
   </Svg>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG_COLOR },
-
-  // Background + mascot
-  bgLayer: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  mascotWrap: {
-    position: 'absolute',
-    bottom: COLLAPSED_HEIGHT - 40,  // peeks above the collapsed sheet
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.15,
-    shadowRadius: 25,
-    elevation: 30,
-  },
-  robotImage: {
-    width: width * 1.3,
-    height: height * 0.55,
-    resizeMode: 'contain',
-  },
-
-  // Blur overlay
-  blurOverlay: { zIndex: 5 },
-
-  // ── Draggable sheet ──
-  sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: EXPANDED_HEIGHT,      // always full expanded height; translateY moves it
-    backgroundColor: WHITE,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 30,
-    zIndex: 10,
-  },
-  handleWrap: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  handleBar: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#CBD5E1',
-  },
-
-  sheetContent: {
-    paddingHorizontal: 32,
-    alignItems: 'center',
-  },
-
-  // Text
-  textContent: { alignItems: 'center', marginBottom: 28, width: '100%' },
-  title: {
-    fontSize: 28, color: TEXT_DARK, fontFamily: 'Inter_800ExtraBold',
-    textAlign: 'center', marginBottom: 8, letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14, color: MUTED, fontFamily: 'Inter_500Medium', textAlign: 'center',
-  },
-
-  // Action buttons
-  actionContainer: { width: '100%', alignItems: 'center' },
-  googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#F8FAFC', paddingVertical: 18, borderRadius: 16,
-    borderWidth: 1.5, borderColor: '#E2E8F0', width: '100%', gap: 12,
-  },
-  googleBtnText: { color: TEXT_DARK, fontSize: 16, fontFamily: 'Inter_600SemiBold', flexShrink: 1 },
-
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
-  toggleText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
-  toggleLink: { color: PRIMARY_COLOR, fontSize: 14, fontFamily: 'Inter_700Bold' },
-
-  // Email/password input
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 14,
-    backgroundColor: '#F8FAFC', paddingHorizontal: 14, marginBottom: 10, height: 48, width: '100%',
-  },
-  inputIcon: { marginRight: 10 },
-  textInput: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: TEXT_DARK },
-  emailBtn: {
-    width: '100%', height: 50, borderRadius: 25, backgroundColor: PRIMARY_COLOR,
-    alignItems: 'center', justifyContent: 'center', marginTop: 4, marginBottom: 4,
-  },
-  emailBtnText: { color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 15, letterSpacing: 0.4 },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', width: '100%', marginVertical: 12, gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-  dividerText: { color: MUTED, fontFamily: 'Inter_500Medium', fontSize: 12 },
-  forgotRow: { alignSelf: 'flex-end', marginBottom: 6, marginTop: -2 },
-  forgotText: { color: PRIMARY_COLOR, fontFamily: 'Inter_600SemiBold', fontSize: 13 },
-
-  devOptions: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 22 },
-  devBtn: { padding: 4 },
-  devText: { color: MUTED, fontSize: 13, fontFamily: 'Inter_500Medium', textDecorationLine: 'underline' },
-
-  // Error
-  errorBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 20, width: '100%',
-    borderWidth: 1, borderColor: '#FECACA',
-  },
-  errorText: { flex: 1, color: '#EF4444', fontSize: 13, fontFamily: 'Inter_500Medium' },
-
-  // Loading
-  loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
-  loadingTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', color: PRIMARY_COLOR, marginBottom: 20 },
-
-  // Clouds
-  cloudContainer: { width: 100, height: 60, justifyContent: 'flex-end' },
-  cloudCircle: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 50 },
-  cloudCircleLeft:  { width: 40, height: 40, bottom: 0, left: 10 },
-  cloudCircleTop:   { width: 50, height: 50, bottom: 10, left: 25 },
-  cloudCircleRight: { width: 40, height: 40, bottom: 0, right: 15 },
-  cloudBase: { width: 80, height: 30, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, bottom: 0, left: 10, position: 'absolute' },
-
-  // Demo modal
-  modalOuter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.1)' },
-  modalCard:  {
-    backgroundColor: WHITE, borderRadius: 24, padding: 24, width: '100%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
-  },
-  modalTitle: { fontSize: 20, fontFamily: 'Inter_800ExtraBold', color: TEXT_DARK, marginBottom: 4 },
-  modalSub:   { fontSize: 13, color: MUTED, fontFamily: 'Inter_400Regular', marginBottom: 20 },
-  demoOpt:    { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  demoOptIcon:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  demoOptLabel: { fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT_DARK },
-  demoOptSub:   { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular' },
-  modalCancelBtn:  { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
-  modalCancelText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
-});
 
 // ── Floating Cloud ────────────────────────────────────────────────────────────
 function ParallaxCloud({ scale, top, left, duration }: { scale: number; top: number; left: number; duration: number }) {
@@ -240,11 +98,11 @@ function ParallaxCloud({ scale, top, left, duration }: { scale: number; top: num
     RNAnimated.loop(RNAnimated.parallel([
       RNAnimated.sequence([
         RNAnimated.timing(floatY, { toValue: -15, duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
-        RNAnimated.timing(floatY, { toValue: 0,   duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+        RNAnimated.timing(floatY, { toValue: 0, duration, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
       ]),
       RNAnimated.sequence([
-        RNAnimated.timing(floatX, { toValue: 20,  duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
-        RNAnimated.timing(floatX, { toValue: 0,   duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+        RNAnimated.timing(floatX, { toValue: 20, duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
+        RNAnimated.timing(floatX, { toValue: 0, duration: duration * 1.2, easing: RNEasing.inOut(RNEasing.sin), useNativeDriver: true }),
       ]),
     ])).start();
   }, []);
@@ -266,28 +124,29 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { login, switchProvider, setOnboarded } = useApp();
 
-  const [error,        setError]        = useState<string | null>(null);
-  const [isSignUp,     setIsSignUp]     = useState(false);
-  const [isLoggingIn,  setIsLoggingIn]  = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginProgress, setLoginProgress] = useState(0);
-  const [isSuccess,    setIsSuccess]    = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
-  const [pendingToken,  setPendingToken]  = useState<string | null>(null);
-  const [pendingEmail,  setPendingEmail]  = useState<string | undefined>(undefined);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | undefined>(undefined);
   const [suggestedRole, setSuggestedRole] = useState<AppRole>('patient');
-  const [isExpanded,   setIsExpanded]   = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   // ── Email/password form state ──
-  const [emailInput,      setEmailInput]      = useState('');
-  const [passwordInput,   setPasswordInput]   = useState('');
-  const [nameInput,       setNameInput]       = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
 
   // ── Gesture / Animation ──
   // translateY: SNAP_COLLAPSED = sheet at 42% height, SNAP_EXPANDED = sheet at 80%
   const translateY = useSharedValue(SNAP_COLLAPSED);
-  const startY     = useSharedValue(SNAP_COLLAPSED);
+  const startY = useSharedValue(SNAP_COLLAPSED);
 
   const snapTo = (target: number, expanded: boolean) => {
     'worklet';
@@ -335,11 +194,23 @@ export default function LoginScreen() {
     ? Google.useAuthRequest(getGoogleAuthConfig()) : [null, null, null];
 
   useEffect(() => {
-    if (googleResponse?.type === 'success') {
+    if (!googleResponse) return;
+    if (googleResponse.type === 'success') {
       const accessToken = googleResponse.authentication?.accessToken;
-      if (accessToken) executeGoogleOAuth(accessToken);
-    } else if (googleResponse?.type === 'error') {
+      if (accessToken) {
+        executeGoogleOAuth(accessToken);
+      } else {
+        // Success with no token — treat as a failure rather than hanging.
+        setError('Google sign-in did not return a token. Please try again.');
+        setIsLoggingIn(false); setLoginProgress(0);
+      }
+    } else if (googleResponse.type === 'error') {
       setError('Google sign-in was cancelled or failed.');
+      setIsLoggingIn(false); setLoginProgress(0);
+    } else if (googleResponse.type === 'cancel' || googleResponse.type === 'dismiss') {
+      // User closed the Google browser — clear the loading overlay so we don't
+      // leave a half-finished "Authenticating…" screen behind.
+      setIsLoggingIn(false); setLoginProgress(0);
     }
   }, [googleResponse]);
 
@@ -411,14 +282,14 @@ export default function LoginScreen() {
     setIsLoggingIn(true); setLoginProgress(0.5); setError(null);
     try {
       const apiUrl = getApiUrl();
-      const res = await fetch(`${apiUrl}/api/auth/dev-login`, { 
+      const res = await fetch(`${apiUrl}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'dev@example.com', password: 'devpassword123' })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Dev login failed');
-      
+
       await login(data.user, data.token);
       setLoginProgress(1);
       setTimeout(() => handleTransitionToSuccess(data.user?.role), 100);
@@ -430,11 +301,25 @@ export default function LoginScreen() {
   };
 
 
-  const handleGoogleAction = () => {
+  const handleGoogleAction = async () => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError(null);
     if (!canUseGoogleAuth) { setError('Google Sign-In needs native credentials on this device.'); return; }
-    if (promptGoogleAsync) promptGoogleAsync();
+    if (!promptGoogleAsync) return;
+    // Show the loading animation the moment the user taps, so the underlying
+    // screen never flashes while the Google browser is opening / returning.
+    setIsLoggingIn(true); setLoginProgress(0.3);
+    try {
+      const result = await promptGoogleAsync();
+      // If the user cancelled/dismissed the browser, the response effect clears
+      // the overlay; but guard here too in case the promise resolves first.
+      if (result?.type && result.type !== 'success') {
+        setIsLoggingIn(false); setLoginProgress(0);
+      }
+    } catch {
+      setIsLoggingIn(false); setLoginProgress(0);
+      setError('Could not open Google sign-in. Please try again.');
+    }
   };
 
   // ── Email / Password Auth ──────────────────────────────────────────────────
@@ -456,23 +341,23 @@ export default function LoginScreen() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
-        
+
         if (data.requiresVerification === false) {
-           // Auto-verified dev account -> just login directly
-           setLoginProgress(0.6);
-           const loginRes = await fetch(`${apiUrl}/api/auth/login`, {
-             method: 'POST', headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ email: emailInput.trim().toLowerCase(), password: passwordInput }),
-           });
-           const loginData = await loginRes.json();
-           if (loginRes.ok) {
-             await login(loginData.user, loginData.token);
-             setLoginProgress(1);
-             setTimeout(() => handleTransitionToSuccess(loginData.user?.role), 100);
-             return;
-           }
+          // Auto-verified dev account -> just login directly
+          setLoginProgress(0.6);
+          const loginRes = await fetch(`${apiUrl}/api/auth/login`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailInput.trim().toLowerCase(), password: passwordInput }),
+          });
+          const loginData = await loginRes.json();
+          if (loginRes.ok) {
+            await login(loginData.user, loginData.token);
+            setLoginProgress(1);
+            setTimeout(() => handleTransitionToSuccess(loginData.user?.role), 100);
+            return;
+          }
         }
-        
+
         setIsLoggingIn(false); setLoginProgress(0);
         // Redirect to verify-email screen
         router.push(`/verify-email?email=${encodeURIComponent(emailInput.trim().toLowerCase())}` as any);
@@ -547,8 +432,9 @@ export default function LoginScreen() {
 
       {/* ── Draggable Bottom Sheet ── */}
       <Animated.View style={[styles.sheet, sheetAnimStyle]}>
+        {/* Handle bar — drag to resize, tap to toggle. The pan gesture lives
+              on the handle only so the content below can scroll freely. */}
         <GestureDetector gesture={panGesture}>
-          {/* Handle bar — tap also toggles */}
           <TouchableOpacity
             activeOpacity={1}
             onPress={() => {
@@ -566,16 +452,35 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </GestureDetector>
 
-        <View
-          style={[styles.sheetContent, { paddingBottom: Math.max(insets.bottom + 48, 64) }]}
+        <ScrollView
+          style={styles.sheetScroll}
+          contentContainerStyle={[styles.sheetContent, { paddingBottom: Math.max(insets.bottom + 48, 64) }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
         >
-          <View style={styles.textContent}>
-            <Text style={styles.title}>{isSignUp ? 'Create Account' : 'Sign in'}</Text>
-            <Text style={styles.subtitle}>
-              {isSignUp
-                ? 'Create your account with email or Google.'
-                : 'Sign in with your email & password, or continue with Google.'}
-            </Text>
+          <View style={styles.headerContainer}>
+            {showEmailForm && (
+              <TouchableOpacity
+                onPress={() => { setShowEmailForm(false); setError(null); }}
+                style={styles.backBtnAbsolute}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                <Feather name="arrow-left" size={24} color={TEXT_DARK} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.textContent}>
+              <Text style={styles.title}>
+                {!showEmailForm ? 'Welcome' : isSignUp ? 'Create Account' : 'Sign in'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {!showEmailForm
+                  ? 'Get started by choosing how you want to continue.'
+                  : isSignUp
+                  ? 'Create your account with email.'
+                  : 'Sign in with your email & password.'}
+              </Text>
+            </View>
           </View>
 
           {!!error && (
@@ -591,124 +496,128 @@ export default function LoginScreen() {
               <LiquidCapsuleProgress progress={loginProgress} colorStart={PRIMARY_COLOR} colorEnd="#EDE9FE" size={180} />
             </Animated.View>
           ) : (
-            <ScrollView 
-              contentContainerStyle={styles.actionContainer} 
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              bounces={false}
-            >
+            <View style={styles.actionContainer}>
 
-              {/* ── Email / Name fields ── */}
-              {isSignUp && (
+              {!showEmailForm ? (
                 <>
+                  <GlareHover
+                    width="100%"
+                    glareColor="#ffffff"
+                    glareOpacity={0.5}
+                    glareAngle={45}
+                    glareSize={200}
+                    transitionDuration={500}
+                    borderRadius={16}
+                  >
+                    <TouchableOpacity onPress={handleGoogleAction} activeOpacity={0.85} style={styles.googleBtn}>
+                      <View style={styles.googleBtnIcon}>
+                        <GoogleIcon size={22} />
+                      </View>
+                      <Text style={styles.googleBtnText} numberOfLines={1}>Continue with Google</Text>
+                    </TouchableOpacity>
+                  </GlareHover>
+
+                  <TouchableOpacity
+                    onPress={() => { setShowEmailForm(true); setError(null); }}
+                    activeOpacity={0.85}
+                    style={styles.continueEmailBtn}
+                  >
+                    <View style={styles.googleBtnIcon}>
+                      <Feather name="mail" size={22} color={TEXT_DARK} />
+                    </View>
+                    <Text style={styles.continueEmailText}>Continue with Email</Text>
+                  </TouchableOpacity>
+
+                  {/* Dev links (Footer) */}
+                  <View style={styles.devOptions}>
+                    <TouchableOpacity onPress={() => setShowDemoModal(true)} style={styles.devBtn}>
+                      <Text style={styles.devText}>Demo / Guest View</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.devDot}>•</Text>
+                    <TouchableOpacity onPress={handleDevLogin} style={styles.devBtn}>
+                      <Text style={[styles.devText, { color: PRIMARY_COLOR, fontFamily: 'Inter_700Bold' }]}>Dev Login</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.devDot}>•</Text>
+                    <TouchableOpacity onPress={() => router.replace('/intro')} style={styles.devBtn}>
+                      <Text style={styles.devText}>Back</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  {/* ── Email / Name fields ── */}
+                  {isSignUp && (
+                    <View style={styles.inputWrap}>
+                      <Feather name="user" size={18} color={MUTED} style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Full Name"
+                        placeholderTextColor={MUTED}
+                        value={nameInput}
+                        onChangeText={setNameInput}
+                        autoCapitalize="words"
+                      />
+                    </View>
+                  )}
+
                   <View style={styles.inputWrap}>
-                    <Feather name="user" size={16} color={MUTED} style={styles.inputIcon} />
+                    <Feather name="mail" size={18} color={MUTED} style={styles.inputIcon} />
                     <TextInput
                       style={styles.textInput}
-                      placeholder="Full Name"
+                      placeholder="Email Address"
                       placeholderTextColor={MUTED}
-                      value={nameInput}
-                      onChangeText={setNameInput}
-                      autoCapitalize="words"
+                      value={emailInput}
+                      onChangeText={setEmailInput}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
                     />
+                  </View>
+
+                  <View style={styles.inputWrap}>
+                    <Feather name="lock" size={18} color={MUTED} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      placeholder="Password"
+                      placeholderTextColor={MUTED}
+                      value={passwordInput}
+                      onChangeText={setPasswordInput}
+                      secureTextEntry={!showPasswordInput}
+                    />
+                    <TouchableOpacity onPress={() => setShowPasswordInput(!showPasswordInput)} style={{ padding: 8 }}>
+                      <Feather name={showPasswordInput ? "eye-off" : "eye"} size={18} color={MUTED} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Forgot password — only on sign-in */}
+                  {!isSignUp && (
+                    <TouchableOpacity onPress={() => router.push('/forgot-password' as any)} style={styles.forgotRow}>
+                      <Text style={styles.forgotText}>Forgot password?</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Primary email/password button */}
+                  <TouchableOpacity
+                    onPress={handleEmailAuth}
+                    activeOpacity={0.85}
+                    style={styles.emailBtn}
+                  >
+                    <Text style={styles.emailBtnText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>
+                  </TouchableOpacity>
+
+                  {/* Sign up / Sign in toggle */}
+                  <View style={styles.toggleRow}>
+                    <Text style={styles.toggleText}>
+                      {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                    </Text>
+                    <TouchableOpacity onPress={() => { setIsSignUp(!isSignUp); setError(null); }} activeOpacity={0.7} style={{ padding: 4 }}>
+                      <Text style={styles.toggleLink}>{isSignUp ? 'Sign in' : 'Sign up'}</Text>
+                    </TouchableOpacity>
                   </View>
                 </>
               )}
-
-              <View style={styles.inputWrap}>
-                <Feather name="mail" size={16} color={MUTED} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Email Address"
-                  placeholderTextColor={MUTED}
-                  value={emailInput}
-                  onChangeText={setEmailInput}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-              </View>
-
-              <View style={styles.inputWrap}>
-                <Feather name="lock" size={16} color={MUTED} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.textInput, { flex: 1 }]}
-                  placeholder="Password"
-                  placeholderTextColor={MUTED}
-                  value={passwordInput}
-                  onChangeText={setPasswordInput}
-                  secureTextEntry={!showPasswordInput}
-                />
-                <TouchableOpacity onPress={() => setShowPasswordInput(!showPasswordInput)} style={{ padding: 4 }}>
-                  <Feather name={showPasswordInput ? "eye-off" : "eye"} size={16} color={MUTED} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Forgot password — only on sign-in */}
-              {!isSignUp && (
-                <TouchableOpacity onPress={() => router.push('/forgot-password' as any)} style={styles.forgotRow}>
-                  <Text style={styles.forgotText}>Forgot password?</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Primary email/password button */}
-              <TouchableOpacity
-                onPress={handleEmailAuth}
-                activeOpacity={0.85}
-                style={styles.emailBtn}
-              >
-                <Text style={styles.emailBtnText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>
-              </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Google */}
-              <GlareHover
-                width="100%"
-                glareColor="#ffffff"
-                glareOpacity={0.5}
-                glareAngle={45}
-                glareSize={200}
-                transitionDuration={500}
-                borderRadius={16}
-              >
-                <TouchableOpacity onPress={handleGoogleAction} activeOpacity={0.85} style={styles.googleBtn}>
-                  <GoogleIcon size={22} />
-                  <Text style={styles.googleBtnText} numberOfLines={1}>Continue with Google</Text>
-                </TouchableOpacity>
-              </GlareHover>
-
-              {/* Sign up / Sign in toggle */}
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleText}>
-                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-                </Text>
-                <TouchableOpacity onPress={() => { setIsSignUp(!isSignUp); setError(null); }} activeOpacity={0.7}>
-                  <Text style={styles.toggleLink}>{isSignUp ? 'Sign in' : 'Sign up'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Dev links */}
-              <View style={styles.devOptions}>
-                <TouchableOpacity onPress={() => setShowDemoModal(true)} style={styles.devBtn}>
-                  <Text style={styles.devText}>Demo / Guest View</Text>
-                </TouchableOpacity>
-                <Text style={{ color: '#CBD5E1' }}>•</Text>
-                <TouchableOpacity onPress={handleDevLogin} style={styles.devBtn}>
-                  <Text style={[styles.devText, { color: PRIMARY_COLOR, fontFamily: 'Inter_700Bold' }]}>Dev Login</Text>
-                </TouchableOpacity>
-                <Text style={{ color: '#CBD5E1' }}>•</Text>
-                <TouchableOpacity onPress={() => router.replace('/intro')} style={styles.devBtn}>
-                  <Text style={styles.devText}>Back to Intro</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+            </View>
           )}
-        </View>
+        </ScrollView>
       </Animated.View>
 
       {/* ── Modals ── */}
@@ -719,10 +628,10 @@ export default function LoginScreen() {
             <Text style={styles.modalSub}>Experience the app as different users without an account.</Text>
             <View style={{ gap: 10 }}>
               {([
-                { role: 'patient',   icon: 'user',     color: PRIMARY_COLOR, label: 'Patient',   sub: 'View patient dashboard' },
-                { role: 'family',    icon: 'heart',    color: '#db2777',     label: 'Family',    sub: 'Monitor a patient' },
-                { role: 'caregiver', icon: 'users',    color: '#0284c7',     label: 'Caregiver', sub: 'Manage patient plans' },
-                { role: 'doctor',    icon: 'activity', color: '#10b981',     label: 'Doctor',    sub: 'Create discharge plans' },
+                { role: 'patient', icon: 'user', color: PRIMARY_COLOR, label: 'Patient', sub: 'View patient dashboard' },
+                { role: 'family', icon: 'heart', color: '#db2777', label: 'Family', sub: 'Monitor a patient' },
+                { role: 'caregiver', icon: 'users', color: '#0284c7', label: 'Caregiver', sub: 'Manage patient plans' },
+                { role: 'doctor', icon: 'activity', color: '#10b981', label: 'Doctor', sub: 'Create discharge plans' },
               ] as const).map((opt) => (
                 <TouchableOpacity key={opt.role} style={styles.demoOpt} onPress={() => runDemo(opt.role)}>
                   <View style={[styles.demoOptIcon, { backgroundColor: opt.color + '18' }]}>
@@ -754,3 +663,163 @@ export default function LoginScreen() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG_COLOR },
+
+  // Background + mascot
+  bgLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  mascotWrap: {
+    position: 'absolute',
+    bottom: COLLAPSED_HEIGHT - 40,  // peeks above the collapsed sheet
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.15,
+    shadowRadius: 25,
+    elevation: 30,
+  },
+  robotImage: {
+    width: width * 1.3,
+    height: height * 0.55,
+    resizeMode: 'contain',
+  },
+
+  // Blur overlay
+  blurOverlay: { zIndex: 5 },
+
+  // ── Draggable sheet ──
+  sheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: EXPANDED_HEIGHT,      // always full expanded height; translateY moves it
+    backgroundColor: WHITE,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 30,
+    zIndex: 10,
+  },
+  handleWrap: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  handleBar: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1',
+  },
+
+  sheetScroll: {
+    flex: 1,
+    width: '100%',
+  },
+  sheetContent: {
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    flexGrow: 1,
+  },
+
+  // Text
+  headerContainer: {
+    width: '100%', alignItems: 'center', marginBottom: 32, position: 'relative', justifyContent: 'center'
+  },
+  backBtnAbsolute: {
+    position: 'absolute', left: 0, top: 0, padding: 4, zIndex: 10
+  },
+  textContent: { alignItems: 'center', width: '100%' },
+  title: {
+    fontSize: 26, color: TEXT_DARK, fontFamily: 'Inter_800ExtraBold',
+    textAlign: 'center', marginBottom: 8, letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 15, color: MUTED, fontFamily: 'Inter_500Medium', textAlign: 'center',
+  },
+
+  // Action buttons
+  actionContainer: { width: '100%', alignItems: 'center' },
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', paddingVertical: 16, borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#E2E8F0', width: '100%', alignSelf: 'stretch', height: 56,
+  },
+  googleBtnIcon: { position: 'absolute', left: 20 },
+  googleBtnText: { color: TEXT_DARK, fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+
+  continueEmailBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', paddingVertical: 16, borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#E2E8F0', width: '100%', alignSelf: 'stretch', marginTop: 12, height: 56,
+  },
+  continueEmailText: { color: TEXT_DARK, fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 24 },
+  toggleText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
+  toggleLink: { color: PRIMARY_COLOR, fontSize: 14, fontFamily: 'Inter_700Bold' },
+
+  // Email/password input
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch',
+    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 16,
+    backgroundColor: '#F8FAFC', paddingHorizontal: 16, marginBottom: 16, height: 56, width: '100%',
+  },
+  inputIcon: { marginRight: 12 },
+  textInput: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 15, color: TEXT_DARK },
+  emailBtn: {
+    width: '100%', alignSelf: 'stretch', height: 56, borderRadius: 16, backgroundColor: PRIMARY_COLOR,
+    alignItems: 'center', justifyContent: 'center', marginTop: 12,
+  },
+  emailBtnText: { color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: 0.3 },
+  forgotRow: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4, padding: 4 },
+  forgotText: { color: PRIMARY_COLOR, fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+
+  devOptions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 40, paddingBottom: 20 },
+  devBtn: { padding: 8 },
+  devText: { color: MUTED, fontSize: 12, fontFamily: 'Inter_500Medium' },
+  devDot: { color: '#E2E8F0', fontSize: 12 },
+
+  // Error
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 20, width: '100%',
+    borderWidth: 1, borderColor: '#FECACA',
+  },
+  errorText: { flex: 1, color: '#EF4444', fontSize: 13, fontFamily: 'Inter_500Medium' },
+
+  // Loading
+  loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
+  loadingTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', color: PRIMARY_COLOR, marginBottom: 20 },
+
+  // Clouds
+  cloudContainer: { width: 100, height: 60, justifyContent: 'flex-end' },
+  cloudCircle: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 50 },
+  cloudCircleLeft: { width: 40, height: 40, bottom: 0, left: 10 },
+  cloudCircleTop: { width: 50, height: 50, bottom: 10, left: 25 },
+  cloudCircleRight: { width: 40, height: 40, bottom: 0, right: 15 },
+  cloudBase: { width: 80, height: 30, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, bottom: 0, left: 10, position: 'absolute' },
+
+  // Demo modal
+  modalOuter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.1)' },
+  modalCard: {
+    backgroundColor: WHITE, borderRadius: 24, padding: 24, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
+  },
+  modalTitle: { fontSize: 20, fontFamily: 'Inter_800ExtraBold', color: TEXT_DARK, marginBottom: 4 },
+  modalSub: { fontSize: 13, color: MUTED, fontFamily: 'Inter_400Regular', marginBottom: 20 },
+  demoOpt: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  demoOptIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  demoOptLabel: { fontSize: 15, fontFamily: 'Inter_700Bold', color: TEXT_DARK },
+  demoOptSub: { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular' },
+  modalCancelBtn: { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
+  modalCancelText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
+});

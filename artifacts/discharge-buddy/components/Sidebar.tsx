@@ -15,16 +15,14 @@ const TEAL = "#0891b2";
 const TEAL_DARK = "#0c4a6e";
 const WHITE = "#ffffff";
 
+// Sidebar holds core navigation / account items only. Feature tools that already
+// have a home-screen quick action (CPR, Smart SOS, Blood Network, Drug Checker,
+// Meditation) were removed from here to declutter the menu.
 const MENU_ITEMS = [
   { icon: "user" as const, label: "View Profile", route: "/profile" },
   { icon: "calendar" as const, label: "My Schedule", route: "/(tabs)/schedule" },
   { icon: "bell" as const, label: "Notifications", route: "/notifications" },
   { icon: "activity" as const, label: "Activity Log", route: "/(tabs)/symptoms" },
-  { icon: "heart" as const, label: "CPR & Choking Guide", route: "/cpr" },
-  { icon: "zap" as const, label: "Smart Emergency Button", route: "/smart-sos" },
-  { icon: "droplet" as const, label: "Blood Network", route: "/blood-network" },
-  { icon: "shield" as const, label: "Drug Interaction Checker", route: "/drug-checker" },
-  { icon: "wind" as const, label: "Meditation Timer", route: "/meditation" },
   { icon: "settings" as const, label: "Settings", route: "/settings" },
   { icon: "help-circle" as const, label: "Help & Feedback", route: "/help" },
 ];

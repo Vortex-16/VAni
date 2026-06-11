@@ -19,7 +19,6 @@ import linksRouter from "./links";
 import voiceNotesRouter from "./voiceNotes";
 import bloodNetworkRouter from "./bloodNetwork";
 import chatRouter from "./chat";
-import schedulesRouter from "./schedules";
 
 const router: IRouter = Router();
 
@@ -46,6 +45,5 @@ router.use("/links", linksRouter);
 router.use("/voice-notes", voiceNotesRouter);
 router.use("/blood", bloodNetworkRouter);
 router.use("/chat", chatRouter);
-router.use("/schedules", schedulesRouter);
 
 export default router;

@@ -285,6 +285,15 @@ export default function HomeScreen() {
               Viewing: {activeMember.name}
             </Text>
           )}
+          {activePatientId && (
+            <TouchableOpacity
+              style={styles.familyBackBtn}
+              onPress={() => router.push(`/caregiver-chat?patientContextId=${activePatientId}&peerName=${encodeURIComponent(activeMember?.name ?? 'Patient')}` as any)}
+            >
+              <Feather name="message-circle" size={16} color="#6C47FF" />
+              <Text style={styles.familyBackText}>Message</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <PatientDashboard topInset={0} />
       </View>
@@ -490,25 +499,26 @@ function PatientDashboard({ topInset }: { topInset: number }) {
           <View style={[styles.quickRow, { marginTop: 18 }]}>
             <QuickAction icon="message-circle" label="AI Help" color="#06B6D4" delay={120}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/chat" as any); }} />
-            <QuickAction icon="users" label="Care Team" color="#8B5CF6" delay={160}
+            <QuickAction icon="users" label="Care Team" color="#0EA5E9" delay={140}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/caregiver-chat" as any); }} />
-            <QuickAction icon="book" label="Journal" color="#10B981" delay={200}
+            <QuickAction icon="book" label="Journal" color="#10B981" delay={160}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/journal" as any); }} />
           </View>
           <View style={[styles.quickRow, { marginTop: 18 }]}>
-            <QuickAction icon="droplet" label="Blood Network" color="#E11D48" delay={240}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/blood-network" as any); }} />
-            <QuickAction icon="shield" label="Drug Check" color="#6C47FF" delay={280}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/drug-checker" as any); }} />
-            <QuickAction icon="phone-call" label="Emergency" color="#EF4444" delay={320}
+            <QuickAction icon="alert-triangle" label="Call 112" color="#F59E0B" delay={200}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); Linking.openURL("tel:112"); }} />
+            <QuickAction icon="phone-call" label="Helpline" color="#EF4444" delay={240}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/emergency" as any); }} />
+            <QuickAction icon="zap" label="Smart SOS" color="#F59E0B" delay={280}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/smart-sos" as any); }} />
           </View>
           <View style={[styles.quickRow, { marginTop: 18 }]}>
-            <QuickAction icon="heart" label="CPR Guide" color="#EF4444" delay={360}
+            <QuickAction icon="droplet" label="Blood Network" color="#E11D48" delay={320}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/blood-network" as any); }} />
+            <QuickAction icon="shield" label="Drug Check" color="#6C47FF" delay={360}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/drug-checker" as any); }} />
+            <QuickAction icon="heart" label="CPR Guide" color="#EF4444" delay={400}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/cpr" as any); }} />
-            <QuickAction icon="zap" label="Smart SOS" color="#F59E0B" delay={400}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/smart-sos" as any); }} />
-            <View style={styles.quickItem} />
           </View>
         </View>
 
@@ -739,7 +749,7 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
                 </View>
               </TouchableOpacity>
             </View>
-            <AnimPressable onPress={() => {}} style={styles.iconBtn}>
+            <AnimPressable onPress={() => router.push("/settings")} style={styles.iconBtn}>
               <Feather name="settings" size={19} color="#fff" />
             </AnimPressable>
           </Animated.View>
@@ -774,7 +784,7 @@ function CaregiverDashboard({ topInset }: { topInset: number }) {
             <QuickAction icon="eye" label="Monitor" color={PURPLE} delay={0} onPress={() => router.push("/caregiver/monitor" as any)} />
             <QuickAction icon="plus-circle" label="Issue Plan" color={PURPLE} delay={30} onPress={() => router.push("/caregiver/create-plan" as any)} />
             <QuickAction icon="bell" label="Remind" color="#F59E0B" delay={60} onPress={() => router.push("/caregiver/remind" as any)} />
-            <QuickAction icon="message-circle" label="Message" color="#06B6D4" delay={120} onPress={() => router.push("/caregiver/message" as any)} />
+            <QuickAction icon="message-circle" label="Message" color="#06B6D4" delay={120} onPress={() => router.push("/caregiver-chat" as any)} />
             <QuickAction icon="alert-triangle" label="Alert" color="#EF4444" delay={180} onPress={() => router.push("/caregiver/alert" as any)} />
           </View>
         </View>

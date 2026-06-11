@@ -68,6 +68,20 @@ export const careLinks = pgTable("care_links", {
   uniqPatientManager: unique("care_links_patient_manager_unique").on(t.patientId, t.managerId),
 }));
 
+// Real-time 1:1 chat messages between a patient and a linked manager
+// (caregiver / family). `patientContextId` scopes every conversation to a
+// single patient so the same caregiver chatting with two patients stays separate.
+export const messages = pgTable("messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  senderId: uuid("sender_id").references(() => users.id).notNull(),
+  receiverId: uuid("receiver_id").references(() => users.id).notNull(),
+  patientContextId: uuid("patient_context_id").references(() => patients.id).notNull(),
+  text: text("text").notNull(),
+  audioBase64: text("audio_base64"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertMessageSchema = createInsertSchema(messages);
+
 export const medicines = pgTable("medicines", {
   id: uuid("id").primaryKey().defaultRandom(),
   patientId: uuid("patient_id").references(() => patients.id).notNull(),
@@ -240,16 +254,7 @@ export const bloodRequests = pgTable("blood_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Real-Time Chat Messages
-export const messages = pgTable("messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  senderId: uuid("sender_id").references(() => users.id).notNull(),
-  receiverId: uuid("receiver_id").references(() => users.id).notNull(),
-  patientContextId: uuid("patient_context_id").references(() => patients.id).notNull(),
-  text: text("text").notNull(),
-  audioBase64: text("audio_base64"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+
 
 // Voice-Driven Scheduled Messages & Voice Reminders
 
@@ -300,6 +305,6 @@ export const insertFeedbackSchema = createInsertSchema(feedback);
 export const insertDischargePlanSchema = createInsertSchema(dischargePlans);
 export const insertDonorProfileSchema = createInsertSchema(donorProfiles);
 export const insertBloodRequestSchema = createInsertSchema(bloodRequests);
-export const insertMessageSchema = createInsertSchema(messages);
+
 export const insertScheduledMessageSchema = createInsertSchema(scheduledMessages);
 export const insertVoiceReminderSchema = createInsertSchema(voiceReminders);

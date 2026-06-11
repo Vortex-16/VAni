@@ -263,7 +263,7 @@ export default function FamilyDashboard() {
           <Feather name="menu" size={24} color={TEXT_DARK} />
         </TouchableOpacity>
         <View style={styles.appBarRight}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Feather name="bell" size={22} color={TEXT_DARK} />
             <View style={styles.badge}>
               <Text style={styles.badgeText}>3</Text>

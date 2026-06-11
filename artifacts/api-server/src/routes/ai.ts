@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { Groq, toFile } from "groq-sdk";
+import { EdgeTTS } from "@andresaya/edge-tts";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
 import { db, patients, medicines, doseLogs, symptomLogs, eq, inArray, desc } from "@workspace/db";
 
@@ -47,58 +48,89 @@ Example of a BAD response (DO NOT USE):
 `;
 
 
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "wPnE1V9WfO5tQ3w6D0Xh";
+// ── Edge TTS (Microsoft Edge online neural voices) ──────────────────────────
+// Same engine as the innoai "Edge-TTS-Text-to-Speech" HF Space, accessed via
+// the @andresaya/edge-tts package. No API key required. Each app language maps
+// to a high-quality Indian-locale neural voice so SOS/medical replies are
+// spoken naturally in the patient's own language.
+//
+// Voice short-names come from Microsoft Edge's catalog (edge_tts list-voices).
+// Override the default per language with EDGE_TTS_VOICE_<LANG> env vars if
+// needed (e.g. EDGE_TTS_VOICE_HI=hi-IN-MadhurNeural for a male Hindi voice).
+const EDGE_VOICE_BY_LANG: Record<string, string> = {
+  en: "en-IN-NeerjaNeural",   // Indian English (female)
+  hi: "hi-IN-SwaraNeural",    // Hindi
+  bn: "bn-IN-TanishaaNeural", // Bengali
+  ta: "ta-IN-PallaviNeural",  // Tamil
+  te: "te-IN-ShrutiNeural",   // Telugu
+  mr: "mr-IN-AarohiNeural",   // Marathi
+  gu: "gu-IN-DhwaniNeural",   // Gujarati
+  kn: "kn-IN-SapnaNeural",    // Kannada
+  ml: "ml-IN-SobhanaNeural",  // Malayalam
+  ur: "ur-IN-GulNeural",      // Urdu (India)
+  es: "es-ES-ElviraNeural",   // Spanish (fallback locale)
+  // Microsoft Edge has no native neural voice for these locales yet, so we map
+  // each to its closest available Indic voice (better pronunciation than the
+  // English default). Override via EDGE_TTS_VOICE_<LANG> if a voice ships later.
+  pa: "hi-IN-SwaraNeural",    // Punjabi → Hindi (no pa-IN voice)
+  or: "bn-IN-TanishaaNeural", // Odia → Bengali (no or-IN voice)
+  as: "bn-IN-TanishaaNeural", // Assamese → Bengali (no as-IN voice)
+};
+const DEFAULT_EDGE_VOICE = "en-IN-NeerjaNeural";
+
+function resolveEdgeVoice(language?: string): string {
+  const lang = (language || "en").toLowerCase().split(/[-_]/)[0];
+  const override = process.env[`EDGE_TTS_VOICE_${lang.toUpperCase()}`];
+  return override || EDGE_VOICE_BY_LANG[lang] || DEFAULT_EDGE_VOICE;
+}
 
 /**
  * @route POST /api/ai/tts
- * @desc Generate high-quality speech using ElevenLabs with 1-retry logic
+ * @desc Generate neural speech via Microsoft Edge TTS (multilingual, incl. all
+ *       major Indian languages). Accepts an optional `language` (app lang code,
+ *       e.g. "hi") and/or explicit `voice` (Edge short-name). 1-retry logic.
+ * @body { text: string, language?: string, voice?: string, rate?: number, pitch?: number }
+ * @returns { audioContent: base64 mp3, format: "mp3", voiceId }
  */
 router.post("/tts", async (req: any, res: any) => {
-  const { text } = req.body;
+  const { text, language, voice, rate, pitch } = req.body;
 
   if (!text) {
     return res.status(400).json({ error: "Text is required" });
   }
 
-  if (!ELEVENLABS_API_KEY || ELEVENLABS_API_KEY.includes("your_")) {
-    return res.status(500).json({ error: "ElevenLabs API Key is not configured" });
-  }
-
-  // Filter out emojis and tech symbols
-  const cleanText = text
+  // Filter out emojis and tech symbols so they aren't read aloud.
+  const cleanText = String(text)
     .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2300}-\u{23FF}]/gu, '')
+    .replace(/\s+/g, ' ')
     .trim();
 
-  const generateAudio = async (attempt: number = 0): Promise<Buffer> => {
+  if (!cleanText) {
+    return res.status(400).json({ error: "Text is empty after sanitisation" });
+  }
+
+  const voiceId = (typeof voice === "string" && voice.trim()) || resolveEdgeVoice(language);
+
+  // Edge TTS expects rate as "+N%"/"-N%" and pitch as "+NHz"/"-NHz".
+  const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+  const rateStr = `${clamp(Math.round(Number(rate) || 0), -50, 50) >= 0 ? "+" : ""}${clamp(Math.round(Number(rate) || 0), -50, 50)}%`;
+  const pitchStr = `${clamp(Math.round(Number(pitch) || 0), -20, 20) >= 0 ? "+" : ""}${clamp(Math.round(Number(pitch) || 0), -20, 20)}Hz`;
+
+  const generateAudio = async (attempt: number = 0): Promise<string> => {
     try {
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
-        method: "POST",
-        headers: {
-          "Accept": "audio/mpeg",
-          "Content-Type": "application/json",
-          "xi-api-key": ELEVENLABS_API_KEY,
-        },
-        body: JSON.stringify({
-          text: cleanText,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.7,
-            similarity_boost: 0.75,
-          },
-        }),
+      const tts = new EdgeTTS();
+      await tts.synthesize(cleanText, voiceId, {
+        rate: rateStr,
+        pitch: pitchStr,
+        volume: "+0%",
+        outputFormat: "audio-24khz-48kbitrate-mono-mp3",
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`ElevenLabs Error [${response.status}]: ${JSON.stringify(errorData)}`);
-      }
-
-      const buffer = await response.arrayBuffer();
-      return Buffer.from(buffer);
+      const base64 = tts.toBase64();
+      if (!base64) throw new Error("Edge TTS returned empty audio");
+      return base64;
     } catch (error) {
       if (attempt < 1) { // 1 retry max
-        console.warn(`[ElevenLabs] TTS attempt ${attempt + 1} failed, retrying...`);
+        console.warn(`[EdgeTTS] TTS attempt ${attempt + 1} failed, retrying...`);
         return generateAudio(attempt + 1);
       }
       throw error;
@@ -106,23 +138,21 @@ router.post("/tts", async (req: any, res: any) => {
   };
 
   try {
-    const audioBuffer = await generateAudio();
-    const audioBase64 = audioBuffer.toString('base64');
-
+    const audioBase64 = await generateAudio();
     return res.json({
       audioContent: audioBase64,
       format: "mp3",
-      voiceId: VOICE_ID
+      voiceId,
     });
   } catch (error: any) {
     console.error("[TTS Final Failure Detail]", {
       message: error.message,
       stack: error.stack,
-      voiceId: VOICE_ID
+      voiceId,
     });
     return res.status(500).json({
       error: "Failed to generate voice.",
-      details: error.message
+      details: error.message,
     });
   }
 });

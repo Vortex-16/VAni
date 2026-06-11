@@ -39,7 +39,7 @@ export interface IDataProvider {
   getDischargePlan(id: string, devData?: any): Promise<any>;
   importDischargePlan(planId: string, mode: "merge" | "replace", devData?: any): Promise<void>;
   createDischargePlan(payload: any): Promise<{ planId: string }>;
-  generateTTS(text: string): Promise<{ audioContent: string }>;
+  generateTTS(text: string, language?: string): Promise<{ audioContent: string }>;
   getChatResponse(query: string, language?: string, history?: { role: "user" | "assistant"; text: string }[], screenContext?: string): Promise<{ message: string; actions: { type: string; label: string }[] }>;
   transcribeAudio(audioBase64: string, fileExtension?: string, language?: string): Promise<string>;
   getIntent(text: string, context?: string): Promise<{ intent: string, target: string, confidence: number }>;

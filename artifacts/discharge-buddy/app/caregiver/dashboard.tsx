@@ -152,7 +152,7 @@ function PatientCard({ patient }: { patient: Patient }) {
           <Feather name="phone" size={12} color="#16a34a" />
           <Text style={[styles.actionChipText, { color: '#16a34a' }]}>Call</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionChip} onPress={() => router.push('/caregiver/message' as any)}>
+        <TouchableOpacity style={styles.actionChip} onPress={() => router.push('/caregiver-chat' as any)}>
           <Feather name="message-circle" size={12} color="#f59e0b" />
           <Text style={[styles.actionChipText, { color: '#f59e0b' }]}>Message</Text>
         </TouchableOpacity>

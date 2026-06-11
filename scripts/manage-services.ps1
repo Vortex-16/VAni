@@ -197,8 +197,7 @@ function Show-Menu {
             exit 0
         }
         Default {
-            Write-WarningMsg "Invalid option. Press any key to return to menu..."
-            [void]$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+            Read-Host "Invalid option. Press Enter to return to menu"
             Show-Menu
         }
     }

@@ -1,6 +1,7 @@
 import "./env";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { ensureSchema } from "./ensureSchema";
 
 import { NotificationService } from "./services/notificationService";
 import { VoiceScheduleService } from "./services/voiceScheduleService";
@@ -8,6 +9,10 @@ import { VoiceScheduleService } from "./services/voiceScheduleService";
 // Start background services
 NotificationService.init();
 VoiceScheduleService.init();
+
+// Ensure additive schema (chat messages table) exists. Non-blocking: a failure
+// is logged but never prevents the server from listening.
+ensureSchema();
 
 const rawPort = process.env["PORT"];
 

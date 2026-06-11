@@ -1,240 +1,332 @@
 # 🏥 Discharge Buddy
-### *Your AI-Powered Companion for Seamless Post-Hospital Recovery*
+### *Your AI-Powered, Voice-First Companion for Seamless Post-Hospital Recovery*
 
-[![Google Solution Challenge](https://img.shields.io/badge/Google_Solution_Challenge-2024-4285F4?style=for-the-badge&logo=google)](https://developers.google.com/community/gdsc-solution-challenge)
-[![Expo](https://img.shields.io/badge/Maintained%20with-Expo-000020?style=for-the-badge&logo=expo)](https://expo.dev/)
+[![Google Solution Challenge](https://img.shields.io/badge/Google_Solution_Challenge-2026-4285F4?style=for-the-badge&logo=google)](https://developers.google.com/community/gdsc-solution-challenge)
+[![Expo](https://img.shields.io/badge/Built%20with-Expo-000020?style=for-the-badge&logo=expo)](https://expo.dev/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-> **📚 New to the project?** Start with [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) for a complete guide to all resources.
+> **📚 New here?** This README is the front door. For deep implementation notes and the full change-log, see **[doc.md](./doc.md)** and **[DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)**.
 
 ---
 
 ## 📖 Overview
 
-**Discharge Buddy** is a premium, end-to-end recovery ecosystem designed to bridge the "last mile" gap between hospital discharge and full patient recovery. 
+**Discharge Buddy** bridges the dangerous "last mile" between hospital discharge and full recovery. Patients leave with complex prescriptions, confusing instructions, and a daunting follow-up schedule — exactly when they're most vulnerable. Discharge Buddy turns that chaos into a **structured, voice-first, AI-monitored journey** that keeps patients on track and caregivers informed in real time.
 
-While hospitals provide expert care, the transition to home is often fraught with confusion. Patients are handed complex prescriptions, confusing instructions, and a daunting schedule of follow-ups—all while they are physically and mentally vulnerable. **Discharge Buddy** transforms this chaotic process into a structured, gamified, and AI-monitored journey, ensuring patients stay on track and caregivers stay informed.
+> 🎙️ **Talk to your app, don't navigate it.** Buddy, the built-in voice assistant, lets patients operate the entire app hands-free in **14 languages** — including Hindi, Bengali, Tamil, Telugu, Marathi and more.
 
 ### 🎯 Who is it for?
-- **Patients** recovering from surgery or managing chronic illnesses.
-- **Caregivers** who need real-time peace of mind regarding their loved ones' health.
-- **Healthcare Providers** looking for higher patient adherence and better recovery outcomes.
+- **Patients** recovering from surgery or managing chronic illness.
+- **Caregivers & Family** who need real-time peace of mind.
+- **Healthcare providers** who want higher adherence and better outcomes.
 
 ---
 
-## 💡 Motivation: The "Post-Discharge" Crisis
+## ✨ What's New (Latest Updates)
 
-Every year, millions of patients experience complications shortly after discharge due to **medication non-adherence** and **misunderstood instructions**. 
+<details>
+<summary><b>🆕 Click to expand recent major updates</b></summary>
 
-- **The Problem:** Medical jargon is intimidating. Handwritten prescriptions are hard to read. Caregivers are often stressed and out of the loop.
-- **The Solution:** A bridge that digitizes instructions, simplifies language, automates reminders, and creates a real-time safety net between patient and guardian.
+<br/>
 
----
-
-## ✨ Key Features
-
-| Feature | Description |
+| Area | Update |
 | :--- | :--- |
-| **📸 Smart OCR Scanner** | Digitizes handwritten or printed prescriptions with 98% accuracy using an AI ensemble. |
-| **💊 Automated Scheduler** | Converts raw text into a morning/afternoon/night medication timeline automatically. |
-| **👥 Caregiver Portal** | Real-time monitoring for family members with instant alerts for missed doses. |
-| **🐻 Mascot "Beary"** | A gamified companion that reacts to your recovery progress and encourages adherence. |
-| **🧠 Jargon Simplifier** | Translates complex medical terms into simple, actionable language using LLMs. |
-| **🚨 Emergency SOS** | One-tap emergency trigger that notifies caregivers and provides a digital medical card. |
+| 🗣️ **Voice TTS** | Migrated to **Microsoft Edge TTS** (neural voices, no API key) with per-language **Indian-language voices** (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Urdu…). |
+| 🌐 **Multilingual STT** | Smart hybrid language detection — forces the selected language when set, auto-detects otherwise, so "ask in Hindi → reply in Hindi" works correctly. |
+| 💬 **Real-time Messaging** | Family ↔ Patient ↔ Caregiver chat over **Server-Sent Events** with **push-notification fallback** and a backend-synced conversation resolver. |
+| 🚨 **Emergency upgrades** | Live "call" buttons (Ambulance **108**, Emergency **112**), and emergency triggers now **push-notify all linked caregivers/family**. |
+| 📱 **UX fixes** | Scrollable auth screens, keyboard-aware chat input, smoother Google sign-in with a loading state, decluttered sidebar. |
+| ☁️ **Deployment** | Hardened Google Cloud Run deploy (env-vars file, startup schema guard, fixed false-success reporting). |
+
+Full details live in **[doc.md → SECTIONS 13–15](./doc.md)**.
+
+</details>
 
 ---
 
-## 🔍 Detailed Feature Breakdown
+## 🌟 Feature Highlights
 
-### 1. The Intelligent Onboarding (OCR & Vision)
-Our pipeline uses a multi-stage **Vision-Language Ensemble**. 
-- **Phase 1:** Image preprocessing to enhance clarity.
-- **Phase 2:** Text extraction via **NVIDIA Nemotron-Parse** and **Tesseract**.
-- **Phase 3:** Entity extraction via **Gemini 1.5 Flash**, identifying medicine names, dosages, frequencies (OD/BD/TDS), and duration.
+<details open>
+<summary><b>🎙️ Voice-First Assistant ("Buddy")</b></summary>
 
-### 2. Gamified Adherence (Mascot & Streaks)
-Recovery doesn't have to be depressing. Our mascot, **Beary**, evolves as you hit your milestones. 
-- **XP & Levels:** Earn points for logging vitals and taking medicine on time.
-- **Emotional Response:** Beary gets happy when you're consistent and worried when you miss a dose, building an emotional feedback loop for better adherence.
+- **Hands-free control** — navigate, log medicine, log symptoms, switch language, and trigger emergencies by voice.
+- **Speech-to-Text** via Groq **Whisper-large-v3-turbo** (multilingual, auto-detect).
+- **Text-to-Speech** via **Microsoft Edge TTS** neural voices, localized per language, played through `expo-av` with an on-device fallback so audio never goes silent.
+- **Intent routing** — a backend classifier maps natural speech to real app actions (13 navigation targets + medicine/symptom/emergency actions), with a conversational fallback to the Mr. Meddy chatbot.
+- **Conversation memory** persisted across sessions and shared between the voice loop and the text chat.
+</details>
 
-### 3. The Caregiver Safety Net
-Caregivers get a dedicated "Guardian Interface" where they can:
-- View live dose logs.
-- Receive **Push Notifications** the moment a patient reports a symptom or misses a pill.
-- Remotely trigger reminders if the patient is unresponsive.
+<details>
+<summary><b>📸 Smart OCR Prescription Scanner</b></summary>
+
+- Multi-stage **Vision-Language ensemble**: image preprocessing → text extraction (**NVIDIA Nemotron-Parse** + Tesseract/docTR) → entity extraction (**Gemini 1.5 Flash**).
+- Reads handwritten & printed prescriptions; extracts medicine names, dosages, frequencies (OD/BD/TDS) and duration.
+- Auto-builds a morning/afternoon/night medication timeline.
+</details>
+
+<details>
+<summary><b>💬 Real-Time Care Messaging</b></summary>
+
+- 1:1 chat between a **patient** and their linked **caregiver / family** members, scoped per patient.
+- **Live delivery** over Server-Sent Events (`/api/chat/stream`); **push notification fallback** when the recipient is offline.
+- Backend **conversation resolver** (`/api/chat/conversations`) keeps the right patient context in sync as links change.
+- Optimistic send with clear failure feedback (no more silently vanishing messages); keyboard-aware input that rises with the keyboard.
+</details>
+
+<details>
+<summary><b>💊 Adherence, Gamification & Caregiver Portal</b></summary>
+
+- **Automated scheduler** turns raw prescriptions into reminders.
+- **Mascot "Beary"** + XP/streaks build an emotional feedback loop for adherence.
+- **Guardian interface**: live dose logs, instant push on missed doses / reported symptoms, remote reminders.
+- **Jargon Simplifier** translates medical terms into plain language (Claude / Llama via Groq).
+- **Drug Interaction Checker** flags risky combinations.
+</details>
+
+<details>
+<summary><b>🩸 Blood Network & Medical Card</b></summary>
+
+- **Emergency Blood Network**: location-based donor matching (blood-type compatibility matrix + Haversine distance) and urgent blood requests.
+- **Digital Medical QR Card** for first responders.
+</details>
 
 ---
 
-## 🧠 How It Works (Architecture)
+## 🚨 Emergency & Safety (SOS) Features
+
+> Safety is the headline. Detection is **deterministic and layered** — it works even offline and never depends solely on an LLM.
+
+<details open>
+<summary><b>Tap to expand the full SOS suite</b></summary>
+
+<br/>
+
+| Feature | What it does |
+| :--- | :--- |
+| ⚡ **Smart Emergency Button** | Trigger SOS by **shaking the phone** or **tapping a panic button 5×**. A cancellable countdown protects against accidents, then it alerts caregivers, shares **GPS location via SMS**, and **auto-dials** the emergency number. |
+| 🗣️ **Voice Emergency Mode** | Saying *"Help"*, *"Chest pain"*, *"I can't breathe"*, *"call ambulance"* (English/Hindi/Spanish/Urdu/Bengali) instantly opens emergency mode — guarded both **client-side** (works offline) and **server-side**. |
+| ❤️ **CPR & Choking Coach** | Voice-guided CPR for Adult/Child/Infant + choking response, with a **110 BPM animated metronome**, compression counter, and a one-tap **call 112** button. |
+| 📞 **One-tap Emergency Contacts** | Dial your emergency contact, **Emergency Services (112)**, or **Ambulance (108)** directly from the Emergency screen. |
+| 🔔 **Caregiver/Family Alerts** | Triggering an emergency **pushes a real-time alert to every linked caregiver and family member** ("🚨 {name} triggered an emergency alert"). |
+| 📴 **Offline Emergency Mode** | Emergency contacts, danger-sign guidance, and dialing all work with no network. |
+
+> *Platform note: in a managed Expo app the OS doesn't expose hardware power/volume key events to JS, so the shipped triggers are a real **accelerometer shake** and an in-app **5× rapid-tap** — both fully functional.*
+
+</details>
+
+---
+
+## 🔒 Security
+
+<details open>
+<summary><b>Authentication & Authorization</b></summary>
+
+- **JWT-based sessions** (`jsonwebtoken`); every protected route passes through a `requireAuth` middleware that verifies the token and loads the user.
+- **Passwords hashed with bcrypt** (`bcryptjs`) — plaintext passwords are never stored.
+- **Google OAuth 2.0** (web + native client IDs) and **email verification codes** for account confirmation.
+- **Role-Based Access Control** — `patient` / `caregiver` / `family` / `doctor` roles gate features and data.
+- **Relationship-scoped access** — caregivers/family can only reach a patient's data through an explicit, active **`care_links`** relationship; the chat layer validates that both sender and receiver are linked participants (no cross-patient leakage, no "message a stranger" fallback).
+</details>
+
+<details>
+<summary><b>Backend Hardening</b></summary>
+
+- **Input validation** with **Zod** schemas on API payloads.
+- **CORS** and **cookie-parser** configured; structured request logging via **pino**.
+- **No raw SQL string-building** — all queries go through **Drizzle ORM** with parameterized statements, eliminating SQL-injection vectors.
+- Emergency/notification dispatch is **best-effort and isolated** — a push failure can never crash a request or the server.
+- Deterministic, layered emergency detection so a critical safety path doesn't hinge on a single model call.
+</details>
+
+<details>
+<summary><b>Database & Secrets</b></summary>
+
+- **PostgreSQL (Neon serverless)** over **SSL/TLS** connections.
+- **Drizzle ORM** with typed schemas and foreign-key constraints; access is mediated by `care_links` so data is partitioned per patient.
+- **Secrets never committed** — the local `.env` is **dotenvx-encrypted**; deployment secrets live in a **git-ignored** `scripts/cloudrun.env.yaml` (or Google Secret Manager) and are injected at runtime via Cloud Run env vars.
+- Served over **HTTPS** on Google Cloud Run; tokens transmitted as `Authorization: Bearer` over TLS.
+</details>
+
+---
+
+## 🧠 Architecture
 
 ```mermaid
 graph TD
-    subgraph "Frontend (Mobile App)"
-        UI[React Native / Expo]
-        Ctx[State Management]
-        Scan[Vision OCR Engine]
-        Anim[Reanimated Mascot]
+    subgraph "📱 Frontend (Expo / React Native)"
+        UI[UI + Expo Router]
+        Voice[Voice Assistant Buddy]
+        Scan[Vision OCR]
+        Chat[Realtime Chat - SSE]
     end
 
-    subgraph "Backend (API Server)"
-        API[Express.js Server]
-        Auth[JWT / Google OAuth]
-        Logic[Recovery Logic Services]
-        AI[Gemini / Groq / NVIDIA]
+    subgraph "⚙️ Backend (Express / Node.js)"
+        API[REST API]
+        Auth[JWT + Google OAuth + RBAC]
+        AIsvc[STT / TTS / Intent / Chat]
+        SSE[SSE Hub + Push]
     end
 
-    subgraph "Storage & Infrastructure"
+    subgraph "🤖 AI & ML"
+        Groq[Groq Whisper + Llama]
+        Edge[Microsoft Edge TTS]
+        Gemini[Gemini 1.5 Flash]
+        NVIDIA[NVIDIA OCR Ensemble]
+    end
+
+    subgraph "🗄️ Data & Infra"
         DB[(PostgreSQL / Neon)]
+        FCM[Firebase / Expo Push]
         Cache[(AsyncStorage)]
-        Notif[Firebase Cloud Messaging]
     end
 
-    UI <--> Ctx
-    Ctx <--> API
+    UI <--> Voice
+    UI <--> Chat
+    Voice <--> API
+    Chat <--> SSE
+    UI <--> API
+    API <--> Auth
+    API <--> AIsvc
+    AIsvc <--> Groq
+    AIsvc <--> Edge
+    AIsvc <--> Gemini
+    Scan <--> NVIDIA
     API <--> DB
-    API <--> AI
-    Ctx <--> Cache
-    Scan --> UI
-    API --> Notif
+    SSE --> FCM
+    UI <--> Cache
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-### **Frontend**
-- **Framework:** React Native with **Expo** (SDK 50+)
-- **Routing:** Expo Router (File-based)
-- **Animations:** Moti & React Native Reanimated
-- **State:** React Context API + TanStack Query
+<details>
+<summary><b>Expand full stack</b></summary>
 
-### **Backend**
-- **Runtime:** Node.js (TypeScript)
-- **Framework:** Express.js
-- **Database:** PostgreSQL via **Neon Serverless**
-- **ORM:** Drizzle ORM
+**Frontend** — React Native + **Expo**, Expo Router (file-based), Reanimated/Moti animations, `react-native-keyboard-controller`, `expo-av`, React Context state.
 
-### **AI & ML Pipeline**
-- **Prescription Parsing:** Gemini 1.5 Flash
-- **Language Simplification:** Anthropic Claude 3.5 Sonnet / Llama 3.3 (Groq)
-- **OCR Engine:** NVIDIA Nemotron-Parse + docTR Ensemble
+**Backend** — Node.js (TypeScript), **Express**, esbuild bundling, **pino** logging, **Drizzle ORM**, **Zod** validation.
 
----
+**Database** — **PostgreSQL** via **Neon** (serverless), Drizzle migrations.
 
-## 📸 UI Showcase
+**AI / ML** — Groq **Whisper-large-v3-turbo** (STT) + **Llama 3.3** (intent/chat), **Microsoft Edge TTS** (voice), **Gemini 1.5 Flash** (prescription parsing), **NVIDIA Nemotron-Parse** + docTR (OCR), Anthropic **Claude** (jargon simplification).
 
-<p align="center">
-  <img src="PPT Assests/patient_dashboard.png" width="250" alt="Patient Dashboard" />
-  <img src="PPT Assests/prescription_scanner.png" width="250" alt="Prescription Scanner" />
-  <img src="PPT Assests/caregiver_dashboard.png" width="250" alt="Caregiver Portal" />
-</p>
+**Realtime / Notifications** — Server-Sent Events, **Expo Push** / Firebase Cloud Messaging.
 
-*Note: Explore the `PPT Assests` folder for full-resolution wireframes and mascot animations.*
+**Infra** — Google **Cloud Run** (Docker), EAS Build (Android APK).
+
+</details>
 
 ---
 
-## ⚙️ Installation & Setup
+## ⚙️ Setup & Installation
 
-### 1. Prerequisites
-- **Node.js** (v18+)
-- **pnpm** (Recommended)
-- **Expo Go** app on your mobile device.
+<details open>
+<summary><b>Local development</b></summary>
 
-### 2. Clone & Install
+**Prerequisites:** Node.js 18+, **pnpm**, the Expo Go app (or a dev build for push / Google OAuth).
+
 ```bash
 git clone https://github.com/your-repo/d-buddy.git
 cd d-buddy
 pnpm install
 ```
 
-### 3. Environment Configuration
-Create a `.env` file in the root directory:
+Create a root `.env`:
 ```env
 # Server
 PORT=3000
 JWT_SECRET=your_super_secret
-
-# Database
 DATABASE_URL=your_neon_postgres_url
 
-# Google OAuth (See GOOGLE_OAUTH_SETUP.md for detailed configuration)
-GOOGLE_CLIENT_ID=your_google_oauth_web_client_id
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_google_oauth_web_client_id
-EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_google_oauth_android_client_id
-EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_google_oauth_ios_client_id
+# Google OAuth (see GOOGLE_OAUTH_SETUP.md)
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=...
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=...
 
-# AI Providers
-GEMINI_API_KEY=your_google_ai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-GROQ_API_KEY=your_groq_key
-NVIDIA_API_KEY=your_nvidia_key
+# AI providers
+GROQ_API_KEY=...
+GEMINI_API_KEY=...
+ANTHROPIC_API_KEY=...
+NVIDIA_API_KEY=...
+
+# Push (optional, needs a dev/standalone build)
+FIREBASE_PROJECT_ID=...
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY=...
 ```
 
-> **⚠️ Important:** For Google OAuth setup with native Android/iOS client IDs, see [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)
-
-### 4. Run Services
-**Backend:**
+Run the services:
 ```bash
-cd artifacts/api-server
-pnpm run dev
+# Backend
+cd artifacts/api-server && pnpm run dev
+
+# Mobile app (separate terminal)
+cd artifacts/discharge-buddy && npx expo start
 ```
 
-**Mobile App:**
-```bash
-cd artifacts/discharge-buddy
-npx expo start
+> **Note:** Edge TTS needs **no key**. Push notifications & native Google OAuth require a **dev/standalone build** (Expo Go can't obtain push tokens). See [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md).
+
+</details>
+
+<details>
+<summary><b>Deploy backend to Google Cloud Run</b></summary>
+
+Cloud Run does **not** read your local `.env` — you must pass env vars explicitly, or the container crashes at startup (`DATABASE_URL` is required).
+
+```powershell
+# 1. Fill in deployment secrets (git-ignored)
+Copy-Item scripts\cloudrun.env.example.yaml scripts\cloudrun.env.yaml
+#    -> edit it: DATABASE_URL, GROQ_API_KEY, JWT_SECRET, Firebase, ...  (do NOT add PORT)
+
+# 2. Deploy
+gcloud run deploy discharge-buddy-backend --source . --region asia-south1 `
+  --allow-unauthenticated --env-vars-file scripts\cloudrun.env.yaml
 ```
+
+The server runs an **idempotent startup schema guard** that creates the chat `messages` table automatically. `scripts/deploy.ps1` provides a menu-driven wrapper for both Cloud Run and EAS APK builds.
+
+</details>
 
 ---
 
 ## ▶️ Usage Guide
 
-1. **Sign Up:** Create a profile as a **Patient** or **Caregiver**.
-2. **Scan:** Take a photo of your discharge summary or prescription.
-3. **Verify:** Confirm the AI-extracted medicine list and frequency.
-4. **Link:** (Caregivers) Scan the patient's unique QR code to start monitoring.
-5. **Track:** Log your symptoms and medicine intake daily to keep Beary happy!
+1. **Sign up** as a **Patient** or **Caregiver/Family**.
+2. **Scan** your discharge summary / prescription.
+3. **Verify** the AI-extracted medicine list.
+4. **Link** — caregivers scan the patient's QR / link code to start monitoring.
+5. **Talk to Buddy** — *"I took my medicine"*, *"open my schedule"*, *"call ambulance"*.
+6. **Message** your care team in real time, and stay safe with the SOS suite.
 
 ---
 
-## 🎯 Use Cases
+## 🗺️ Roadmap
 
-- **Post-Surgery Recovery:** Managing pain meds and wound care instructions.
-- **Chronic Care:** Keeping elderly patients on complex multi-drug regimens.
-- **Remote Monitoring:** Allowing children to care for aging parents living in different cities.
-
----
-
-## 🚧 Challenges & Learnings
-
-- **Handwriting OCR:** Dealing with doctor's handwriting was the biggest hurdle. We solved this by using an ensemble of multiple OCR engines and an LLM-based correction layer.
-- **Real-Time Sync:** Ensuring caregivers get notified within seconds of a missed dose required a robust notification and socket architecture.
-- **User Empathy:** Designing for people who are sick meant minimizing clicks and using high-contrast, accessible UI elements.
-
----
-
-## 🔮 Future Improvements
-
-- [ ] **Telemedicine Integration:** One-tap video calls with doctors directly from the app.
-- [ ] **Drug Interaction Alerts:** Automatically flag potential risks between scanned medicines.
-- [ ] **Predictive Health:** Using AI to predict potential relapse based on symptom patterns.
+- [ ] Telemedicine video calls
+- [ ] Wake-word activation ("Hey Buddy")
+- [ ] Predictive relapse detection from symptom patterns
+- [ ] Shared care timeline (meds, meals, journal, voice notes)
+- [ ] Read receipts & unread badges for chat
 
 ---
 
 ## 🤝 Contributing
 
-Contributions make the open-source community an amazing place to learn and inspire.
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit (`git commit -m 'Add AmazingFeature'`)
+4. Push (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
 ---
 
 ## 📜 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See `LICENSE` for details.
 
 ---
 

@@ -5,6 +5,7 @@ import { useAssistantEvents } from '@/hooks/assistant/useAssistantEvents';
 import { useApp, type SymptomLog } from '@/context/AppContext';
 import { router } from 'expo-router';
 import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { LOCALE_BY_LANG, type Language } from '@/constants/translations';
 import { loadHistory, appendTurns, recentForPrompt } from '@/utils/conversationMemory';
@@ -159,7 +160,7 @@ const SYMPTOM_LOCALIZATION: Record<string, Record<string, string>> = {
 
 function extractSymptom(text: string, lang: string): string {
   const t = text.toLowerCase();
-  
+
   if (t.includes('ghur') || t.includes('dizzy') || t.includes('dizziness') || t.includes('dizi') || t.includes('giddiness')) {
     return 'Dizziness';
   }
@@ -187,7 +188,7 @@ function extractSymptom(text: string, lang: string): string {
   if (t.includes('sash') || t.includes('breath') || t.includes('sob') || t.includes('gasp') || t.includes('saf')) {
     return 'Shortness of Breath';
   }
-  
+
   return 'Symptom';
 }
 
@@ -217,14 +218,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   // (CHAT) turn so the user can keep talking hands-free. Any explicit stop,
   // navigation or action clears it so we never loop forever.
   const continueConversationRef = useRef(false);
-  const startAssistantRef = useRef<() => Promise<void>>(async () => {});
+  const assistantSoundRef = useRef<Audio.Sound | null>(null);
+  const startAssistantRef = useRef<() => Promise<void>>(async () => { });
   const pendingSymptomLogRef = useRef<{ symptom: string; lang: string } | null>(null);
   const pendingMeditationRef = useRef<boolean>(false);
 
   // ── Speak a phrase and resolve when playback finishes. ──
+  // Primary: Microsoft Edge TTS neural voices (server-generated, multilingual
+  // incl. all Indian languages), played via expo-av. Falls back to the
+  // on-device engine so the assistant never goes silent on a network error.
   const speak = useCallback(
     (text: string, localeOverride?: string) =>
-      new Promise<void>((resolve) => {
+      new Promise<void>(async (resolve) => {
         const clean = stripForSpeech(text);
         if (!clean) {
           resolve();
@@ -239,45 +244,89 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           }
         };
 
+        // Language code for the server (BCP-47 locale → primary subtag, else app lang).
+        const langCode = localeOverride ? localeOverride.split(/[-_]/)[0] : language;
+
         // Safety timeout: average reading rate is ~12-15 chars per second.
-        // We set the timeout to clean.length / 12 * 1000 + 3000ms buffer.
-        const estimatedDurationMs = Math.max(3000, (clean.length / 12) * 1000);
+        const estimatedDurationMs = Math.max(3000, (clean.length / 12) * 1000) + 3000;
         const timeoutId = setTimeout(() => {
           console.warn("[Assistant] TTS playback timed out after estimated duration:", estimatedDurationMs);
           safeResolve();
         }, estimatedDurationMs);
 
+        // On-device fallback.
+        const speakOnDevice = () => {
+          try {
+            Speech.stop();
+            Speech.speak(clean, {
+              language: localeOverride || LOCALE_BY_LANG[language] || 'en-US',
+              pitch: 1.0,
+              rate: 0.95,
+              onDone: () => { clearTimeout(timeoutId); safeResolve(); },
+              onStopped: () => { clearTimeout(timeoutId); safeResolve(); },
+              onError: () => { clearTimeout(timeoutId); safeResolve(); },
+            });
+          } catch (e) {
+            console.warn("[Assistant] Speech.speak threw error:", e);
+            clearTimeout(timeoutId);
+            safeResolve();
+          }
+        };
+
         try {
-          Speech.stop();
-          Speech.speak(clean, {
-            language: localeOverride || LOCALE_BY_LANG[language] || 'en-US',
-            pitch: 1.0,
-            rate: 0.95,
-            onDone: () => {
+          const { audioContent } = await api.generateTTS(clean, langCode);
+          if (!audioContent) {
+            speakOnDevice();
+            return;
+          }
+
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: false,
+            shouldDuckAndroid: true,
+          });
+
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: `data:audio/mp3;base64,${audioContent}` },
+            { shouldPlay: true }
+          );
+          assistantSoundRef.current = sound;
+
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (!status.isLoaded) {
+              if ((status as any).error) { clearTimeout(timeoutId); safeResolve(); }
+              return;
+            }
+            if (status.didJustFinish) {
+              sound.unloadAsync().catch(() => { });
+              if (assistantSoundRef.current === sound) assistantSoundRef.current = null;
               clearTimeout(timeoutId);
               safeResolve();
-            },
-            onStopped: () => {
-              clearTimeout(timeoutId);
-              safeResolve();
-            },
-            onError: () => {
-              clearTimeout(timeoutId);
-              safeResolve();
-            },
+            }
           });
         } catch (e) {
-          console.warn("[Assistant] Speech.speak threw error:", e);
-          clearTimeout(timeoutId);
-          safeResolve();
+          console.warn("[Assistant] Edge TTS failed, falling back to device speech:", e);
+          speakOnDevice();
         }
       }),
-    [language],
+    [api, language],
   );
 
   const finish = useCallback(() => {
     setState('idle');
     setIsVisible(false);
+  }, []);
+
+  // Stop any in-flight assistant speech — both the Edge TTS audio (expo-av)
+  // and the on-device fallback engine.
+  const stopAssistantSpeech = useCallback(async () => {
+    try { Speech.stop(); } catch { }
+    if (assistantSoundRef.current) {
+      const s = assistantSoundRef.current;
+      assistantSoundRef.current = null;
+      try { await s.stopAsync(); } catch { }
+      try { await s.unloadAsync(); } catch { }
+    }
   }, []);
 
   // ── Handlers for ACTION-type intents (things that DO something). ──
@@ -290,12 +339,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           const lowerTranscript = currentTranscript.toLowerCase();
           const isAll = lowerTranscript.includes('all');
           let pendingDoses = todayDoses.filter((d) => d.status === 'pending');
-          
+
           if (pendingDoses.length === 0) {
             reply = `I don't see any pending doses right now — you're all caught up!`;
           } else {
             const mentionedMed = pendingDoses.find(d => lowerTranscript.includes(d.medicineName.toLowerCase()));
-            
+
             let dosesToMark = [];
             if (mentionedMed && isAll) {
               dosesToMark = pendingDoses.filter(d => d.medicineName.toLowerCase() === mentionedMed.medicineName.toLowerCase());
@@ -334,14 +383,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           const activeLang = isBengaliText(currentTranscript) ? 'bn' : (isHindiText(currentTranscript) ? 'hi' : language);
           const symptomKey = metadata?.symptom || extractSymptom(currentTranscript, activeLang);
           const severity = metadata?.severity;
-          
+
           const localizedDict = SYMPTOM_LOCALIZATION[activeLang] || SYMPTOM_LOCALIZATION['en'];
           const localizedSymptom = localizedDict[symptomKey] || symptomKey;
-          
+
           if (severity != null) {
             // Implicit logging: map 1-10 to 1-5
             const mappedSeverity = Math.min(5, Math.max(1, Math.ceil(severity / 2)));
-            
+
             try {
               await api.addSymptomLog({
                 id: Math.random().toString(),
@@ -351,7 +400,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                 date: new Date().toISOString().split('T')[0],
                 riskLevel: mappedSeverity >= 4 ? 'high' : (mappedSeverity === 3 ? 'medium' : 'low')
               });
-              
+
               if (activeLang === 'bn') {
                 reply = `আমি মাঝারি তীব্রতার সাথে আপনার ${localizedSymptom} যোগ করেছি।`;
               } else if (activeLang === 'hi') {
@@ -362,7 +411,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               setLastReply(reply);
               setState('speaking');
               await speak(reply, LOCALE_BY_LANG[activeLang]);
-              
+
               if (continueConversationRef.current) {
                 setTimeout(() => {
                   if (continueConversationRef.current) startAssistantRef.current();
@@ -383,7 +432,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               symptom: symptomKey,
               lang: activeLang
             };
-            
+
             if (activeLang === 'bn') {
               reply = `আপনার ${localizedSymptom} এর তীব্রতা ১ থেকে ১০ এর মধ্যে কত?`;
             } else if (activeLang === 'hi') {
@@ -391,12 +440,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             } else {
               reply = `How severe would you say your ${localizedSymptom} is from 1 to 10?`;
             }
-            
+
             // Do NOT navigate to symptoms
             setLastReply(reply);
             setState('speaking');
             await speak(reply, LOCALE_BY_LANG[activeLang]);
-            
+
             setTimeout(() => {
               if (continueConversationRef.current) {
                 startAssistantRef.current();
@@ -529,7 +578,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ── Conversational fallback: ask Mr. Meddy and speak the answer. ──
-  const handleChatRef = useRef<(text: string) => Promise<void>>(async () => {});
+  const handleChatRef = useRef<(text: string) => Promise<void>>(async () => { });
   const handleChat = useCallback(
     async (text: string): Promise<void> => {
       setState('processing');
@@ -549,7 +598,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       appendTurns(userKey, [
         { role: 'user', text },
         { role: 'assistant', text: message },
-      ]).catch(() => {});
+      ]).catch(() => { });
 
       setLastReply(message);
       setState('speaking');
@@ -574,11 +623,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   const handleSymptomSeverityRating = async (transcript: string) => {
     if (!pendingSymptomLogRef.current) return;
-    
+
     const { symptom, lang } = pendingSymptomLogRef.current;
     const cleanText = transcript.toLowerCase().trim();
     let severity = 0;
-    
+
     const digitMatch = cleanText.match(/(10|[1-9])/);
     if (digitMatch) {
       severity = parseInt(digitMatch[0], 10);
@@ -594,7 +643,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       else if (cleanText.includes('nine') || cleanText.includes('noy') || cleanText.includes('nau') || cleanText.includes('নয়')) severity = 9;
       else if (cleanText.includes('ten') || cleanText.includes('dosh') || cleanText.includes('das') || cleanText.includes('দশ')) severity = 10;
     }
-    
+
     if (severity >= 1 && severity <= 10) {
       const mappedSeverity = Math.min(5, Math.max(1, Math.ceil(severity / 2)));
       const newLog: SymptomLog = {
@@ -605,18 +654,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         notes: `Logged via Voice Assistant in ${lang === 'bn' ? 'Bengali' : (lang === 'hi' ? 'Hindi' : 'English')}. Severity: ${severity}/10.`,
         riskLevel: mappedSeverity >= 4 ? 'high' : (mappedSeverity === 3 ? 'medium' : 'low'),
       };
-      
+
       try {
         await api.addSymptomLog(newLog);
       } catch (err) {
         console.error("Failed to add symptom log:", err);
       }
-      
+
       pendingSymptomLogRef.current = null;
-      
+
       const localizedDict = SYMPTOM_LOCALIZATION[lang] || SYMPTOM_LOCALIZATION['en'];
       const localizedSymptom = localizedDict[symptom] || symptom;
-      
+
       let reply = '';
       if (lang === 'bn') {
         reply = `তীব্রতা ${severity} এর সাথে আপনার ${localizedSymptom} যোগ করা হয়েছে।`;
@@ -625,11 +674,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       } else {
         reply = `Logged ${localizedSymptom} with a severity of ${severity}.`;
       }
-      
+
       setLastReply(reply);
       setState('speaking');
       await speak(reply, LOCALE_BY_LANG[lang as Language]);
-      
+
       if (continueConversationRef.current) {
         setTimeout(() => {
           if (continueConversationRef.current) {
@@ -648,11 +697,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       } else {
         reply = "Please tell me a severity from 1 to 10, with 10 being the most severe.";
       }
-      
+
       setLastReply(reply);
       setState('speaking');
       await speak(reply, LOCALE_BY_LANG[lang as Language]);
-      
+
       setTimeout(() => {
         if (continueConversationRef.current) {
           startAssistantRef.current();
@@ -698,7 +747,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         await handleSymptomSeverityRating(transcript);
         return;
       }
-      
+
       if (pendingMeditationRef.current) {
         const match = transcript.match(/(\d+)/);
         const minutes = match ? parseInt(match[1], 10) : null;
@@ -714,7 +763,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       }
-      
+
       setState('processing');
 
       let result: { intent: string; target: string; metadata?: any; confidence: number };
@@ -788,13 +837,13 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     events.publish('SPEECH_STARTED');
 
     try {
-      await stopSpeaking().catch(() => {});
-      Speech.stop();
+      await stopSpeaking().catch(() => { });
+      await stopAssistantSpeech();
       await startSession();
     } catch {
       setState('error');
     }
-  }, [startSession, stopSpeaking, events]);
+  }, [startSession, stopSpeaking, stopAssistantSpeech, events]);
   useEffect(() => {
     startAssistantRef.current = startAssistant;
   }, [startAssistant]);
@@ -808,13 +857,13 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   const cancelAssistant = useCallback(async () => {
     continueConversationRef.current = false;
-    Speech.stop();
-    await stopSpeaking().catch(() => {});
+    await stopAssistantSpeech();
+    await stopSpeaking().catch(() => { });
     await cancelSession();
     setState('idle');
     setIsVisible(false);
     setLastReply(null);
-  }, [cancelSession, stopSpeaking]);
+  }, [cancelSession, stopSpeaking, stopAssistantSpeech]);
 
   const dismissOverlay = useCallback(() => {
     if (state === 'idle' || state === 'error') {
