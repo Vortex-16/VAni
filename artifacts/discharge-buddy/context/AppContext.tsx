@@ -789,6 +789,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateDoseStatus = async (doseId: string, status: DoseLog["status"], snoozeMinutes?: number) => {
+    // Guard against duplicate calls
+    const currentDose = todayDoses.find(d => d.id === doseId);
+    if (currentDose && currentDose.status === status) return;
+
     await dataProvider.updateDoseStatus(doseId, status, snoozeMinutes);
     
     // Execute side effects outside of the setState callback

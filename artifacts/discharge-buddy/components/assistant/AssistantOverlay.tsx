@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
 import { useAssistant } from './AssistantProvider';
 import { VoiceOrb } from './VoiceOrb';
 import Animated, { FadeIn, FadeOut, ZoomIn, ZoomOut, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
@@ -13,6 +13,12 @@ import { useApp } from '@/context/AppContext';
 const { width } = Dimensions.get('window');
 
 const PURPLE = '#6C47FF';
+
+const ONBOARDING_CHIPS = [
+  "Guide Me", "How To Use App", "Features", "Caregiver Setup", 
+  "Medicines", "Emergency Tools", "Symptom Tracking", "Voice Assistant", 
+  "Journal", "Scanner", "Settings"
+];
 
 /**
  * Global Assistant Overlay that sits on top of the entire application.
@@ -33,6 +39,7 @@ export function AssistantOverlay() {
     startAssistant,
     cancelAssistant,
     stopAssistant,
+    processText,
   } = useAssistant();
 
   const { activeModule, pathname } = useAssistantContext();
@@ -120,6 +127,23 @@ export function AssistantOverlay() {
               <Text style={styles.replyText}>{lastReply}</Text>
             )}
           </View>
+
+          {/* Suggested Actions / Onboarding Chips */}
+          {state === 'listening' && (
+            <View style={styles.chipsWrapper}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                {ONBOARDING_CHIPS.map((chip, idx) => (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={styles.chipBtn} 
+                    onPress={() => processText(chip)}
+                  >
+                    <Text style={styles.chipBtnText}>{chip}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Manual stop button — tap instead of waiting */}
           {state === 'listening' && (
@@ -283,5 +307,26 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
+  },
+  chipsWrapper: {
+    marginTop: 16,
+    width: '100%',
+  },
+  chipsScroll: {
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  chipBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  chipBtnText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#334155',
   }
 });

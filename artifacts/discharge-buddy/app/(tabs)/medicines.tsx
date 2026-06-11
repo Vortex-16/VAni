@@ -146,7 +146,6 @@ export default function MedicinesScreen() {
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [deletingMedId, setDeletingMedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [showSupplyModal, setShowSupplyModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const topInset = Platform.OS === "web" ? 0 : insets.top;
@@ -346,7 +345,6 @@ export default function MedicinesScreen() {
                           onTake={(id) => {
                             updateDoseStatus(id, "taken");
                             setMascotTrigger(prev => prev + 1);
-                            setShowSuccess(true);
                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                           }}
                           onSnooze={(id) => {
@@ -774,10 +772,6 @@ export default function MedicinesScreen() {
         </Modal>
       )}
 
-      <SuccessBurst 
-        visible={showSuccess} 
-        onComplete={() => setShowSuccess(false)} 
-      />
     </View>
   );
 }

@@ -143,7 +143,7 @@ export default function CprScreen() {
   const topInset = Platform.OS === "web" ? 0 : insets.top;
   useKeepAwake(); // keep the screen on during a rescue
 
-  const [mode, setMode] = useState<CprMode | null>(null);
+  const [mode, setMode] = useState<CprMode>(MODES[0]);
 
   return (
     <View style={[styles.container, { backgroundColor: BACKGROUND }]}>
@@ -159,14 +159,13 @@ export default function CprScreen() {
           <AnimPressable
             onPress={() => {
               Speech.stop();
-              if (mode) setMode(null);
-              else router.canGoBack() ? router.back() : router.replace("/(tabs)");
+              router.canGoBack() ? router.back() : router.replace("/(tabs)");
             }}
             style={styles.backBtn}
           >
             <Feather name="arrow-left" size={20} color={WHITE} />
           </AnimPressable>
-          <Text style={styles.headerTitle}>{mode ? mode.label : "CPR Assistant"}</Text>
+          <Text style={styles.headerTitle}>CPR Assistant</Text>
           <AnimPressable
             style={styles.callBtn}
             onPress={() => Linking.openURL("tel:112")}
@@ -176,63 +175,45 @@ export default function CprScreen() {
           </AnimPressable>
         </View>
         <Text style={styles.headerSub}>
-          {mode ? mode.ratio : "Step-by-step life-saving guidance"}
+          {mode.ratio}
         </Text>
       </LinearGradient>
 
-      {mode ? (
-        <CprGuide mode={mode} language={language} insets={insets} />
-      ) : (
-        <ModeSelect insets={insets} onSelect={setMode} />
-      )}
+      {/* Top Selector */}
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
+          {MODES.map((m) => {
+            const isSelected = mode.key === m.key;
+            return (
+              <AnimPressable
+                key={m.key}
+                onPress={() => {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setMode(m);
+                }}
+                style={[
+                  styles.tabButton,
+                  {
+                    backgroundColor: isSelected ? m.color : CARD_BG,
+                    borderColor: isSelected ? m.color : BORDER,
+                  }
+                ]}
+              >
+                <Text style={[styles.tabButtonText, { color: isSelected ? WHITE : MUTED }]}>
+                  {m.label}
+                </Text>
+              </AnimPressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      <CprGuide key={mode.key} mode={mode} language={language} insets={insets} />
     </View>
   );
 }
 
-function ModeSelect({
-  insets,
-  onSelect,
-}: {
-  insets: { bottom: number };
-  onSelect: (m: CprMode) => void;
-}) {
-  return (
-    <ScrollView
-      contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 }}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={[styles.warnCard, { backgroundColor: `${DESTRUCTIVE}0D`, borderColor: `${DESTRUCTIVE}33` }]}>
-        <Feather name="alert-triangle" size={18} color={DESTRUCTIVE} />
-        <Text style={[styles.warnText, { color: FOREGROUND }]}>
-          In a real emergency, call your local emergency number first. This guide does
-          not replace professional medical training.
-        </Text>
-      </View>
 
-      <Text style={[styles.sectionTitle, { color: FOREGROUND }]}>Choose a situation</Text>
-
-      {MODES.map((m) => (
-        <AnimPressable
-          key={m.key}
-          onPress={() => {
-            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onSelect(m);
-          }}
-          style={[styles.modeCard, { backgroundColor: CARD_BG, borderColor: BORDER }]}
-        >
-          <View style={[styles.modeIcon, { backgroundColor: `${m.color}15` }]}>
-            <Feather name={m.icon} size={24} color={m.color} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.modeLabel, { color: FOREGROUND }]}>{m.label}</Text>
-            <Text style={[styles.modeHint, { color: MUTED }]}>{m.ageHint}</Text>
-          </View>
-          <Feather name="chevron-right" size={22} color={MUTED} />
-        </AnimPressable>
-      ))}
-    </ScrollView>
-  );
-}
 
 function CprGuide({
   mode,
@@ -288,7 +269,7 @@ function CprGuide({
   const beat = useCallback(() => {
     // haptic + optional click on every compression
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (soundRef.current) soundHelper.playTing().catch(() => {});
+    if (soundRef.current) soundHelper.playTing().catch(() => { });
 
     compRef.current += 1;
     const c = compRef.current;
@@ -398,36 +379,37 @@ function CprGuide({
           {mode.isChoking ? "Follow the rhythm — 5 back blows, 5 thrusts" : `${BPM} beats per minute`}
         </Text>
 
-        <View style={styles.controlsRow}>
-          <AnimPressable
-            onPress={running ? pause : start}
-            style={[styles.primaryCtrl, { backgroundColor: running ? WARNING : mode.color }]}
-          >
-            <Feather name={running ? "pause" : "play"} size={22} color={WHITE} />
-            <Text style={styles.primaryCtrlText}>{running ? "Pause" : "Start"}</Text>
-          </AnimPressable>
-          <AnimPressable onPress={reset} style={[styles.iconCtrl, { borderColor: BORDER }]}>
-            <Feather name="rotate-ccw" size={20} color={MUTED} />
-          </AnimPressable>
-        </View>
+        <AnimPressable
+          onPress={running ? pause : start}
+          style={[styles.primaryCtrl, { backgroundColor: running ? WARNING : mode.color, width: "100%", marginBottom: 16 }]}
+        >
+          <Feather name={running ? "pause" : "play"} size={26} color={WHITE} />
+          <Text style={styles.primaryCtrlText}>{running ? "Pause CPR" : "Start CPR"}</Text>
+        </AnimPressable>
 
         <View style={styles.toggleRow}>
+          <AnimPressable onPress={reset} style={[styles.secondaryCtrl, { backgroundColor: "#F3F0FF" }]}>
+            <Feather name="rotate-ccw" size={10} color={PURPLE} />
+            <Text style={[styles.toggleText, { color: PURPLE }]}>Reset</Text>
+          </AnimPressable>
+
           <AnimPressable
             onPress={() => {
               setVoiceOn((v) => !v);
               if (voiceOn) Speech.stop();
             }}
-            style={[styles.toggle, { backgroundColor: voiceOn ? `${PURPLE}15` : "#F3F0FF" }]}
+            style={[styles.secondaryCtrl, { backgroundColor: voiceOn ? `${PURPLE}15` : "#F3F0FF" }]}
           >
-            <Feather name={voiceOn ? "volume-2" : "volume-x"} size={16} color={voiceOn ? PURPLE : MUTED} />
+            <Feather name={voiceOn ? "volume-2" : "volume-x"} size={10} color={voiceOn ? PURPLE : MUTED} />
             <Text style={[styles.toggleText, { color: voiceOn ? PURPLE : MUTED }]}>Voice</Text>
           </AnimPressable>
+
           <AnimPressable
             onPress={() => setSoundOn((s) => !s)}
-            style={[styles.toggle, { backgroundColor: soundOn ? `${PURPLE}15` : "#F3F0FF" }]}
+            style={[styles.secondaryCtrl, { backgroundColor: soundOn ? `${PURPLE}15` : "#F3F0FF" }]}
           >
-            <Feather name={soundOn ? "music" : "bell-off"} size={16} color={soundOn ? PURPLE : MUTED} />
-            <Text style={[styles.toggleText, { color: soundOn ? PURPLE : MUTED }]}>Metronome</Text>
+            <Feather name={soundOn ? "music" : "bell-off"} size={10} color={soundOn ? PURPLE : MUTED} />
+            <Text style={[styles.toggleText, { color: soundOn ? PURPLE : MUTED }]}>Beep</Text>
           </AnimPressable>
         </View>
       </View>
@@ -543,6 +525,11 @@ const styles = StyleSheet.create({
   modeLabel: { fontSize: 17, fontFamily: "Inter_700Bold" },
   modeHint: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
 
+  tabContainer: { flexDirection: "row", paddingHorizontal: 0, paddingTop: 16, paddingBottom: 8 },
+  tabScroll: { gap: 8, paddingHorizontal: 16 },
+  tabButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5 },
+  tabButtonText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+
   coachCard: { padding: 20, borderRadius: 24, borderWidth: 1.5, marginBottom: 16, alignItems: "center" },
   statsRow: { flexDirection: "row", justifyContent: "space-between", width: "100%", marginBottom: 8 },
   stat: { alignItems: "center", flex: 1 },
@@ -555,19 +542,17 @@ const styles = StyleSheet.create({
   },
   pulseText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   bpmText: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 14 },
-  controlsRow: { flexDirection: "row", gap: 12, width: "100%", marginBottom: 14 },
   primaryCtrl: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 16, borderRadius: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    minHeight: 68, borderRadius: 22, width: "100%",
   },
   primaryCtrlText: { color: WHITE, fontSize: 17, fontFamily: "Inter_700Bold" },
-  iconCtrl: { width: 56, borderRadius: 16, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  toggleRow: { flexDirection: "row", gap: 10, width: "100%" },
-  toggle: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    paddingVertical: 10, borderRadius: 12,
+  toggleRow: { flexDirection: "row", width: "100%", justifyContent: "center", alignItems: "center", textAlign: "center", marginTop: 4, gap: 12 },
+  secondaryCtrl: {
+    flex: 1, minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingHorizontal: 14, borderRadius: 18, gap: 8,
   },
-  toggleText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  toggleText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 
   factsCard: { padding: 16, borderRadius: 18, borderWidth: 1.5, marginBottom: 16, gap: 12 },
   factRow: { flexDirection: "row", alignItems: "center", gap: 10 },

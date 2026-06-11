@@ -4,12 +4,14 @@ import { useAssistantContext } from '@/hooks/assistant/useAssistantContext';
 import { useAssistantEvents } from '@/hooks/assistant/useAssistantEvents';
 import { useApp, type SymptomLog } from '@/context/AppContext';
 import { router } from 'expo-router';
+import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { LOCALE_BY_LANG, type Language } from '@/constants/translations';
 import { loadHistory, appendTurns, recentForPrompt } from '@/utils/conversationMemory';
 import { describeScreen } from '@/utils/contextEngine';
+import { matchKnowledgeBase } from '@/utils/knowledgeBase';
 
 export type AssistantState =
   | 'idle'
@@ -36,6 +38,7 @@ interface AssistantContextValue {
   stopAssistant: () => Promise<void>;
   cancelAssistant: () => Promise<void>;
   dismissOverlay: () => void;
+  processText: (text: string) => Promise<void>;
 }
 
 const AssistantContext = createContext<AssistantContextValue | null>(null);
@@ -197,6 +200,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [isVisible, setIsVisible] = useState(false);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const [lastReply, setLastReply] = useState<string | null>(null);
+  const [symptomFallback, setSymptomFallback] = useState<{symptom: string, lang: string} | null>(null);
+  const [fallbackValue, setFallbackValue] = useState<number>(5);
 
   const { activeModule } = useAssistantContext();
   const events = useAssistantEvents();
@@ -628,20 +633,24 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     const cleanText = transcript.toLowerCase().trim();
     let severity = 0;
 
-    const digitMatch = cleanText.match(/(10|[1-9])/);
+    const digitMatch = cleanText.match(/(10|[1-9]|১০|[১-৯])/);
     if (digitMatch) {
-      severity = parseInt(digitMatch[0], 10);
+      const bnToEn: Record<string, number> = {
+        '১': 1, '২': 2, '৩': 3, '৪': 4, '৫': 5, 
+        '৬': 6, '৭': 7, '৮': 8, '৯': 9, '১০': 10
+      };
+      severity = bnToEn[digitMatch[0]] || parseInt(digitMatch[0], 10);
     } else {
-      if (cleanText.includes('one') || cleanText.includes('ek') || cleanText.includes('এক')) severity = 1;
-      else if (cleanText.includes('two') || cleanText.includes('dui') || cleanText.includes('do') || cleanText.includes('দুই')) severity = 2;
-      else if (cleanText.includes('three') || cleanText.includes('tin') || cleanText.includes('teen') || cleanText.includes('তিন')) severity = 3;
-      else if (cleanText.includes('four') || cleanText.includes('char') || cleanText.includes('chaar') || cleanText.includes('চার')) severity = 4;
-      else if (cleanText.includes('five') || cleanText.includes('paanch') || cleanText.includes('pac') || cleanText.includes('পাঁচ')) severity = 5;
-      else if (cleanText.includes('six') || cleanText.includes('chhoy') || cleanText.includes('chhah') || cleanText.includes('ছয়')) severity = 6;
-      else if (cleanText.includes('seven') || cleanText.includes('saat') || cleanText.includes('সাত')) severity = 7;
-      else if (cleanText.includes('eight') || cleanText.includes('aat') || cleanText.includes('aath') || cleanText.includes('আট')) severity = 8;
-      else if (cleanText.includes('nine') || cleanText.includes('noy') || cleanText.includes('nau') || cleanText.includes('নয়')) severity = 9;
-      else if (cleanText.includes('ten') || cleanText.includes('dosh') || cleanText.includes('das') || cleanText.includes('দশ')) severity = 10;
+      if (cleanText.match(/\b(one|ek|এক)\b/)) severity = 1;
+      else if (cleanText.match(/\b(two|dui|do|দুই)\b/)) severity = 2;
+      else if (cleanText.match(/\b(three|tin|teen|তিন)\b/)) severity = 3;
+      else if (cleanText.match(/\b(four|char|chaar|চার)\b/)) severity = 4;
+      else if (cleanText.match(/\b(five|paanch|pac|পাঁচ)\b/)) severity = 5;
+      else if (cleanText.match(/\b(six|chhoy|chhah|ছয়)\b/)) severity = 6;
+      else if (cleanText.match(/\b(seven|saat|সাত)\b/)) severity = 7;
+      else if (cleanText.match(/\b(eight|aat|aath|আট)\b/)) severity = 8;
+      else if (cleanText.match(/\b(nine|noy|nau|নয়)\b/)) severity = 9;
+      else if (cleanText.match(/\b(ten|dosh|das|দশ)\b/)) severity = 10;
     }
 
     if (severity >= 1 && severity <= 10) {
@@ -689,6 +698,15 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         finish();
       }
     } else {
+      const retries = (pendingSymptomLogRef.current as any).retries || 0;
+      if (retries >= 1) {
+        setSymptomFallback({ symptom, lang });
+        cancelAssistant();
+        return;
+      }
+      
+      (pendingSymptomLogRef.current as any).retries = retries + 1;
+
       let reply = '';
       if (lang === 'bn') {
         reply = 'দয়া করে আপনার উপসর্গের তীব্রতা ১ থেকে ১০ এর মধ্যে কত বলুন। ১০ হচ্ছে সবচেয়ে বেশি তীব্র।';
@@ -734,12 +752,21 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setLastTranscript(transcript);
       events.publish('TRANSCRIPTION_SUCCESS', { text: transcript, context: activeModule });
 
-      // Voice Emergency Mode: distress phrases bypass the AI classifier and go
-      // straight to the SOS flow — fast, and works even with no connection.
       if (isEmergencyUtterance(transcript)) {
         pendingSymptomLogRef.current = null;
         pendingMeditationRef.current = false;
         await handleAction('TRIGGER_EMERGENCY', transcript);
+        return;
+      }
+
+      // ── Offline Knowledge Base / Guide Mode ──
+      const kbMatch = matchKnowledgeBase(transcript);
+      if (kbMatch) {
+        setLastReply(kbMatch.answer);
+        setState('speaking');
+        if (kbMatch.route) router.push(kbMatch.route as any);
+        await speak(kbMatch.answer, LOCALE_BY_LANG[language as Language || 'en']);
+        finish();
         return;
       }
 
@@ -844,6 +871,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setState('error');
     }
   }, [startSession, stopSpeaking, stopAssistantSpeech, events]);
+
+  const processText = useCallback(async (text: string) => {
+    setIsVisible(true);
+    await stopAssistantSpeech();
+    await stopSpeaking().catch(() => {});
+    await stopSession(); // stop mic if running
+    await handleTranscriptRef.current(text);
+  }, [stopAssistantSpeech, stopSpeaking, stopSession]);
   useEffect(() => {
     startAssistantRef.current = startAssistant;
   }, [startAssistant]);
@@ -885,6 +920,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       stopAssistant,
       cancelAssistant,
       dismissOverlay,
+      processText,
     }),
     [
       state,
@@ -897,8 +933,88 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       stopAssistant,
       cancelAssistant,
       dismissOverlay,
+      processText,
     ],
   );
 
-  return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
+  return (
+    <AssistantContext.Provider value={value}>
+      {children}
+      <Modal visible={!!symptomFallback} transparent animationType="fade">
+        <View style={styles.fallbackOverlay}>
+          <View style={styles.fallbackCard}>
+            <Text style={styles.fallbackTitle}>
+              {symptomFallback?.lang === 'bn' ? 'উপসর্গের তীব্রতা' : 'Symptom Severity'}
+            </Text>
+            <Text style={styles.fallbackSub}>
+              {symptomFallback?.lang === 'bn' ? '১ থেকে ১০ এর মধ্যে নির্বাচন করুন' : 'Please select from 1 to 10'}
+            </Text>
+            <View style={styles.chipsContainer}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                <TouchableOpacity 
+                  key={n} 
+                  style={[styles.chip, fallbackValue === n && styles.chipActive]}
+                  onPress={() => setFallbackValue(n)}
+                >
+                  <Text style={[styles.chipText, fallbackValue === n && styles.chipTextActive]}>{n}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity 
+              style={styles.confirmBtn}
+              onPress={async () => {
+                if (!symptomFallback) return;
+                const { symptom, lang } = symptomFallback;
+                setSymptomFallback(null);
+                
+                // Process the selected value through the existing logic
+                pendingSymptomLogRef.current = { symptom, lang };
+                await handleSymptomSeverityRating(fallbackValue.toString());
+              }}
+            >
+              <Text style={styles.confirmBtnText}>
+                {symptomFallback?.lang === 'bn' ? 'নিশ্চিত করুন' : 'Confirm'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </AssistantContext.Provider>
+  );
 }
+
+const styles = StyleSheet.create({
+  fallbackOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'
+  },
+  fallbackCard: {
+    backgroundColor: '#fff', padding: 24, borderRadius: 16, width: '90%', alignItems: 'center'
+  },
+  fallbackTitle: {
+    fontSize: 20, fontWeight: 'bold', color: '#1E1B4B', marginBottom: 8
+  },
+  fallbackSub: {
+    fontSize: 14, color: '#64748b', marginBottom: 24
+  },
+  chipsContainer: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 24
+  },
+  chip: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center'
+  },
+  chipActive: {
+    backgroundColor: '#6C47FF'
+  },
+  chipText: {
+    fontSize: 16, fontWeight: '600', color: '#475569'
+  },
+  chipTextActive: {
+    color: '#fff'
+  },
+  confirmBtn: {
+    backgroundColor: '#6C47FF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center'
+  },
+  confirmBtnText: {
+    color: '#fff', fontSize: 16, fontWeight: 'bold'
+  }
+});

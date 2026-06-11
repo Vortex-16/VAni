@@ -360,7 +360,6 @@ function PatientDashboard({ topInset }: { topInset: number }) {
   const upcomingFollowUp = fus.find((f) => !f.completed);
   const [showAll, setShowAll] = useState(false);
   const [mascotTrigger, setMascotTrigger] = useState(0);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const heroFade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -587,7 +586,6 @@ function PatientDashboard({ topInset }: { topInset: number }) {
                     if (dose.status === "pending") {
                       updateDoseStatus(dose.id, "taken");
                       setMascotTrigger(prev => prev + 1);
-                      setShowSuccess(true);
                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     }
                   }}
@@ -597,10 +595,6 @@ function PatientDashboard({ topInset }: { topInset: number }) {
           )}
         </View>
       </ScrollView>
-      <SuccessBurst 
-        visible={showSuccess} 
-        onComplete={() => setShowSuccess(false)} 
-      />
     </View>
   );
 }

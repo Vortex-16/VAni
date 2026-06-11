@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { db, patients, users, eq } from "@workspace/db";
+import { db, patients, users, eq, medicines, doseLogs, symptomLogs, followUps, inArray } from "@workspace/db";
 import type { AuthRequest } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { getManagedPatients } from "../lib/managedPatients";
@@ -15,7 +15,40 @@ export class FamilyController {
 
       const members = await getManagedPatients(req.user.id);
 
-      return res.json({ members });
+      if (members.length === 0) {
+        return res.json({ members: [] });
+      }
+
+      const patientIds = members.map(p => p.id);
+
+      const [allMedicines, allSymptomLogs, allFollowUps] = await Promise.all([
+        db.select().from(medicines).where(inArray(medicines.patientId, patientIds)),
+        db.select().from(symptomLogs).where(inArray(symptomLogs.patientId, patientIds)),
+        db.select().from(followUps).where(inArray(followUps.patientId, patientIds)),
+      ]);
+
+      const allMedicineIds = allMedicines.map(m => m.id);
+      const allDoseLogs = allMedicineIds.length > 0 
+        ? await db.select().from(doseLogs).where(inArray(doseLogs.medicineId, allMedicineIds))
+        : [];
+
+      const formattedMembers = members.map(p => {
+        const pMeds = allMedicines.filter(m => m.patientId === p.id);
+        const medIds = pMeds.map(m => m.id);
+        const pDoseLogs = allDoseLogs.filter(d => medIds.includes(d.medicineId));
+        const pSymptomLogs = allSymptomLogs.filter(s => s.patientId === p.id);
+        
+        return {
+          ...p,
+          dischargeDate: p.dischargeDate?.toISOString(),
+          medicines: pMeds.map(m => ({ ...m, startDate: m.startDate?.toISOString(), endDate: m.endDate?.toISOString() })),
+          doseLogs: pDoseLogs.map(d => ({ ...d, takenAt: d.takenAt?.toISOString() })),
+          symptomLogs: pSymptomLogs.map(s => ({ ...s, date: s.date?.toISOString() })),
+          followUps: allFollowUps.filter(f => f.patientId === p.id).map(f => ({ ...f, dateTime: f.dateTime?.toISOString() })),
+        };
+      });
+
+      return res.json({ members: formattedMembers });
     } catch (error: any) {
       logger.error({ error: error.message }, "[FamilyController] getMembers failed");
       return res.status(500).json({ error: "Failed to fetch family members", detail: error.message });

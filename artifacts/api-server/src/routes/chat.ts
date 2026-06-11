@@ -194,7 +194,7 @@ router.get("/conversations", requireAuth, async (req: AuthRequest, res: Response
           .from(patients)
           .where(eq(patients.id, patientContextId));
         const parts = await getParticipants(patientContextId);
-        
+
         const otherIds = [...parts.all].filter(id => id !== me.id);
         if (otherIds.length === 0) {
           conversations.push({
@@ -291,9 +291,9 @@ router.get("/history/:patientContextId", requireAuth, async (req: AuthRequest, r
     const base = eq(messages.patientContextId, patientContextId);
     const scope = withUserId
       ? or(
-          and(eq(messages.senderId, userId), eq(messages.receiverId, withUserId)),
-          and(eq(messages.senderId, withUserId), eq(messages.receiverId, userId)),
-        )
+        and(eq(messages.senderId, userId), eq(messages.receiverId, withUserId)),
+        and(eq(messages.senderId, withUserId), eq(messages.receiverId, userId)),
+      )
       : or(eq(messages.senderId, userId), eq(messages.receiverId, userId));
 
     const history = await db
@@ -345,6 +345,7 @@ router.post("/send", requireAuth, async (req: AuthRequest, res: Response) => {
     // Deliver in real time to every live connection the receiver has; if none
     // are connected, fall back to a push notification.
     const deliveredLive = pushToClients(receiverId, { type: "message", data: newMessage });
+    pushToClients(senderId, { type: "message", data: newMessage }); // ensure sender's other sessions/components receive it
     if (!deliveredLive) {
       const [receiver] = await db.select().from(users).where(eq(users.id, receiverId));
       if (receiver?.pushToken) {
