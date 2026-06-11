@@ -503,23 +503,22 @@ function PatientDashboard({ topInset }: { topInset: number }) {
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/caregiver-chat" as any); }} />
             <QuickAction icon="book" label="Journal" color="#10B981" delay={160}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/journal" as any); }} />
-            <QuickAction icon="alert-triangle" label="Emergency" color="#F59E0B" delay={200}
+          </View>
+          <View style={[styles.quickRow, { marginTop: 18 }]}>
+            <QuickAction icon="alert-triangle" label="Call 112" color="#F59E0B" delay={200}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); Linking.openURL("tel:112"); }} />
-          </View>
-          <View style={[styles.quickRow, { marginTop: 18 }]}>
-            <QuickAction icon="droplet" label="Blood Network" color="#E11D48" delay={240}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/blood-network" as any); }} />
-            <QuickAction icon="shield" label="Drug Check" color="#6C47FF" delay={280}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/drug-checker" as any); }} />
-            <QuickAction icon="phone-call" label="Emergency" color="#EF4444" delay={320}
+            <QuickAction icon="phone-call" label="Helpline" color="#EF4444" delay={240}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/emergency" as any); }} />
+            <QuickAction icon="zap" label="Smart SOS" color="#F59E0B" delay={280}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/smart-sos" as any); }} />
           </View>
           <View style={[styles.quickRow, { marginTop: 18 }]}>
-            <QuickAction icon="heart" label="CPR Guide" color="#EF4444" delay={360}
+            <QuickAction icon="droplet" label="Blood Network" color="#E11D48" delay={320}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/blood-network" as any); }} />
+            <QuickAction icon="shield" label="Drug Check" color="#6C47FF" delay={360}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/drug-checker" as any); }} />
+            <QuickAction icon="heart" label="CPR Guide" color="#EF4444" delay={400}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/cpr" as any); }} />
-            <QuickAction icon="zap" label="Smart SOS" color="#F59E0B" delay={400}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/smart-sos" as any); }} />
-            <View style={styles.quickItem} />
           </View>
         </View>
 

@@ -66,7 +66,7 @@ async function getManagerIds(patientContextId: string): Promise<string[]> {
   const legacyManagers = await db
     .select({ id: users.id })
     .from(users)
-    .where(and(eq(users.linkedPatientId, patientContextId), inArray(users.role, ["caregiver", "family"])));
+    .where(and(eq(users.linkedPatientId, patientContextId), inArray(users.role, ["caregiver", "family", "doctor"])));
   for (const m of legacyManagers) ids.add(m.id);
 
   return [...ids];
@@ -115,7 +115,13 @@ async function resolveReceiver(
     return { receiverId: requestedReceiverId };
   }
 
-  // No explicit receiver: the patient ↔ a single manager, or a manager ↔ patient.
+  // If there is exactly one other participant in the context, default to them.
+  const otherIds = [...parts.all].filter((id) => id !== requesterId);
+  if (otherIds.length === 1) {
+    return { receiverId: otherIds[0] };
+  }
+
+  // No explicit receiver and multiple other participants:
   const isPatient = requesterId === parts.patientUserId;
   if (isPatient) {
     if (parts.managerIds.length === 1) return { receiverId: parts.managerIds[0] };
@@ -125,9 +131,9 @@ async function resolveReceiver(
     return { error: "Multiple recipients linked — specify receiverId.", status: 400 };
   }
 
-  // Requester is a manager → the patient.
+  // Requester is a manager → default to patient if they exist.
   if (parts.patientUserId) return { receiverId: parts.patientUserId };
-  return { error: "No patient account is linked to this record.", status: 400 };
+  return { error: "Multiple recipients linked or no patient account — specify receiverId.", status: 400 };
 }
 
 // ── GET /api/chat/conversations ──
@@ -169,7 +175,7 @@ router.get("/conversations", requireAuth, async (req: AuthRequest, res: Response
         }
       }
     } else {
-      // A manager (caregiver/family) chats with each patient they manage.
+      // A manager (caregiver/family/doctor) chats with each patient they manage or other managers.
       const managedIds = new Set<string>();
       const links = await db
         .select({ patientId: careLinks.patientId })
@@ -188,13 +194,31 @@ router.get("/conversations", requireAuth, async (req: AuthRequest, res: Response
           .from(patients)
           .where(eq(patients.id, patientContextId));
         const parts = await getParticipants(patientContextId);
-        conversations.push({
-          patientContextId,
-          patientName: patient?.name ?? null,
-          peerId: parts.patientUserId,
-          peerName: null,
-          peerRole: "patient",
-        });
+        
+        const otherIds = [...parts.all].filter(id => id !== me.id);
+        if (otherIds.length === 0) {
+          conversations.push({
+            patientContextId,
+            patientName: patient?.name ?? null,
+            peerId: null,
+            peerName: null,
+            peerRole: null,
+          });
+        } else {
+          const peers = await db
+            .select({ id: users.id, name: users.name, role: users.role })
+            .from(users)
+            .where(inArray(users.id, otherIds));
+          for (const peer of peers) {
+            conversations.push({
+              patientContextId,
+              patientName: patient?.name ?? null,
+              peerId: peer.id,
+              peerName: peer.name,
+              peerRole: peer.role,
+            });
+          }
+        }
       }
     }
 

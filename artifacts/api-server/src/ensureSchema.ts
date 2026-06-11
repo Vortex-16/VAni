@@ -16,6 +16,7 @@ const STATEMENTS = [
      audio_base64 text,
      created_at timestamp DEFAULT now()
    );`,
+  `ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio_base64 text;`,
   `CREATE INDEX IF NOT EXISTS messages_pair_idx ON messages (patient_context_id, created_at);`,
   `CREATE INDEX IF NOT EXISTS messages_participants_idx ON messages (sender_id, receiver_id);`,
 ];
