@@ -130,6 +130,83 @@ async function resolveReceiver(
   return { error: "No patient account is linked to this record.", status: 400 };
 }
 
+// ── GET /api/chat/conversations ──
+// Returns the conversations the authenticated user can take part in, each scoped
+// to a patient context. The frontend calls this on entry to learn the correct
+// `patientContextId` + peer instead of guessing from client state (a caregiver's
+// own `linkedPatientId` is null, so guessing was unreliable). Always derived
+// fresh from the DB, so it stays in sync once family/caregiver links change.
+router.get("/conversations", requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const me = req.user!;
+    const conversations: Array<{
+      patientContextId: string;
+      patientName: string | null;
+      peerId: string | null;
+      peerName: string | null;
+      peerRole: string | null;
+    }> = [];
+
+    if (me.role === "patient") {
+      // A patient has one context (their own record) and one row per linked manager.
+      const patientContextId = me.linkedPatientId;
+      if (patientContextId) {
+        const parts = await getParticipants(patientContextId);
+        const [patient] = await db
+          .select({ name: patients.name })
+          .from(patients)
+          .where(eq(patients.id, patientContextId));
+        if (parts.managerIds.length === 0) {
+          conversations.push({ patientContextId, patientName: patient?.name ?? null, peerId: null, peerName: null, peerRole: null });
+        } else {
+          const managers = await db
+            .select({ id: users.id, name: users.name, role: users.role })
+            .from(users)
+            .where(inArray(users.id, parts.managerIds));
+          for (const mgr of managers) {
+            conversations.push({ patientContextId, patientName: patient?.name ?? null, peerId: mgr.id, peerName: mgr.name, peerRole: mgr.role });
+          }
+        }
+      }
+    } else {
+      // A manager (caregiver/family) chats with each patient they manage.
+      const managedIds = new Set<string>();
+      const links = await db
+        .select({ patientId: careLinks.patientId })
+        .from(careLinks)
+        .where(and(eq(careLinks.managerId, me.id), eq(careLinks.status, "active")));
+      for (const l of links) managedIds.add(l.patientId);
+      const legacy = await db
+        .select({ id: patients.id })
+        .from(patients)
+        .where(eq(patients.caregiverId, me.id));
+      for (const p of legacy) managedIds.add(p.id);
+
+      for (const patientContextId of managedIds) {
+        const [patient] = await db
+          .select({ name: patients.name })
+          .from(patients)
+          .where(eq(patients.id, patientContextId));
+        const parts = await getParticipants(patientContextId);
+        conversations.push({
+          patientContextId,
+          patientName: patient?.name ?? null,
+          peerId: parts.patientUserId,
+          peerName: null,
+          peerRole: "patient",
+        });
+      }
+    }
+
+    res.json({ conversations });
+    return;
+  } catch (err) {
+    logger.error({ err }, "List Conversations Error");
+    res.status(500).json({ error: "Failed to list conversations" });
+    return;
+  }
+});
+
 // ── GET /api/chat/stream ──
 // Subscribe to Server-Sent Events for incoming messages.
 router.get("/stream", requireAuth, (req: AuthRequest, res: Response) => {

@@ -977,3 +977,92 @@ the existing notification service.
   voices confirmed present in the live catalog; pa/or/as confirmed absent → remapped.
 - ⚠️ Messaging live run: not possible in-sandbox (no DB / encrypted env). Run
   `smoke-test-messaging.mjs` against a live API + Postgres to confirm end-to-end.
+
+
+## SECTION 14 — Messaging hardening, chat keyboard, family bell, emergency calls & Google sign-in UX
+
+Follow-up iteration on branch `ttsServiceDone`. Frontend + api-server; one new
+backend endpoint, no new DB tables. Both packages typecheck clean; api-server
+bundles.
+
+### 1. Emergency contact call buttons + caregiver/family push (recap)
+- `app/emergency.tsx` — the Emergency Contacts call buttons were dead
+  (`onPress={() => {}}`). Now each dials `tel:<digits>` via `Linking.openURL`,
+  is disabled/greyed when no valid number exists, and the fake
+  "Hospital Helpline 1800-XXX-XXXX" was replaced with the real **Ambulance 108**.
+- `services/emergencyService.ts` — `triggerEmergency` now resolves the patient's
+  linked caregivers + family (care_links + legacy pointers) and pushes them an
+  emergency alert via the existing `sendPushNotification` (best-effort; failures
+  logged, never break the alert).
+
+### 2. Family home notification bell — fixed
+`app/family/dashboard.tsx` — the header bell had no `onPress`; now navigates to
+`/notifications`. Also wired the dead caregiver-header settings button in
+`app/(tabs)/index.tsx` (`onPress={() => {}}` → `/settings`).
+
+### 3. Messaging: reliable patient context (sync with backend)
+**Problem:** a caregiver's own `user.linkedPatientId` is `null` (their patient
+comes from `care_links`), so the client couldn't reliably know which patient
+context to send under — sends 400'd and the optimistic bubble vanished.
+
+**Fix — backend is now the source of truth:**
+- New endpoint **`GET /api/chat/conversations`** (`routes/chat.ts`): returns, for
+  the authenticated user, every conversation they can take part in — each with
+  `patientContextId`, `patientName`, `peerId`, `peerName`, `peerRole`. Patients
+  get one row per linked manager; managers get one row per managed patient.
+  Always derived fresh from the DB so it stays correct as links change.
+- `app/caregiver-chat.tsx` calls `/conversations` on entry and uses it as the
+  authoritative context + peer; the previous client-side guesses
+  (`params → linkedPatientId → activePatientId → linkedPatients[0]`) remain only
+  as a first-paint fallback for offline/older servers. The resolved context is
+  mirrored in a ref so the long-lived SSE handler filters on the latest value
+  without re-subscribing.
+- Failed sends no longer vanish silently: the optimistic bubble rolls back, the
+  text is restored, and an `Alert` explains why.
+
+### 4. Chat keyboard pop/drag jitter — fixed
+`app/caregiver-chat.tsx` — the input bar added `insets.bottom` even while the
+keyboard was up, causing a jump. Now a `Keyboard` show/hide listener drops the
+safe-area bottom padding while the keyboard is visible, and
+`KeyboardAvoidingView` uses `padding` (iOS) / `height` (Android). Auto-scrolls to
+the latest message on keyboard show.
+
+### 5. Google sign-in (mobile) — graceful UX + loading animation
+`app/login.tsx`:
+- The loading animation (`LiquidCapsuleProgress`, gated on `isLoggingIn`) now
+  shows the **moment the user taps** Continue-with-Google, so the underlying
+  sheet no longer flashes while the Google browser opens/returns.
+- The `googleResponse` effect now handles **`cancel`/`dismiss`** (not just
+  success/error), clearing the overlay so a closed browser doesn't leave a
+  half-finished "Authenticating…" screen.
+- `promptAsync` is awaited with try/catch so a failed launch surfaces an error
+  instead of hanging.
+- **Config note (not a code bug):** the native "page opens briefly then lands on
+  home" behaviour also depends on Google OAuth config —
+  `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` / `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` are
+  empty, so a standalone/dev build needs those client IDs and the
+  `discharge-buddy://` redirect URI registered in Google Cloud. Expo Go cannot do
+  native Google OAuth (the code already disables it there).
+
+### 6. Sidebar declutter (recap)
+`components/Sidebar.tsx` — removed feature tools that already have home-screen
+quick actions (CPR, Smart SOS, Blood Network, Drug Checker, Meditation); kept
+Profile, Schedule, Notifications, Activity Log, Settings, Help (+ Share Link QR
+for patients).
+
+### Files changed (this iteration)
+- `api-server/src/routes/chat.ts` — `GET /api/chat/conversations`.
+- `api-server/src/services/emergencyService.ts` — caregiver/family push on alert.
+- `discharge-buddy/app/emergency.tsx` — dialable contact buttons; Ambulance 108.
+- `discharge-buddy/app/caregiver-chat.tsx` — backend-synced context, keyboard fix,
+  send-failure alerts.
+- `discharge-buddy/app/family/dashboard.tsx` — bell → `/notifications`.
+- `discharge-buddy/app/(tabs)/index.tsx` — caregiver settings button → `/settings`.
+- `discharge-buddy/app/login.tsx` — Google sign-in loading + cancel handling.
+- `discharge-buddy/components/Sidebar.tsx` — trimmed menu.
+
+### Verification (this iteration)
+- ✅ `api-server` typecheck + esbuild bundle clean (`/conversations` in bundle).
+- ✅ `discharge-buddy` typecheck clean (0 errors).
+- ⚠️ Messaging/push live runs still require a real DB + dev build (encrypted env,
+  Expo Go push limitation) — use `smoke-test-messaging.mjs`.

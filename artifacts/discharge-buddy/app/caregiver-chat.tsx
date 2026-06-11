@@ -52,37 +52,74 @@ export default function CaregiverChatPage() {
   //   1. explicit ?patientContextId= (e.g. from a patient card)
   //   2. the user's own linked patient (patient users)
   //   3. the currently-selected patient (family/caregiver context)
-  //   4. the first managed patient (caregivers have linkedPatientId = null, so
-  //      without this their messages would fail "patientContextId is required").
-  const patientContextId =
+  // The conversation is always scoped to a patient. We resolve it from the
+  // backend (/conversations) on entry so it stays correct once family/caregiver
+  // links exist — the client-side guesses below are only a first-paint fallback.
+  //   1. explicit ?patientContextId= (e.g. from a patient card)
+  //   2. the user's own linked patient (patient users)
+  //   3. the currently-selected patient (family/caregiver context)
+  //   4. the first managed patient
+  const fallbackContextId =
     params.patientContextId ||
     user?.linkedPatientId ||
     activePatientId ||
     linkedPatients?.[0]?.id;
 
-  // Who we're talking to. If not passed explicitly, we learn it from history
-  // (the other participant). A manager can leave it undefined — the server
-  // resolves manager → patient. A patient with multiple managers needs it set.
+  const [patientContextId, setPatientContextId] = useState<string | undefined>(fallbackContextId);
+  // Mirror in a ref so the long-lived SSE handler always filters on the latest
+  // resolved context without needing to re-subscribe.
+  const contextIdRef = useRef<string | undefined>(fallbackContextId);
+
+  // Who we're talking to. Synced from the backend / history; a manager may leave
+  // it undefined (server resolves manager → patient).
   const peerIdRef = useRef<string | undefined>(params.peerId);
 
   useEffect(() => {
     if (!user) return;
 
     let es: EventSource | null = null;
+    let cancelled = false;
 
     const initChat = async () => {
       try {
         const token = await AsyncStorage.getItem('discharge_buddy_token');
         const apiUrl = getApiUrl();
 
-        if (patientContextId) {
+        // 1. Sync the authoritative conversation context from the backend.
+        let ctxId = patientContextId;
+        try {
+          const convRes = await fetch(`${apiUrl}/api/chat/conversations`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (convRes.ok) {
+            const { conversations } = await convRes.json();
+            if (Array.isArray(conversations) && conversations.length > 0) {
+              // Prefer a conversation matching an explicit context/peer, else first.
+              const match =
+                conversations.find(
+                  (c: any) =>
+                    (params.patientContextId && c.patientContextId === params.patientContextId) ||
+                    (params.peerId && c.peerId === params.peerId),
+                ) || conversations[0];
+              ctxId = match.patientContextId;
+              if (!peerIdRef.current && match.peerId) peerIdRef.current = match.peerId;
+              contextIdRef.current = ctxId;
+              if (!cancelled) setPatientContextId(ctxId);
+            }
+          }
+        } catch {
+          // Offline / older server — keep the client-side fallback context.
+        }
+
+        // 2. Fetch history for the resolved context.
+        if (ctxId) {
           const qs = peerIdRef.current ? `?withUserId=${peerIdRef.current}` : '';
-          const historyRes = await fetch(`${apiUrl}/api/chat/history/${patientContextId}${qs}`, {
+          const historyRes = await fetch(`${apiUrl}/api/chat/history/${ctxId}${qs}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (historyRes.ok) {
             const history: Message[] = await historyRes.json();
-            setMessages(history);
+            if (!cancelled) setMessages(history);
             // Infer the peer from history if it wasn't provided.
             if (!peerIdRef.current) {
               const other = history.find((m) => m.senderId !== user.id);
@@ -90,9 +127,9 @@ export default function CaregiverChatPage() {
             }
           }
         }
-        setLoading(false);
+        if (!cancelled) setLoading(false);
 
-        // Subscribe to the real-time stream.
+        // 3. Subscribe to the real-time stream.
         es = new EventSource(`${apiUrl}/api/chat/stream`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -104,7 +141,8 @@ export default function CaregiverChatPage() {
             if (parsed.type !== 'message' || !parsed.data) return;
             const msg: Message = parsed.data;
             // Only show messages from this patient conversation.
-            if (patientContextId && msg.patientContextId && msg.patientContextId !== patientContextId) return;
+            const activeCtx = contextIdRef.current;
+            if (activeCtx && msg.patientContextId && msg.patientContextId !== activeCtx) return;
             if (!peerIdRef.current && msg.senderId !== user.id) peerIdRef.current = msg.senderId;
             setMessages((prev) => {
               if (prev.find((m) => m.id === msg.id)) return prev;
@@ -124,12 +162,13 @@ export default function CaregiverChatPage() {
     initChat();
 
     return () => {
+      cancelled = true;
       if (es) {
         es.removeAllEventListeners();
         es.close();
       }
     };
-  }, [user, patientContextId]);
+  }, [user]);
 
   const sendMessage = async () => {
     if (!inputText.trim() || !user) return;

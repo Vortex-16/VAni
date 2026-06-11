@@ -192,11 +192,23 @@ export default function LoginScreen() {
     ? Google.useAuthRequest(getGoogleAuthConfig()) : [null, null, null];
 
   useEffect(() => {
-    if (googleResponse?.type === 'success') {
+    if (!googleResponse) return;
+    if (googleResponse.type === 'success') {
       const accessToken = googleResponse.authentication?.accessToken;
-      if (accessToken) executeGoogleOAuth(accessToken);
-    } else if (googleResponse?.type === 'error') {
+      if (accessToken) {
+        executeGoogleOAuth(accessToken);
+      } else {
+        // Success with no token — treat as a failure rather than hanging.
+        setError('Google sign-in did not return a token. Please try again.');
+        setIsLoggingIn(false); setLoginProgress(0);
+      }
+    } else if (googleResponse.type === 'error') {
       setError('Google sign-in was cancelled or failed.');
+      setIsLoggingIn(false); setLoginProgress(0);
+    } else if (googleResponse.type === 'cancel' || googleResponse.type === 'dismiss') {
+      // User closed the Google browser — clear the loading overlay so we don't
+      // leave a half-finished "Authenticating…" screen behind.
+      setIsLoggingIn(false); setLoginProgress(0);
     }
   }, [googleResponse]);
 
@@ -287,11 +299,25 @@ export default function LoginScreen() {
   };
 
 
-  const handleGoogleAction = () => {
+  const handleGoogleAction = async () => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError(null);
     if (!canUseGoogleAuth) { setError('Google Sign-In needs native credentials on this device.'); return; }
-    if (promptGoogleAsync) promptGoogleAsync();
+    if (!promptGoogleAsync) return;
+    // Show the loading animation the moment the user taps, so the underlying
+    // screen never flashes while the Google browser is opening / returning.
+    setIsLoggingIn(true); setLoginProgress(0.3);
+    try {
+      const result = await promptGoogleAsync();
+      // If the user cancelled/dismissed the browser, the response effect clears
+      // the overlay; but guard here too in case the promise resolves first.
+      if (result?.type && result.type !== 'success') {
+        setIsLoggingIn(false); setLoginProgress(0);
+      }
+    } catch {
+      setIsLoggingIn(false); setLoginProgress(0);
+      setError('Could not open Google sign-in. Please try again.');
+    }
   };
 
   // ── Email / Password Auth ──────────────────────────────────────────────────
