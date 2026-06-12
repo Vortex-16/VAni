@@ -602,11 +602,12 @@ ACTION targets (do something, not just navigate):
 CHAT intent (a question, feeling, or chit-chat that needs a spoken answer, NOT an app action):
 - Use {"intent":"CHAT","target":"","metadata":{},"confidence":0.9} for things like
   "how are you", "what should I eat", "I feel sad", "what is this medicine for",
-  "tell me about my recovery", "good morning".
+  "tell me about my recovery", "good morning", "what should I do now", "what do I do", "what are my next steps".
+- IMPORTANT: Questions asking for guidance, advice, or next steps (such as "what should I do now", "what do I do", "what is the next step") MUST map to CHAT intent, NOT NAVIGATE. Only classify as NAVIGATE if the user explicitly names a screen to open (e.g. "go to settings", "open medicines").
 
 If nothing fits and it is not conversational, use {"intent":"UNKNOWN","target":"","metadata":{},"confidence":0.2}.
 
-Context: the user is currently on screen: \${context || "unknown"}
+Context: the user is currently on screen: ${context || "unknown"}
 
 Examples:
 "I want to meditate for 20 minutes" -> {"intent":"ACTION","target":"SET_TIMER","metadata":{"timerMinutes":20,"isMeditation":true},"confidence":0.95}
@@ -622,6 +623,8 @@ Examples:
 "I can't breathe"                 -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
 "I have a stomach ache"           -> {"intent":"ACTION","target":"LOG_SYMPTOM","metadata":{"symptom":"stomach ache","severity":null},"confidence":0.9}
 "log me out"                      -> {"intent":"ACTION","target":"LOGOUT","metadata":{},"confidence":0.95}
+"what should I do now"             -> {"intent":"CHAT","target":"","metadata":{},"confidence":0.95}
+"what do I do"                     -> {"intent":"CHAT","target":"","metadata":{},"confidence":0.95}
 "how are you feeling today buddy" -> {"intent":"CHAT","target":"","metadata":{},"confidence":0.9}
 "asdfghjkl"                       -> {"intent":"UNKNOWN","target":"","metadata":{},"confidence":0.2}`
 
