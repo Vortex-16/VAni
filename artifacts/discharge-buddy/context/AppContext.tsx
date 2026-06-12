@@ -12,7 +12,7 @@ import { NotificationToast } from "@/components/NotificationToast";
 import { soundHelper } from "@/utils/SoundHelper";
 import { clearHistory as clearConversationHistory } from "@/utils/conversationMemory";
 import { Audio } from "expo-av";
-import { cacheDirectory, writeAsStringAsync, EncodingType } from "expo-file-system/legacy";
+import { cacheDirectory, writeAsStringAsync, EncodingType, getInfoAsync } from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import { getApiUrl } from "@/utils/apiUrl";
@@ -464,6 +464,16 @@ const STORAGE_KEY = "discharge_buddy_data_v2";
 
 // Dummy items moved to DataProvider implementations
 
+function hashCode(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const isOnline = useConnectivity();
   const [user, setUserState] = useState<AppUser | null>(null);
@@ -496,6 +506,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingTargetId, setSpeakingTargetId] = useState<string | null>(null);
   const audioRef = useRef<Audio.Sound | null>(null);
+  const activeSpeechRequestIdRef = useRef(0);
 
   const [dataProvider, setDataProvider] = useState<IDataProvider>(new ApiProvider());
   const [isInitializing, setIsInitializing] = useState(true);
@@ -964,6 +975,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const speakNeural = async (text: string, targetId?: string) => {
     if (!text) return;
 
+    // Track active request ID to discard stale responses on concurrent runs
+    const currentRequestId = ++activeSpeechRequestIdRef.current;
+
     // If already speaking the same thing, stop it
     if (isSpeaking && speakingTargetId === targetId) {
       stopSpeaking();
@@ -992,14 +1006,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Primary path: Microsoft Edge TTS (high-quality neural Indian-language
-    // voices) generated server-side, played here via expo-av. Falls back to the
-    // on-device engine if the network/server fails so SOS audio never goes silent.
-    try {
-      const { audioContent } = await dataProvider.generateTTS(cleanText, language);
+    const hashStr = `${language}_${hashCode(cleanText)}`;
+    const fileUri = `${cacheDirectory}tts_${hashStr}.mp3`;
 
-      if (!audioContent) {
-        speakOnDevice(cleanText);
+    try {
+      let localUri = fileUri;
+      // Check cache directory for previously generated audio to eliminate latency
+      const fileInfo = await getInfoAsync(fileUri);
+
+      if (!fileInfo.exists) {
+        const { audioContent } = await dataProvider.generateTTS(cleanText, language);
+
+        // Invalidate if a newer speech request has taken over
+        if (currentRequestId !== activeSpeechRequestIdRef.current) {
+          return;
+        }
+
+        if (!audioContent) {
+          speakOnDevice(cleanText);
+          return;
+        }
+
+        await writeAsStringAsync(fileUri, audioContent, {
+          encoding: EncodingType.Base64,
+        });
+      }
+
+      // Check again after write/fetch before playing
+      if (currentRequestId !== activeSpeechRequestIdRef.current) {
         return;
       }
 
@@ -1010,9 +1044,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
 
       const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mp3;base64,${audioContent}` },
+        { uri: localUri },
         { shouldPlay: true }
       );
+
+      // Verify one last time after the sound object is instantiated
+      if (currentRequestId !== activeSpeechRequestIdRef.current) {
+        sound.unloadAsync().catch(() => {});
+        return;
+      }
+
       audioRef.current = sound;
 
       sound.setOnPlaybackStatusUpdate((status) => {
@@ -1032,7 +1073,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (ttsErr) {
       console.warn("[Edge TTS] Falling back to on-device speech:", ttsErr);
-      speakOnDevice(cleanText);
+      if (currentRequestId === activeSpeechRequestIdRef.current) {
+        speakOnDevice(cleanText);
+      }
     }
   };
 

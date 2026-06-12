@@ -92,6 +92,8 @@ function resolveEdgeVoice(language?: string): string {
  * @body { text: string, language?: string, voice?: string, rate?: number, pitch?: number }
  * @returns { audioContent: base64 mp3, format: "mp3", voiceId }
  */
+const ttsCache = new Map<string, string>();
+
 router.post("/tts", async (req: any, res: any) => {
   const { text, language, voice, rate, pitch } = req.body;
 
@@ -116,6 +118,16 @@ router.post("/tts", async (req: any, res: any) => {
   const rateStr = `${clamp(Math.round(Number(rate) || 0), -50, 50) >= 0 ? "+" : ""}${clamp(Math.round(Number(rate) || 0), -50, 50)}%`;
   const pitchStr = `${clamp(Math.round(Number(pitch) || 0), -20, 20) >= 0 ? "+" : ""}${clamp(Math.round(Number(pitch) || 0), -20, 20)}Hz`;
 
+  const cacheKey = `${voiceId}_${rateStr}_${pitchStr}_${cleanText}`;
+  if (ttsCache.has(cacheKey)) {
+    console.log(`[TTS Server Cache] Hit for voiceId: ${voiceId}`);
+    return res.json({
+      audioContent: ttsCache.get(cacheKey),
+      format: "mp3",
+      voiceId,
+    });
+  }
+
   const generateAudio = async (attempt: number = 0): Promise<string> => {
     try {
       const tts = new EdgeTTS();
@@ -139,6 +151,16 @@ router.post("/tts", async (req: any, res: any) => {
 
   try {
     const audioBase64 = await generateAudio();
+    
+    // Evict oldest if cache size exceeds limit
+    if (ttsCache.size > 1000) {
+      const firstKey = ttsCache.keys().next().value;
+      if (firstKey !== undefined) {
+        ttsCache.delete(firstKey);
+      }
+    }
+    ttsCache.set(cacheKey, audioBase64);
+
     return res.json({
       audioContent: audioBase64,
       format: "mp3",

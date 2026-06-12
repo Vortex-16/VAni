@@ -8,6 +8,7 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
+import * as FileSystem from 'expo-file-system/legacy';
 import { LOCALE_BY_LANG, type Language } from '@/constants/translations';
 import { loadHistory, appendTurns, recentForPrompt } from '@/utils/conversationMemory';
 import { describeScreen } from '@/utils/contextEngine';
@@ -195,6 +196,16 @@ function extractSymptom(text: string, lang: string): string {
   return 'Symptom';
 }
 
+function hashCode(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
 export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AssistantState>('idle');
   const [isVisible, setIsVisible] = useState(false);
@@ -224,6 +235,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   // navigation or action clears it so we never loop forever.
   const continueConversationRef = useRef(false);
   const assistantSoundRef = useRef<Audio.Sound | null>(null);
+  const activeSpeakRequestIdRef = useRef(0);
   const startAssistantRef = useRef<() => Promise<void>>(async () => { });
   const pendingSymptomLogRef = useRef<{ symptom: string; lang: string } | null>(null);
   const pendingMeditationRef = useRef<boolean>(false);
@@ -235,6 +247,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const speak = useCallback(
     (text: string, localeOverride?: string) =>
       new Promise<void>(async (resolve) => {
+        const currentRequestId = ++activeSpeakRequestIdRef.current;
         const clean = stripForSpeech(text);
         if (!clean) {
           resolve();
@@ -261,6 +274,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
         // On-device fallback.
         const speakOnDevice = () => {
+          if (currentRequestId !== activeSpeakRequestIdRef.current) {
+            clearTimeout(timeoutId);
+            safeResolve();
+            return;
+          }
           try {
             Speech.stop();
             Speech.speak(clean, {
@@ -278,10 +296,34 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           }
         };
 
+        const hashStr = `${langCode}_${hashCode(clean)}`;
+        const fileUri = `${FileSystem.cacheDirectory}tts_${hashStr}.mp3`;
+
         try {
-          const { audioContent } = await api.generateTTS(clean, langCode);
-          if (!audioContent) {
-            speakOnDevice();
+          let localUri = fileUri;
+          const fileInfo = await FileSystem.getInfoAsync(fileUri);
+
+          if (!fileInfo.exists) {
+            const { audioContent } = await api.generateTTS(clean, langCode);
+            if (currentRequestId !== activeSpeakRequestIdRef.current) {
+              clearTimeout(timeoutId);
+              safeResolve();
+              return;
+            }
+
+            if (!audioContent) {
+              speakOnDevice();
+              return;
+            }
+
+            await FileSystem.writeAsStringAsync(fileUri, audioContent, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
+
+          if (currentRequestId !== activeSpeakRequestIdRef.current) {
+            clearTimeout(timeoutId);
+            safeResolve();
             return;
           }
 
@@ -292,9 +334,17 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           });
 
           const { sound } = await Audio.Sound.createAsync(
-            { uri: `data:audio/mp3;base64,${audioContent}` },
+            { uri: localUri },
             { shouldPlay: true }
           );
+
+          if (currentRequestId !== activeSpeakRequestIdRef.current) {
+            sound.unloadAsync().catch(() => {});
+            clearTimeout(timeoutId);
+            safeResolve();
+            return;
+          }
+
           assistantSoundRef.current = sound;
 
           sound.setOnPlaybackStatusUpdate((status) => {
@@ -311,7 +361,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           });
         } catch (e) {
           console.warn("[Assistant] Edge TTS failed, falling back to device speech:", e);
-          speakOnDevice();
+          if (currentRequestId === activeSpeakRequestIdRef.current) {
+            speakOnDevice();
+          } else {
+            clearTimeout(timeoutId);
+            safeResolve();
+          }
         }
       }),
     [api, language],
@@ -325,6 +380,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   // Stop any in-flight assistant speech — both the Edge TTS audio (expo-av)
   // and the on-device fallback engine.
   const stopAssistantSpeech = useCallback(async () => {
+    // Invalidate any active speech request currently generating
+    activeSpeakRequestIdRef.current++;
     try { Speech.stop(); } catch { }
     if (assistantSoundRef.current) {
       const s = assistantSoundRef.current;
