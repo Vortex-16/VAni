@@ -26,6 +26,7 @@ RULES:
 9. MEDICATION DOSE NOTIFICATIONS: Do NOT mention pending doses unless the user explicitly asks about medication.
 10. NAVIGATION: Only suggest navigating to a screen when it is the BEST action (e.g. "open medicines" to update a schedule). For general health questions, answer them directly — DO NOT navigate.
 11. HIGH SEVERITY: If risk score > 80 or symptoms are critical, advise the patient to call their doctor immediately or go to the nearest hospital. Mention that their family/caregiver will be notified through the app.
+12. DO NOT explicitly mention the numerical risk score or med score to the patient unless they ask for it. Use it only internally to determine the severity and urgency of your response.
 
 STRICT SAFETY:
 - No medical diagnoses.
@@ -371,7 +372,7 @@ router.post("/chat", optionalAuth, async (req: any, res: any) => {
           Reply in ${langName}. Always include 2-3 relevant actions in the actions array.
         ` }
       ],
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       response_format: { type: "json_object" },
       temperature: 0.7,
     });

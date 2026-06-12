@@ -265,8 +265,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         // Language code for the server (BCP-47 locale → primary subtag, else app lang).
         const langCode = localeOverride ? localeOverride.split(/[-_]/)[0] : language;
 
-        // Safety timeout: average reading rate is ~12-15 chars per second.
-        const estimatedDurationMs = Math.max(3000, (clean.length / 12) * 1000) + 3000;
+        // Safety timeout: average reading rate with network buffer.
+        const estimatedDurationMs = Math.max(8000, (clean.length / 8) * 1000) + 8000;
         const timeoutId = setTimeout(() => {
           console.warn("[Assistant] TTS playback timed out after estimated duration:", estimatedDurationMs);
           safeResolve();
