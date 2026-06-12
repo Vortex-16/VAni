@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { useApp } from "@/context/AppContext";
 import { useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View } from "react-native";
+import { DotLoader } from "@/components/DotLoader";
 
 export default function EntryScreen() {
   const { isOnboarded, role, isInitializing } = useApp();
@@ -38,7 +39,7 @@ export default function EntryScreen() {
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F4FB' }}>
-      <ActivityIndicator size="large" color="#6C47FF" />
+      <DotLoader size={12} color="#6C47FF" />
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, ActivityIndicator,  } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform,  } from 'react-native';
+import { DotLoader } from "@/components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,24 +17,58 @@ import { ApiProvider } from '@/context/ApiProvider';
 const PURPLE = "#6C47FF";
 const WHITE = "#FFFFFF";
 
-const FAQS = [
+const PATIENT_FAQS = [
   {
     q: "How do I scan a prescription?",
-    a: "Go to the Medicines tab and tap the camera icon. Center your prescription in the frame and wait for our AI to extract the dosage and schedule."
+    a: "Go to the Medicines tab (bottom bar) > Tap the camera icon at the top right to start scanning your prescription."
   },
   {
-    q: "What if the AI makes a mistake?",
-    a: "You can always edit any medication manually by tapping the 'All Meds' tab, selecting the medicine, and hitting the edit icon."
+    q: "How do I edit my medicines?",
+    a: "Go to the Medicines tab > Tap any medicine from your list > Tap the Edit icon (pencil) in the top corner to modify."
   },
   {
-    q: "How do I share reports with my doctor?",
-    a: "In your Profile tab, tap 'Export Report'. You can then share the professional PDF directly via email or messaging apps."
+    q: "Where do I track my symptoms?",
+    a: "Tap the Symptoms tab in the bottom bar to log a new symptom, view historical logs, or see your recovery status."
   },
   {
-    q: "Can I add a caregiver to my account?",
-    a: "Yes! Go to Profile > Linked Accounts and invite a caregiver using their email address. They will be able to monitor your adherence."
+    q: "How do I view my daily schedule?",
+    a: "Tap the Schedule tab in the bottom bar to see all medicines scheduled for today sorted by morning, afternoon, and evening."
   }
 ];
+
+const FAMILY_FAQS = [
+  {
+    q: "How do I monitor my family member?",
+    a: "Go to the Family Dashboard. You will see a live overview of your linked patient's medication logs and symptom trends."
+  },
+  {
+    q: "How do I link a patient?",
+    a: "On the Family Dashboard, tap the 'Add Patient' button and enter the unique link code provided by your loved one."
+  },
+  {
+    q: "How do I check my patient's profile?",
+    a: "Tap the profile card of your family member in the dashboard list to see their detailed medicines list, trends, and follow-ups."
+  }
+];
+
+const NAVIGATION_GUIDE: Record<string, { action: string; steps: string }[]> = {
+  patient: [
+    { action: "Check your medicines", steps: "Tap 'Medicines' in the bottom navigation bar." },
+    { action: "Record a new symptom", steps: "Tap 'Symptoms' in the bottom navigation bar > Tap 'Log Symptom'." },
+    { action: "See daily dosing times", steps: "Tap 'Schedule' in the bottom navigation bar to view morning/evening pills." },
+    { action: "Scan a physical prescription", steps: "Tap 'Medicines' in the bottom bar > Tap the Camera icon at the top right." },
+    { action: "Trigger emergency distress", steps: "Tap 'Emergency' in the bottom bar > Hold the big red button to alert contacts." }
+  ],
+  family: [
+    { action: "Add/Link a new patient", steps: "Tap the '+' plus button at the top right of the dashboard > enter their link code." },
+    { action: "Check a patient's adherence", steps: "Tap their name on your dashboard to see a calendar check of taken/missed pills." },
+    { action: "View a patient's symptoms", steps: "Tap their name on your dashboard > scroll down to the 'Symptom History' section." }
+  ],
+  caregiver: [
+    { action: "Create discharge plans", steps: "Use the Web Console to design, edit, and dispatch digital plans to patients." },
+    { action: "Review high-risk patients", steps: "View active alerts and patient cards on the Web Dashboard." }
+  ]
+};
 
 function FAQItem({ q, a }: { q: string, a: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -73,6 +108,11 @@ function FAQItem({ q, a }: { q: string, a: string }) {
 export default function HelpCenter() {
   const insets = useSafeAreaInsets();
   const { user, api } = useApp();
+  
+  const role = user?.role || "patient";
+  const roleFAQS = role === "patient" ? PATIENT_FAQS : (role === "family" ? FAMILY_FAQS : []);
+  const guideSteps = NAVIGATION_GUIDE[role] || [];
+  
   const [feedbackType, setFeedbackType] = useState<"bug" | "feature" | "general">("general");
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -109,7 +149,22 @@ export default function HelpCenter() {
         colors={["#4B26C8", PURPLE]}
         style={[styles.header, { paddingTop: insets.top + 20 }]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              if (role === "caregiver") {
+                router.replace("/caregiver/dashboard");
+              } else if (role === "family") {
+                router.replace("/family/dashboard");
+              } else {
+                router.replace("/(tabs)");
+              }
+            }
+          }} 
+          style={styles.backBtn}
+        >
           <Feather name="arrow-left" size={24} color={WHITE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Help & Feedback</Text>
@@ -127,7 +182,7 @@ export default function HelpCenter() {
             style={styles.aiGradient}
           >
             <View style={styles.aiIconWrap}>
-               <Feather name="cpu" size={24} color={PURPLE} />
+               <Feather name="message-square" size={24} color={PURPLE} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.aiTitle}>Talk to AI Guide</Text>
@@ -137,11 +192,49 @@ export default function HelpCenter() {
           </LinearGradient>
         </AnimPressable>
 
+
+        {/* Live Tracking Section */}
+        <AnimPressable style={styles.demoCard} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/judge-demo");
+        }}>
+           <LinearGradient
+            colors={["#FEF2F2", "#FFF1F2"]}
+            style={styles.demoGradient}
+          >
+            <View style={styles.demoIconWrap}>
+               <Feather name="map-pin" size={24} color="#EF4444" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.demoTitle}>Live Tracking</Text>
+              <Text style={styles.demoSub}>Track SOS dispatch & ambulance location in real-time</Text>
+            </View>
+            <Feather name="arrow-right" size={20} color="#EF4444" />
+          </LinearGradient>
+        </AnimPressable>
+
+        {/* Navigation Guide / Confused? */}
+        {guideSteps.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Step-by-Step Navigation Guide</Text>
+            <View style={styles.guideCard}>
+              {guideSteps.map((step, idx) => (
+                <View key={idx} style={[styles.guideItem, idx < guideSteps.length - 1 && styles.guideItemBorder]}>
+                  <Text style={styles.guideAction}>{step.action}</Text>
+                  <Text style={styles.guideSteps}>{step.steps}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* FAQs */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-          {FAQS.map((faq, i) => <FAQItem key={i} {...faq} />)}
-        </View>
+        {roleFAQS.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+            {roleFAQS.map((faq, i) => <FAQItem key={i} {...faq} />)}
+          </View>
+        )}
 
         {/* Feedback Form */}
         <View style={styles.section}>
@@ -176,7 +269,7 @@ export default function HelpCenter() {
               disabled={isSending || !message.trim()}
             >
               {isSending ? (
-                <ActivityIndicator color={WHITE} size="small" />
+                <DotLoader color={WHITE} size={6} />
               ) : (
                 <>
                   <Text style={styles.sendText}>Submit Feedback</Text>
@@ -254,5 +347,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     gap: 8
   },
-  sendText: { color: WHITE, fontSize: 16, fontFamily: "Inter_700Bold" }
+  sendText: { color: WHITE, fontSize: 16, fontFamily: "Inter_700Bold" },
+  guideCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, gap: 14, elevation: 2 },
+  guideItem: { gap: 4, paddingBottom: 12 },
+  guideItemBorder: { borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
+  guideAction: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#1E1B4B" },
+  guideSteps: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 18 },
+  demoCard: { borderRadius: 20, overflow: 'hidden', elevation: 2, shadowColor: "#EF4444", shadowOpacity: 0.1, shadowRadius: 10 },
+  demoGradient: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 16 },
+  demoIconWrap: { width: 50, height: 50, borderRadius: 15, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
+  demoTitle: { fontSize: 18, fontFamily: 'Inter_700Bold', color: '#991B1B' },
+  demoSub: { fontSize: 13, fontFamily: 'Inter_400Regular', color: '#991B1B', marginTop: 2, opacity: 0.8 }
 });
