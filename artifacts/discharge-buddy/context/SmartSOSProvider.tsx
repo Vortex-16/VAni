@@ -9,7 +9,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Linking, Modal, Platform, StyleSheet, View, ActivityIndicator } from "react-native";
+import { Linking, Modal, Platform, StyleSheet, View } from "react-native";
+import { DotLoader } from "@/components/DotLoader";
 
 import { AnimPressable } from "@/components/AnimPressable";
 import { TranslateText as Text } from "@/components/TranslateText";
@@ -252,7 +253,7 @@ export function SmartSOSProvider({ children }: { children: React.ReactNode }) {
           <View style={styles.sheet}>
             <View style={styles.iconCircle}>
               {status === "sending" ? (
-                <ActivityIndicator size="large" color={WHITE} />
+                <DotLoader color={WHITE} size={12} />
               ) : (
                 <Feather
                   name={status === "sent" ? "check" : "alert-triangle"}

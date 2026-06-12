@@ -7,5 +7,6 @@ router.use(requireAuth);
 
 router.post("/", EmergencyController.triggerEmergency);
 router.get("/", EmergencyController.getEmergencies);
+router.post("/report", EmergencyController.sendEmergencyReport);
 
 export default router;

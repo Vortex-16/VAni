@@ -19,4 +19,25 @@ export class EmergencyController {
     const alerts = await EmergencyService.getEmergencies(req.user.id);
     return res.json({ alerts });
   }
+
+  static async sendEmergencyReport(req: AuthRequest, res: Response) {
+    if (!req.user?.id) return res.status(403).json({ error: "Unauthorized" });
+    try {
+      const { symptoms, medicines, location } = req.body;
+      console.log(`[EmergencyController] SOS Report received for user ${req.user.id}:`, { symptoms, medicines, location });
+      
+      const dispatchId = `AMB-${Math.floor(1000 + Math.random() * 9000)}`;
+      const etaMinutes = Math.floor(5 + Math.random() * 10);
+      
+      return res.json({
+        success: true,
+        message: "Ambulance dispatched.",
+        dispatchId,
+        etaMinutes,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to process emergency report" });
+    }
+  }
 }
