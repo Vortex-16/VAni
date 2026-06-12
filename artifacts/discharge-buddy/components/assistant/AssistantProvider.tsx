@@ -12,7 +12,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { LOCALE_BY_LANG, type Language } from '@/constants/translations';
 import { loadHistory, appendTurns, recentForPrompt } from '@/utils/conversationMemory';
 import { describeScreen } from '@/utils/contextEngine';
-import { matchKnowledgeBase } from '@/utils/knowledgeBase';
+import { matchKnowledgeBase, matchKnowledgeBaseExact } from '@/utils/knowledgeBase';
 
 export type AssistantState =
   | 'idle'
@@ -96,11 +96,34 @@ const EMERGENCY_PHRASES: string[] = [
   "مدد", "بچاؤ", "বাঁচাও", "সাহায্য", "বুকে ব্যথা",
 ];
 
-function isEmergencyUtterance(text: string): boolean {
-  const t = text.toLowerCase().trim();
+// Words that mean "close the assistant" in any supported language.
+// Checked before the AI so the response is instant and deterministic.
+const STOP_PHRASES: string[] = [
+  'stop', 'close', 'exit', 'quit', 'cancel', 'dismiss', 'nevermind',
+  'never mind', 'no thanks', 'bye', 'goodbye', 'go away', 'shut up',
+  'be quiet', 'silence', 'enough', 'done', 'that is all', "that's all",
+  // Hindi
+  'band karo', 'ruko', 'bas', 'theek hai bas', 'chalo band karo',
+  // Bengali
+  'bondho koro', 'thamo', 'bas koro', 'jaao', 'thak',
+  // Urdu
+  'band karo', 'ruko', 'khamosh',
+];
+
+function isStopUtterance(text: string): boolean {
+  // Strip punctuation so "Stop!" / "Stop." / "stop?" all match correctly.
+  const t = text.toLowerCase().trim().replace(/[^\p{L}\p{N}\s]/gu, '').trim();
   if (!t) return false;
-  // A lone "help" or "emergency" is unambiguous enough to act on.
-  if (t === "help" || t === "emergency" || t === "sos") return true;
+  // Exact single-word matches (most common case)
+  if (['stop', 'close', 'exit', 'quit', 'bye', 'done', 'enough', 'bas', 'thamo', 'ruko'].includes(t)) return true;
+  return STOP_PHRASES.some((p) => t === p || t.startsWith(p + ' ') || t.endsWith(' ' + p));
+}
+
+function isEmergencyUtterance(text: string): boolean {
+  // Strip punctuation so "Help!" matches too.
+  const t = text.toLowerCase().trim().replace(/[^\p{L}\p{N}\s]/gu, '').trim();
+  if (!t) return false;
+  if (t === 'help' || t === 'emergency' || t === 'sos') return true;
   return EMERGENCY_PHRASES.some((p) => t.includes(p));
 }
 
@@ -196,6 +219,18 @@ function extractSymptom(text: string, lang: string): string {
   return 'Symptom';
 }
 
+// Detects casual/mild phrasing that doesn't warrant asking for severity.
+// E.g. "a little dizzy", "slight headache", "feeling a bit tired"
+function isMildCasualSymptom(text: string): boolean {
+  const t = text.toLowerCase();
+  const mildWords = [
+    'a little', 'a bit', 'slightly', 'slight', 'mild', 'a little bit',
+    'kind of', 'sort of', 'a touch', 'not too bad', 'minor',
+    'thoda', 'halka', 'ektu', 'একটু', 'হালকা', 'थोड़ा', 'हल्का',
+  ];
+  return mildWords.some(w => t.includes(w));
+}
+
 function hashCode(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -235,6 +270,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   // navigation or action clears it so we never loop forever.
   const continueConversationRef = useRef(false);
   const assistantSoundRef = useRef<Audio.Sound | null>(null);
+  const webAudioRef = useRef<any>(null);
   const activeSpeakRequestIdRef = useRef(0);
   const startAssistantRef = useRef<() => Promise<void>>(async () => { });
   const pendingSymptomLogRef = useRef<{ symptom: string; lang: string } | null>(null);
@@ -312,6 +348,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               return;
             }
             const soundHtml = new (window as any).Audio(`data:audio/mp3;base64,${audioContent}`);
+            webAudioRef.current = soundHtml;
             soundHtml.play();
             soundHtml.onended = () => {
               clearTimeout(timeoutId);
@@ -364,17 +401,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
           const { sound } = await Audio.Sound.createAsync(
             { uri: localUri },
-            { shouldPlay: true }
+            { shouldPlay: false }
           );
 
           if (currentRequestId !== activeSpeakRequestIdRef.current) {
-            sound.unloadAsync().catch(() => {});
+            try { await sound.unloadAsync(); } catch { }
             clearTimeout(timeoutId);
             safeResolve();
             return;
           }
 
           assistantSoundRef.current = sound;
+          await sound.playAsync();
 
           sound.setOnPlaybackStatusUpdate((status) => {
             if (!status.isLoaded) {
@@ -412,9 +450,19 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     // Invalidate any active speech request currently generating
     activeSpeakRequestIdRef.current++;
     try { Speech.stop(); } catch { }
+    
+    if (webAudioRef.current) {
+      try {
+        webAudioRef.current.pause();
+        webAudioRef.current.currentTime = 0;
+      } catch { }
+      webAudioRef.current = null;
+    }
+
     if (assistantSoundRef.current) {
       const s = assistantSoundRef.current;
       assistantSoundRef.current = null;
+      try { await s.setStatusAsync({ shouldPlay: false }); } catch { }
       try { await s.stopAsync(); } catch { }
       try { await s.unloadAsync(); } catch { }
     }
@@ -428,11 +476,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       switch (target) {
         case 'TAKE_MEDICINE': {
           const lowerTranscript = currentTranscript.toLowerCase();
-          const isAll = lowerTranscript.includes('all');
+          const isAll = lowerTranscript.includes('all') || lowerTranscript.includes('sab');
           let pendingDoses = todayDoses.filter((d) => d.status === 'pending');
+          const activeLang = language;
 
           if (pendingDoses.length === 0) {
-            reply = `I don't see any pending doses right now — you're all caught up!`;
+            reply = activeLang === 'hi' ? `इस समय आपकी कोई दवा बाकी नहीं है।` :
+                   (activeLang === 'bn' ? `এই মুহূর্তে আপনার কোনো ওষুধ বাকি নেই।` : 
+                   `I don't see any pending doses right now — you're all caught up!`);
           } else {
             const mentionedMed = pendingDoses.find(d => lowerTranscript.includes(d.medicineName.toLowerCase()));
 
@@ -443,21 +494,42 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               dosesToMark = [mentionedMed];
             } else if (isAll) {
               dosesToMark = pendingDoses;
-            } else {
+            } else if (pendingDoses.length === 1) {
               dosesToMark = [pendingDoses[0]];
+            } else {
+              // Multiple pending doses, none explicitly mentioned. Don't blindly guess!
+              reply = activeLang === 'hi' ? `आपकी कई दवाएं बाकी हैं। आपने कौन सी दवा ली है?` :
+                     (activeLang === 'bn' ? `আপনার একাধিক ওষুধ বাকি আছে। আপনি কোনটি খেয়েছেন?` :
+                     `You have multiple pending doses. Which medicine did you take?`);
+              setLastReply(reply);
+              setState('speaking');
+              await speak(reply, LOCALE_BY_LANG[activeLang as Language]);
+              if (continueConversationRef.current) {
+                setTimeout(() => { if (continueConversationRef.current) startAssistantRef.current(); }, 500);
+              } else { finish(); }
+              return;
             }
 
             try {
               await Promise.all(dosesToMark.map(d => updateDoseStatus(d.id, 'taken')));
               const names = Array.from(new Set(dosesToMark.map(d => d.medicineName))).join(' and ');
-              reply = `Done. I've marked ${names} as taken. Great job staying on track!`;
+              
+              if (activeLang === 'hi') {
+                reply = `ठीक है। मैंने ${names} को लिया हुआ दर्ज कर लिया है। बहुत बढ़िया!`;
+              } else if (activeLang === 'bn') {
+                reply = `ঠিক আছে। আমি ${names} কে খাওয়া হয়েছে বলে মার্ক করেছি। খুব ভালো!`;
+              } else {
+                reply = `Done. I've marked ${names} as taken. Great job staying on track!`;
+              }
             } catch {
-              reply = `I couldn't update those doses just now. Please try from the medicines screen.`;
+              reply = activeLang === 'hi' ? `मैं अभी दवा को अपडेट नहीं कर सका। कृपया इसे स्क्रीन से करें।` :
+                     (activeLang === 'bn' ? `আমি এই মুহূর্তে ওষুধ আপডেট করতে পারলাম না। অনুগ্রহ করে স্ক্রিন থেকে করুন।` :
+                     `I couldn't update those doses just now. Please try from the medicines screen.`);
             }
           }
           setLastReply(reply);
           setState('speaking');
-          await speak(reply);
+          await speak(reply, LOCALE_BY_LANG[activeLang as Language]);
           finish();
           return;
         }
@@ -479,7 +551,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           const localizedSymptom = localizedDict[symptomKey] || symptomKey;
 
           if (severity != null) {
-            // Implicit logging: map 1-10 to 1-5
+            // Explicit severity from AI metadata — log directly
             const mappedSeverity = Math.min(5, Math.max(1, Math.ceil(severity / 2)));
 
             try {
@@ -517,8 +589,42 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               await speak(reply, LOCALE_BY_LANG[activeLang]);
               finish();
             }
+          } else if (isMildCasualSymptom(currentTranscript)) {
+            // Casual/mild phrasing — auto-log at moderate severity without asking
+            const mappedSeverity = 2; // maps to 1-5 scale (represents ~3/10)
+            try {
+              await api.addSymptomLog({
+                id: Math.random().toString(),
+                symptoms: [symptomKey],
+                severity: mappedSeverity,
+                notes: `Logged via Voice Assistant (casual mention). Estimated mild severity.`,
+                date: new Date().toISOString().split('T')[0],
+                riskLevel: 'low'
+              });
+              if (activeLang === 'bn') {
+                reply = `ঠিক আছে, আমি আপনার ${localizedSymptom} নোট করে রাখলাম। যদি এটি আরও খারাপ হয়, তাহলে আমাকে জানান।`;
+              } else if (activeLang === 'hi') {
+                reply = `ठीक है, मैंने आपके ${localizedSymptom} को नोट कर लिया है। अगर यह बढ़े, तो मुझे बताएं।`;
+              } else {
+                reply = `Got it, I've noted your ${localizedSymptom}. Let me know if it gets worse.`;
+              }
+              setLastReply(reply);
+              setState('speaking');
+              await speak(reply, LOCALE_BY_LANG[activeLang]);
+              if (continueConversationRef.current) {
+                setTimeout(() => { if (continueConversationRef.current) startAssistantRef.current(); }, 500);
+              } else {
+                finish();
+              }
+            } catch {
+              reply = `I'm sorry, I couldn't log your symptom right now.`;
+              setLastReply(reply);
+              setState('speaking');
+              await speak(reply, LOCALE_BY_LANG[activeLang]);
+              finish();
+            }
           } else {
-            // Explicit logging (needs severity)
+            // Explicit logging — ask severity only for serious/unclear phrasing
             pendingSymptomLogRef.current = {
               symptom: symptomKey,
               lang: activeLang
@@ -529,10 +635,9 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             } else if (activeLang === 'hi') {
               reply = `आपके ${localizedSymptom} की तीव्रता 1 से 10 के बीच कितनी है?`;
             } else {
-              reply = `How severe would you say your ${localizedSymptom} is from 1 to 10?`;
+              reply = `On a scale of 1 to 10, how severe is your ${localizedSymptom}?`;
             }
 
-            // Do NOT navigate to symptoms
             setLastReply(reply);
             setState('speaking');
             await speak(reply, LOCALE_BY_LANG[activeLang]);
@@ -585,27 +690,34 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         case 'LANG_BN': {
           const code = target.replace('LANG_', '').toLowerCase() as Language;
           setLanguage(code);
-          const langNames: Record<Language, string> = {
-            en: 'English',
-            hi: 'Hindi',
-            es: 'Spanish',
-            ur: 'Urdu',
-            bn: 'Bengali',
-            te: 'Telugu',
-            mr: 'Marathi',
-            ta: 'Tamil',
-            gu: 'Gujarati',
-            kn: 'Kannada',
-            ml: 'Malayalam',
-            or: 'Odia',
-            pa: 'Punjabi',
-            as: 'Assamese'
+          const localizedReplies: Record<Language, string> = {
+            en: 'Language changed to English. How can I help you?',
+            hi: 'भाषा बदलकर हिंदी कर दी गई है। मैं आपकी कैसे मदद कर सकता हूँ?',
+            es: 'Idioma cambiado a español. ¿Cómo puedo ayudarte?',
+            ur: 'زبان کو اردو میں تبدیل کر دیا گیا ہے۔ میں آپ کی کیا مدد کر سکتا ہوں؟',
+            bn: 'ভাষা বাংলায় পরিবর্তন করা হয়েছে। আমি আপনাকে কীভাবে সাহায্য করতে পারি?',
+            te: 'భాష తెలుగుకు మార్చబడింది. నేను మీకు ఎలా సహాయపడగలను?',
+            mr: 'भाषा मराठीत बदलली आहे. मी तुम्हाला कशी मदत करू शकतो?',
+            ta: 'மொழி தமிழுக்கு மாற்றப்பட்டுள்ளது. நான் உங்களுக்கு எப்படி உதவ முடியும்?',
+            gu: 'ભાષા ગુજરાતીમાં બદલાઈ ગઈ છે. હું તમારી કેવી રીતે મદદ કરી શકું?',
+            kn: 'ಭಾಷೆಯನ್ನು ಕನ್ನಡಕ್ಕೆ ಬದಲಾಯಿಸಲಾಗಿದೆ. ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?',
+            ml: 'ഭാഷ മലയാളത്തിലേക്ക് മാറ്റിയിരിക്കുന്നു. ഞാൻ നിങ്ങളെ എങ്ങനെ സഹായിക്കാം?',
+            or: 'ଭାଷା ଓଡ଼ିଆକୁ ପରିବର୍ତ୍ତିତ ହୋଇଛି | ମୁଁ ଆପଣଙ୍କୁ କିପରି ସାହାଯ୍ୟ କରିପାରିବି?',
+            pa: 'ਭਾਸ਼ਾ ਪੰਜਾਬੀ ਵਿੱਚ ਬਦਲ ਗਈ ਹੈ। ਮੈਂ ਤੁਹਾਡੀ ਕਿਵੇਂ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ?',
+            as: 'ভাষা অসমীয়ালৈ সলনি কৰা হৈছে। মই আপোনাক কেনেকৈ সহায় কৰিব পাৰো?'
           };
-          reply = `Language changed to ${langNames[code] || code}.`;
+          reply = localizedReplies[code] || `Language changed to ${code}.`;
           setLastReply(reply);
           setState('speaking');
           await speak(reply, LOCALE_BY_LANG[code]);
-          finish();
+          
+          if (continueConversationRef.current) {
+            setTimeout(() => {
+              if (continueConversationRef.current) startAssistantRef.current();
+            }, 500);
+          } else {
+            finish();
+          }
           return;
         }
         case 'SEND_NOTE_TO_FAMILY': {
@@ -623,7 +735,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             const result = await api.sendVoiceNote(currentTranscript, noteText);
             reply = result.success
               ? `Done. I've sent your message to your family: "${noteText}".`
-              : `I recorded your note, but couldn't reach your family right now. They'll see it when they're online.`;
+              : `I recorded your note but couldn't reach your family right now. They'll see it when they're online.`;
           } catch {
             reply = `I wasn't able to send the note right now. Please try again in a moment.`;
           }
@@ -854,6 +966,16 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setLastTranscript(transcript);
       events.publish('TRANSCRIPTION_SUCCESS', { text: transcript, context: activeModule });
 
+      // Stop / dismiss intent: close instantly, no AI call, no speech.
+      if (isStopUtterance(transcript)) {
+        pendingSymptomLogRef.current = null;
+        pendingMeditationRef.current = false;
+        continueConversationRef.current = false;
+        setIsVisible(false);
+        finish();
+        return;
+      }
+
       if (isEmergencyUtterance(transcript)) {
         pendingSymptomLogRef.current = null;
         pendingMeditationRef.current = false;
@@ -861,23 +983,19 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // ── Offline Knowledge Base / Guide Mode ──
-      const isInfoQuery = /(how|where|why|what|explain|guide|help|info|question)/i.test(transcript);
-      if (isInfoQuery) {
-        const kbMatch = matchKnowledgeBase(transcript);
-        if (kbMatch) {
-          setLastReply(kbMatch.answer);
-          setState('speaking');
-          if (kbMatch.route) router.push(kbMatch.route as any);
-          await speak(kbMatch.answer, LOCALE_BY_LANG[language as Language || 'en']);
-          finish();
-          return;
-        }
-      }
+
 
       if (pendingSymptomLogRef.current) {
-        await handleSymptomSeverityRating(transcript);
-        return;
+        // Check if the response looks like a severity number — if not, abandon the pending
+        // request and process it as a fresh intent so the assistant never gets stuck.
+        const looksLikeSeverity = /\b(10|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten|ek|dui|tin|char|paanch|chhoy|saat|aat|noy|dosh|একটা|দুইটা|তিন|চার|পাঁচ|ছয়|সাত|আট|নয়|দশ|एक|दो|तीन|चार|पाँच|छह|सात|आठ|नौ|दस)\b/i.test(transcript);
+        if (looksLikeSeverity) {
+          await handleSymptomSeverityRating(transcript);
+          return;
+        } else {
+          // User said something else — clear the pending and process as a new intent
+          pendingSymptomLogRef.current = null;
+        }
       }
 
       if (pendingMeditationRef.current) {
@@ -909,7 +1027,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       const intent = (result?.intent || '').toUpperCase();
       const target = result?.target || '';
 
-      if ((intent === 'NAVIGATE' || intent === 'INFO_INTENT') && NAV_ROUTES[target]) {
+      // Guard: if the transcript looks like an advisory question ("what should I do now", 
+      // "क्या करना चाहिए", "কি করা উচিত"), treat it as CHAT even if intent says NAVIGATE/ACTION.
+      const isAdvisoryQuestion = /\b(what|what's|how|tell me).{0,30}\b(do|should|next|now|happen|help)\b/i.test(transcript) ||
+        /(क्या|कैसे|क्यों|कौन|कहाँ|कब|चाहिए|खानी|करूँ|કરવું|কি|কিভাবে|কেন|কোথায়|কবে|\?|❓)/.test(transcript);
+
+      if ((intent === 'NAVIGATE' || intent === 'INFO_INTENT') && NAV_ROUTES[target] && !isAdvisoryQuestion) {
         const route = NAV_ROUTES[target];
         const reply = `Opening ${route.label}.`;
         setLastReply(reply);
@@ -920,9 +1043,47 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if ((intent === 'ACTION' || intent === 'ACTION_INTENT') && target) {
+      if ((intent === 'ACTION' || intent === 'ACTION_INTENT') && target && !isAdvisoryQuestion) {
         await handleAction(target, transcript, result.metadata);
         return;
+      }
+
+      // ── Offline Knowledge Base / Guide Mode ──
+      // Fallback: If AI intent is CHAT, or an unmapped target, check local KB
+      // before hitting the conversational AI.
+      const exactKbMatch = matchKnowledgeBaseExact(transcript);
+      if (exactKbMatch) {
+        setLastReply(exactKbMatch.answer);
+        setState('speaking');
+        if (exactKbMatch.route) router.push(exactKbMatch.route as any);
+        await speak(exactKbMatch.answer, LOCALE_BY_LANG[language as Language || 'en']);
+        if (continueConversationRef.current) {
+          setTimeout(() => {
+            if (continueConversationRef.current) startAssistantRef.current();
+          }, 500);
+        } else {
+          finish();
+        }
+        return;
+      }
+
+      const isInfoQuery = /(how|where|why|what|explain|guide|help|info|question)/i.test(transcript);
+      if (isInfoQuery) {
+        const kbMatch = matchKnowledgeBase(transcript);
+        if (kbMatch) {
+          setLastReply(kbMatch.answer);
+          setState('speaking');
+          if (kbMatch.route) router.push(kbMatch.route as any);
+          await speak(kbMatch.answer, LOCALE_BY_LANG[language as Language || 'en']);
+          if (continueConversationRef.current) {
+            setTimeout(() => {
+              if (continueConversationRef.current) startAssistantRef.current();
+            }, 500);
+          } else {
+            finish();
+          }
+          return;
+        }
       }
 
       // CHAT, UNKNOWN, or an unmapped target → conversational answer.
@@ -979,11 +1140,15 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   const processText = useCallback(async (text: string) => {
     setIsVisible(true);
+    // Keep the assistant alive after answering so the user can ask follow-ups.
+    continueConversationRef.current = true;
     await stopAssistantSpeech();
     await stopSpeaking().catch(() => {});
-    await stopSession(); // stop mic if running
+    // cancelSession (not stopSession) discards the recording silently
+    // without firing onTranscript, preventing a duplicate voice response.
+    await cancelSession();
     await handleTranscriptRef.current(text);
-  }, [stopAssistantSpeech, stopSpeaking, stopSession]);
+  }, [stopAssistantSpeech, stopSpeaking, cancelSession]);
   useEffect(() => {
     startAssistantRef.current = startAssistant;
   }, [startAssistant]);

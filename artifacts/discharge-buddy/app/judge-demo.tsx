@@ -4,6 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { WebView } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TranslateText as Text } from "@/components/TranslateText";
@@ -209,10 +210,12 @@ export default function JudgeDemoScreen() {
               title="Ambulance Live Tracking"
             />
           ) : (
-            <View style={styles.nativePlaceholder}>
-              <Feather name="map" size={48} color="#94A3B8" />
-              <Text style={styles.nativeText}>Map Active (Live leafet tracker active on Web Demo)</Text>
-            </View>
+            <WebView
+              originWhitelist={['*']}
+              source={{ html: getMapIframeSrcDoc() }}
+              style={styles.mapFrame}
+              scrollEnabled={false}
+            />
           )}
           <View style={styles.mapInfo}>
             <Text style={styles.mapCoords}>Patient Location: 12.9716° N, 77.5946° E</Text>

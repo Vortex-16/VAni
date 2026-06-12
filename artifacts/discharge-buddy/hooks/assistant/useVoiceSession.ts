@@ -55,7 +55,7 @@ export function useVoiceSession(options?: VoiceSessionOptions): VoiceSessionHook
   const sessionStartRef = useRef<number | null>(null);
   const speechThresholdDb = -30;
   const silenceThresholdDb = -45;
-  const silenceTimeoutMs = 1500;
+  const silenceTimeoutMs = 2500; // Increased for elderly users — 2.5s of silence after speech
   const maxDurationMs = 60000;
 
   useEffect(() => {
@@ -222,8 +222,8 @@ export function useVoiceSession(options?: VoiceSessionOptions): VoiceSessionHook
           if (!hasSpokenRef.current) {
             if (db > speechThresholdDb) {
               hasSpokenRef.current = true;
-            } else if (sessionStartRef.current && (now - sessionStartRef.current >= 5000)) {
-              console.log("[VoiceSession] No speech detected for 5 seconds. Stopping.");
+            } else if (sessionStartRef.current && (now - sessionStartRef.current >= 7000)) {
+              console.log("[VoiceSession] No speech detected for 7 seconds. Stopping.");
               stopAndTranscribeRef.current();
             }
           } else {

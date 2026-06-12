@@ -6,13 +6,13 @@ export interface KBEntry {
 export const KNOWLEDGE_BASE: Record<string, KBEntry> = {
   // Navigation & Features
   "guide me": {
-    answer: "Welcome to VAni! I can help you with your medications, track your symptoms, record a journal, or call for help. What would you like to explore?",
+    answer: "Welcome to Discharge Buddy! I am Buddy, your personal health assistant. I can help you track your medicines and remind you when to take them, log your symptoms and pain levels, keep a daily recovery journal, connect with your caregiver or family, handle emergencies with one tap, and answer any health questions. Just speak to me or tap a quick action below. What would you like to do first?",
   },
   "how to use app": {
-    answer: "You can use the tabs at the bottom to navigate. The Home tab shows your daily tasks. Use the plus button to scan documents or log symptoms. You can always ask me for help!",
+    answer: "This app has five main tabs at the bottom. Home shows your daily medicine doses and recovery score. Medicines lets you add or edit your medication schedule. Activity tracks your symptom history and recovery trends. Progress shows your adherence stats and lets you generate reports. The Plus button in the center lets you scan prescriptions or log symptoms quickly. You can also just talk to me anytime for help!",
   },
   "features": {
-    answer: "VAni offers medication reminders, symptom tracking, emergency alerts, caregiver linking, a recovery journal, and a voice assistant like me.",
+    answer: "Here are the key features of this app. One: Medicine Reminders - get alerts for every dose and track your daily adherence score. Two: Symptom Tracking - log how you feel, rate pain levels, and monitor recovery trends. Three: Recovery Journal - record daily reflections about your mood and energy. Four: Emergency Tools - one tap SOS, CPR guide, and choking assistance. Five: Caregiver Linking - share a Care Code so your family or doctor can monitor your progress. Six: Prescription Scanner - scan any paper prescription and the app reads and saves it automatically. Seven: AI Chatbot - ask health questions and get simple answers. Eight: Voice Assistant - control everything by voice in multiple languages. Nine: Notifications and Alerts - stay updated on missed doses and caregiver messages. Ten: Progress Reports - generate a PDF report to share with your doctor. Which feature would you like to know more about?",
   },
   "caregiver setup": {
     answer: "To set up a caregiver, go to your Profile and share your unique Care Code. They can enter this code in their app to link with your account.",
@@ -44,7 +44,7 @@ export const KNOWLEDGE_BASE: Record<string, KBEntry> = {
     route: "/scan"
   },
   "voice assistant": {
-    answer: "I am your voice assistant! You can talk to me to log symptoms, ask questions, set reminders, or navigate the app.",
+    answer: "I am Buddy, your voice assistant! Here is what you can tell me: Say a medicine name to mark a dose taken. Say 'I feel dizzy' or any symptom to log it. Say 'remind me in 30 minutes'. Say 'emergency' for urgent help. Say 'open journal' or any screen name to navigate. Say 'change language to Hindi' to switch my language. Say 'stop' or 'close' to close me. You can also tap the quick action chips below to get started!",
   },
   "caregiver features": {
     answer: "Caregivers can view patient adherence, send reminders, message the patient, and receive alerts if symptoms worsen or a dose is missed.",
@@ -82,6 +82,11 @@ export const KNOWLEDGE_BASE: Record<string, KBEntry> = {
     route: "/profile"
   }
 };
+
+export function matchKnowledgeBaseExact(transcript: string): KBEntry | null {
+  const normalized = transcript.toLowerCase().trim();
+  return KNOWLEDGE_BASE[normalized] || null;
+}
 
 export function matchKnowledgeBase(transcript: string): KBEntry | null {
   const normalized = transcript.toLowerCase().trim();

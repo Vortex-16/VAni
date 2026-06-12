@@ -1,35 +1,54 @@
 import React from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
+  Modal,
+  Platform,
+} from 'react-native';
 import { useAssistant } from './AssistantProvider';
 import { VoiceOrb } from './VoiceOrb';
-import Animated, { FadeIn, FadeOut, ZoomIn, ZoomOut, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAssistantContext } from '@/hooks/assistant/useAssistantContext';
 import { useApp } from '@/context/AppContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const { width } = Dimensions.get('window');
-
+const { width, height } = Dimensions.get('window');
 const PURPLE = '#6C47FF';
+const PURPLE_LIGHT = '#8B5CF6';
 
 const ONBOARDING_CHIPS = [
-  "Guide Me", "How To Use App", "Features", "Caregiver Setup", 
-  "Medicines", "Emergency Tools", "Symptom Tracking", "Voice Assistant", 
-  "Journal", "Scanner", "Settings"
+  'Guide Me',
+  'How To Use App',
+  'Features',
+  'Caregiver Setup',
+  'Medicines',
+  'Emergency Tools',
+  'Symptom Tracking',
+  'Voice Assistant',
+  'Journal',
+  'Scanner',
+  'Settings',
 ];
 
-/**
- * Global Assistant Overlay that sits on top of the entire application.
- * 
- * It renders TWO layers:
- *  1. A persistent FAB (Floating Action Button) in the bottom-right corner — ALWAYS visible,
- *     EXCEPT on the /chat screen where the chatbot has its own mic UI.
- *  2. A full panel that appears when the assistant is active.
- */
+const STATE_LABELS: Record<string, string> = {
+  initializing: 'Starting up…',
+  listening: 'Listening… speak now',
+  transcribing: 'Understanding you…',
+  processing: 'Got it! Working on it…',
+  speaking: 'Buddy is speaking…',
+  error: '',
+  idle: '',
+};
+
 export function AssistantOverlay() {
-  const { 
+  const {
     state,
     isVisible,
     meteringSharedValue,
@@ -47,13 +66,16 @@ export function AssistantOverlay() {
   const insets = useSafeAreaInsets();
   const isActive = isVisible && state !== 'idle';
 
-  // Hide the FAB completely when on chat/scan screens, onboarding/auth screens, or emergency/CPR/SOS screens
+  // Hide FAB on chat/scan/emergency/auth screens
   const isChatScreen = activeModule === 'chatbot' || pathname?.includes('/scan');
   const isAuthScreen = !user;
-  const isEmergencyOrCpr = pathname?.includes('/cpr') || pathname?.includes('/emergency') || pathname?.includes('/smart-sos');
+  const isEmergencyOrCpr =
+    pathname?.includes('/cpr') ||
+    pathname?.includes('/emergency') ||
+    pathname?.includes('/smart-sos');
   const shouldHideFab = isChatScreen || isAuthScreen || isEmergencyOrCpr;
 
-  // Drag logic
+  // Draggable FAB
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const offsetX = useSharedValue(0);
@@ -78,88 +100,134 @@ export function AssistantOverlay() {
 
   if (shouldHideFab && !isVisible) return null;
 
+  const statusLabel = STATE_LABELS[state] ?? '';
+
   return (
-    // box-none: passes touches through to the children but not the container itself
     <View style={styles.root} pointerEvents="box-none">
 
-      {/* ── 2. Active Panel (slide up from bottom) ── */}
-      
-
+      {/* ── Full-screen dimmed backdrop + centered panel ── */}
       {isVisible && (
-        <View
-            style={styles.panelCentered}
-            pointerEvents="auto"
-          >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.statusDot} />
-              <Text style={styles.title}>Voice Assistant</Text>
-            </View>
-            <TouchableOpacity onPress={cancelAssistant} style={styles.closeButton}>
-              <Feather name="x" size={24} color="#64748B" />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.backdrop} pointerEvents="auto">
+          {/* Tap backdrop to dismiss */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={cancelAssistant}
+          />
 
-          {/* Orb */}
-          <View style={styles.orbContainer}>
-            {/** Compute dynamic orb size based on activity */}
-            <VoiceOrb
+          {/* Centered card */}
+          <View style={[styles.panel, { marginTop: insets.top }]}>
+
+            {/* Gradient header bar */}
+            <LinearGradient
+              colors={['#4B26C8', PURPLE, PURPLE_LIGHT]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.panelHeader}
+            >
+              <View style={styles.headerLeft}>
+                <View style={styles.statusDot} />
+                <Text style={styles.headerTitle}>Voice Assistant</Text>
+              </View>
+              <TouchableOpacity
+                onPress={cancelAssistant}
+                style={styles.closeBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Feather name="x" size={22} color="rgba(255,255,255,0.85)" />
+              </TouchableOpacity>
+            </LinearGradient>
+
+            {/* Body */}
+            <ScrollView
+              contentContainerStyle={styles.body}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              {/* Large orb — clipped so animation pulses don't escape */}
+              <View style={styles.orbWrap}>
+                <VoiceOrb
                   state={state}
                   meteringSharedValue={meteringSharedValue}
-                  size={120}
+                  size={140}
                 />
-          </View>
+              </View>
 
-          {/* Status text */}
-          <View style={styles.statusContainer}>
-            {state === 'initializing' && <Text style={styles.statusText}>Starting up...</Text>}
-            {state === 'listening'    && <Text style={styles.statusText}>Listening... (stops automatically)</Text>}
-            {state === 'transcribing' && <Text style={styles.statusText}>Understanding you...</Text>}
-            {state === 'processing'   && <Text style={styles.statusText}>Got it! Working on it...</Text>}
-            {state === 'speaking'     && <Text style={styles.statusText}>Buddy is speaking...</Text>}
-            {state === 'error'        && <Text style={styles.errorText}>{error || "Something went wrong"}</Text>}
+              {/* State label */}
+              {!!statusLabel && (
+                <Text style={styles.statusLabel}>{statusLabel}</Text>
+              )}
+              {state === 'error' && (
+                <Text style={styles.errorLabel}>{error || 'Something went wrong'}</Text>
+              )}
 
-            {lastTranscript && state !== 'error' && (
-              <Text style={styles.transcriptText}>"{lastTranscript}"</Text>
-            )}
+              {/* What you said */}
+              {lastTranscript && state !== 'error' && (
+                <View style={styles.transcriptBubble}>
+                  <Text style={styles.transcriptLabel}>You said</Text>
+                  <Text style={styles.transcriptText} numberOfLines={3}>
+                    "{lastTranscript}"
+                  </Text>
+                </View>
+              )}
 
-            {lastReply && (state === 'speaking' || state === 'processing') && (
-              <Text style={styles.replyText}>{lastReply}</Text>
-            )}
-          </View>
+              {/* Buddy's reply */}
+              {lastReply && (state === 'speaking' || state === 'processing') && (
+                <View style={styles.replyBubble}>
+                  <Text style={styles.replyLabel}>Buddy</Text>
+                  <Text style={styles.replyText} numberOfLines={6}>{lastReply}</Text>
+                </View>
+              )}
 
-          {/* Suggested Actions / Onboarding Chips */}
-          {state === 'listening' && (
-            <View style={styles.chipsWrapper}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-                {ONBOARDING_CHIPS.map((chip, idx) => (
-                  <TouchableOpacity 
-                    key={idx} 
-                    style={styles.chipBtn} 
-                    onPress={() => processText(chip)}
+              {/* Quick-action chips */}
+              {state === 'listening' && (
+                <View style={styles.chipsWrapper}>
+                  <Text style={styles.chipsLabel}>Quick actions</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsRow}
                   >
-                    <Text style={styles.chipBtnText}>{chip}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
+                    {ONBOARDING_CHIPS.map((chip, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.chip}
+                        onPress={() => processText(chip)}
+                      >
+                        <Text style={styles.chipText}>{chip}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
-          {/* Manual stop button — tap instead of waiting */}
-          {state === 'listening' && (
-            <TouchableOpacity style={styles.stopButton} onPress={stopAssistant}>
-              <Feather name="send" size={16} color="#FFF" />
-              <Text style={styles.stopButtonText}>Send Now</Text>
-            </TouchableOpacity>
-          )}
+              {/* Send Now */}
+              {state === 'listening' && (
+                <TouchableOpacity style={styles.sendBtn} onPress={stopAssistant} activeOpacity={0.85}>
+                  <LinearGradient
+                    colors={[PURPLE, PURPLE_LIGHT]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.sendBtnGradient}
+                  >
+                    <Feather name="send" size={16} color="#FFF" />
+                    <Text style={styles.sendBtnText}>Send Now</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
         </View>
       )}
 
-      {/* ── 1. Floating Action Button (FAB) — ALWAYS visible ── */}
+      {/* ── Floating Action Button ── */}
       <GestureDetector gesture={panGesture}>
         <Animated.View
-          style={[styles.fabContainer, { bottom: insets.bottom + 100 }, animatedFabStyle]}
+          style={[
+            styles.fabContainer,
+            { bottom: insets.bottom + 100 },
+            animatedFabStyle,
+          ]}
           pointerEvents="auto"
         >
           <TouchableOpacity
@@ -169,7 +237,7 @@ export function AssistantOverlay() {
           >
             <Feather
               name={isActive ? 'x' : 'mic'}
-              size={24}
+              size={26}
               color={isActive ? '#FFF' : PURPLE}
             />
           </TouchableOpacity>
@@ -184,150 +252,237 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 9999,
     elevation: 9999,
+  },
+
+  /* ── Backdrop ── */
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 8, 40, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
-  // FAB
+
+  /* ── Panel (centered card) ── */
+  panel: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#6C47FF',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 32,
+    elevation: 24,
+  },
+
+  panelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#4ADE80',
+    shadowColor: '#4ADE80',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: 'Inter_700Bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+
+  /* ── Body ── */
+  body: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
+  },
+
+  /* ── Orb ── */
+  orbWrap: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    backgroundColor: '#F5F4FB',
+    shadowColor: PURPLE,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+
+  /* ── Status ── */
+  statusLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: 0.2,
+  },
+  errorLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+
+  /* ── Transcript bubble ── */
+  transcriptBubble: {
+    width: '100%',
+    backgroundColor: '#F8F7FF',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E8E4FF',
+  },
+  transcriptLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+    color: PURPLE,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  transcriptText: {
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1E293B',
+    fontStyle: 'italic',
+    lineHeight: 22,
+  },
+
+  /* ── Reply bubble ── */
+  replyBubble: {
+    width: '100%',
+    backgroundColor: `${PURPLE}0D`,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: `${PURPLE}25`,
+  },
+  replyLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+    color: PURPLE,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  replyText: {
+    fontSize: 15,
+    fontFamily: 'Inter_400Regular',
+    color: '#1E293B',
+    lineHeight: 23,
+  },
+
+  /* ── Chips ── */
+  chipsWrapper: {
+    width: '100%',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  chipsLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  chipsRow: {
+    gap: 8,
+    paddingBottom: 4,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  chipText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    color: '#334155',
+  },
+
+  /* ── Send Now ── */
+  sendBtn: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 16,
+    shadowColor: PURPLE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  sendBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  sendBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.3,
+  },
+
+  /* ── FAB ── */
   fabContainer: {
     position: 'absolute',
     right: 20,
-    bottom: 100, // Safe default, overrides the inline style below if needed
     alignItems: 'center',
   },
   fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: PURPLE,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 8,
   },
   fabActive: {
     backgroundColor: '#EF4444',
     shadowColor: '#EF4444',
+    shadowOpacity: 0.4,
   },
-  // Active panel
-  panelCentered: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 32,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#22C55E',
-  },
-  title: {
-    fontSize: 16,
-    fontFamily: 'Inter_700Bold',
-    color: '#1E293B',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  orbContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 4,
-    marginBottom: 12,
-    // Ensure it appears above other elements
-    zIndex: 10,
-    elevation: 10,
-  },
-  statusContainer: {
-    alignItems: 'center',
-    minHeight: 44,
-  },
-  statusText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#EF4444',
-    textAlign: 'center',
-  },
-  transcriptText: {
-    fontSize: 18,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#000',
-    textAlign: 'center',
-    marginTop: 12,
-    fontStyle: 'italic',
-  },
-  replyText: {
-    fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: '#1E293B',
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 24,
-  },
-  stopButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: PURPLE,
-    borderRadius: 100,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    alignSelf: 'center',
-    marginTop: 16,
-  },
-  stopButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  chipsWrapper: {
-    marginTop: 16,
-    width: '100%',
-  },
-  chipsScroll: {
-    paddingHorizontal: 8,
-    gap: 8,
-  },
-  chipBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  chipBtnText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#334155',
-  }
 });

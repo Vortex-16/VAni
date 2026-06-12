@@ -621,6 +621,7 @@ INFO_INTENT targets (only navigate the user or show navigation/explanation help 
 *IMPORTANT RULES*:
 1. Prioritize ACTION_INTENT over INFO_INTENT. If the user intent is to perform an action (e.g., "change language to Bengali", "speak in Hindi", "log dizzy"), classify as ACTION_INTENT immediately.
 2. Only classify as INFO_INTENT if the user explicitly asks "how" or "where" (e.g. "where can I change language?", "how do I change settings?"). Never suggest navigation or return INFO_INTENT if the intent has a high confidence action match.
+3. DO NOT return a LANG_XXX action just because the user is speaking in that language! Only return LANG_XXX if the user EXPLICITLY asks to CHANGE the language or says "speak in [Language]" (e.g. "Hindi me baat karo", "Change to Spanish"). If the user is just asking a question in Hindi, classify it as CHAT.
 
 CHAT intent (a question, feeling, or chit-chat that needs a spoken answer, NOT an app action):
 - Use {"intent":"CHAT","target":"","metadata":{},"confidence":0.9} for things like
