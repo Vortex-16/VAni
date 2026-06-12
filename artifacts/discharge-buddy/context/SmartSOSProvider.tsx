@@ -10,7 +10,7 @@ import React, {
   useState,
 } from "react";
 import { Linking, Modal, Platform, StyleSheet, View } from "react-native";
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 
 import { AnimPressable } from "@/components/AnimPressable";
 import { TranslateText as Text } from "@/components/TranslateText";

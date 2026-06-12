@@ -10,7 +10,7 @@ import {
   StatusBar,
   Alert,
 } from "react-native";
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";

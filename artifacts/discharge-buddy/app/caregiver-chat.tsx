@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { DotLoader } from '@/components/DotLoader';
+import { DotLoader } from '../components/DotLoader';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';

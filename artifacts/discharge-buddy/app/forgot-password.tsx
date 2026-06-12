@@ -3,7 +3,7 @@ import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, StatusBar, Alert,
 } from "react-native";
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";

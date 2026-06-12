@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert } from 'react-native';
-import { DotLoader } from '@/components/DotLoader';
+import { DotLoader } from '../components/DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Feather } from '@expo/vector-icons';

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Image, Modal,  } from 'react-native';
-import { DotLoader } from '@/components/DotLoader';
+import { DotLoader } from '../../components/DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';

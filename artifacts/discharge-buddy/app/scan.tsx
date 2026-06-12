@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Dimensions, Platform, ScrollView, StyleSheet, TouchableOpacity, View, StatusBar, Image, Modal, TextInput, KeyboardAvoidingView,  } from 'react-native';
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import Animated, { 
   FadeIn, 

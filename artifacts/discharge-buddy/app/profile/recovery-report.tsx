@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import {
   ScrollView, StyleSheet, TouchableOpacity, View, Alert,
 } from 'react-native';
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../../components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";

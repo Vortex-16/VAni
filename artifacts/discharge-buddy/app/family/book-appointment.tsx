@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet, TextInput, Platform, Alert, KeyboardAvoidingView } from 'react-native';
-import { DotLoader } from '@/components/DotLoader';
+import { DotLoader } from '../../components/DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';

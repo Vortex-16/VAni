@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform,  } from 'react-native';
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

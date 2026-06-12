@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 import { TranslateText as Text } from "@/components/TranslateText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 

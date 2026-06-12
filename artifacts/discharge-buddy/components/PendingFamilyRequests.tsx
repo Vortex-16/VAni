@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { DotLoader } from '@/components/DotLoader';
+import { DotLoader } from './DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { customFetch } from '@workspace/api-client-react';

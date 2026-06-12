@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Dimensions, } from 'react-native';
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { LinearGradient } from "expo-linear-gradient";

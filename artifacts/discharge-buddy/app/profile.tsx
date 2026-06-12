@@ -4,7 +4,7 @@ import React, { useCallback, useState } from "react";
 import {
   Platform, ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert,
 } from 'react-native';
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";

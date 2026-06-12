@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useApp } from "@/context/AppContext";
 import { useEffect } from "react";
 import { View } from "react-native";
-import { DotLoader } from "@/components/DotLoader";
+import { DotLoader } from "../components/DotLoader";
 
 export default function EntryScreen() {
   const { isOnboarded, role, isInitializing } = useApp();
