@@ -4,7 +4,7 @@ import { useAssistantContext } from '@/hooks/assistant/useAssistantContext';
 import { useAssistantEvents } from '@/hooks/assistant/useAssistantEvents';
 import { useApp, type SymptomLog } from '@/context/AppContext';
 import { router } from 'expo-router';
-import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
@@ -298,6 +298,35 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
         const hashStr = `${langCode}_${hashCode(clean)}`;
         const fileUri = `${FileSystem.cacheDirectory}tts_${hashStr}.mp3`;
+
+        if (Platform.OS === 'web') {
+          try {
+            const { audioContent } = await api.generateTTS(clean, langCode);
+            if (currentRequestId !== activeSpeakRequestIdRef.current) {
+              clearTimeout(timeoutId);
+              safeResolve();
+              return;
+            }
+            if (!audioContent) {
+              speakOnDevice();
+              return;
+            }
+            const soundHtml = new (window as any).Audio(`data:audio/mp3;base64,${audioContent}`);
+            soundHtml.play();
+            soundHtml.onended = () => {
+              clearTimeout(timeoutId);
+              safeResolve();
+            };
+            soundHtml.onerror = () => {
+              speakOnDevice();
+            };
+            return;
+          } catch (webErr) {
+            console.warn("[Assistant Web TTS Error]", webErr);
+            speakOnDevice();
+            return;
+          }
+        }
 
         try {
           let localUri = fileUri;
