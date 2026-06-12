@@ -462,6 +462,8 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
+export let globalHapticsEnabled = true;
+
 const STORAGE_KEY = "discharge_buddy_data_v2";
 
 // Dummy items moved to DataProvider implementations
@@ -488,6 +490,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isOnboarded, setIsOnboardedState] = useState(false);
   const [language, setLanguageState] = useState<Language>("en");
   const [hapticsEnabled, setHapticsEnabledState] = useState(true);
+
+  useEffect(() => {
+    globalHapticsEnabled = hapticsEnabled;
+  }, [hapticsEnabled]);
   const [isProcessingPrescription, setIsProcessingPrescription] = useState(false);
   const [streak, setStreak] = useState(0);
   const [xp, setXP] = useState(340);

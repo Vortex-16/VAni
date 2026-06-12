@@ -89,6 +89,7 @@ export default function ScanScreen() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [editingMed, setEditingMed] = useState<{ index: number; data: ExtractedMed } | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const isConfirmingRef = useRef(false);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
@@ -291,7 +292,8 @@ export default function ScanScreen() {
     if (!scanResult) return;
     // Guard against rapid repeat taps while the (slow) add is in flight —
     // otherwise each tap re-runs the loop and adds duplicate medicines.
-    if (isConfirming) return;
+    if (isConfirmingRef.current) return;
+    isConfirmingRef.current = true;
     setIsConfirming(true);
     try {
       for (const med of scanResult.medicines) {
@@ -335,6 +337,7 @@ export default function ScanScreen() {
     } catch (err) {
       console.error("Failed to add medicines:", err);
       setIsConfirming(false); // allow retry on failure
+      isConfirmingRef.current = false;
     }
   };
 

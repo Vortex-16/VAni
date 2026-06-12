@@ -231,6 +231,7 @@ export default function SymptomsScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: insets.bottom + 120 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Severity preview */}
           <View style={[styles.severityPreview, { backgroundColor: `${severityColor}12`, borderColor: `${severityColor}30` }]}>
@@ -312,6 +313,7 @@ export default function SymptomsScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: insets.bottom + 120 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <TrendChart logs={symptomLogs} />
 

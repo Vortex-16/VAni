@@ -139,10 +139,11 @@ function StatChip({ count, label, color }: { count: number; label: string; color
   );
 }
 
-function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; label: string; color: string; onPress: () => void; delay?: number }) {
+const QuickAction = React.memo(function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; label: string; color: string; onPress: () => void; delay?: number }) {
   const scale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(18)).current;
+  const lastPressTime = useRef(0);
 
   useEffect(() => {
     Animated.parallel([
@@ -151,10 +152,23 @@ function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; la
     ]).start();
   }, []);
 
+  const handlePress = () => {
+    const now = Date.now();
+    if (now - lastPressTime.current < 500) {
+      return; // prevent double-tap navigation conflicts
+    }
+    lastPressTime.current = now;
+
+    // Decouple heavy transition work from layout thread
+    requestAnimationFrame(() => {
+      onPress();
+    });
+  };
+
   return (
     <TouchableOpacity
       style={styles.quickItem}
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={() => Animated.spring(scale, { toValue: 0.88, useNativeDriver: true, friction: 8 }).start()}
       onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 5 }).start()}
       activeOpacity={1}
@@ -167,7 +181,7 @@ function QuickAction({ icon, label, color, onPress, delay = 0 }: { icon: any; la
       </Animated.View>
     </TouchableOpacity>
   );
-}
+});
 
 // ── Skeleton shimmer block for startup loading ───────────────────────────────
 function SkeletonBox({ w, h, radius = 10, mt = 0 }: { w: number | string; h: number; radius?: number; mt?: number }) {
@@ -604,10 +618,11 @@ function PatientDashboard({ topInset }: { topInset: number }) {
   );
 }
 
-function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
+const DoseRow = React.memo(function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
   const scale = useRef(new Animated.Value(1)).current;
+  const lastPressTime = useRef(0);
 
   useEffect(() => {
     Animated.parallel([
@@ -616,9 +631,21 @@ function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
     ]).start();
   }, []);
 
+  const handlePress = () => {
+    const now = Date.now();
+    if (now - lastPressTime.current < 500) {
+      return;
+    }
+    lastPressTime.current = now;
+
+    requestAnimationFrame(() => {
+      onPress();
+    });
+  };
+
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={() => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, friction: 8 }).start()}
       onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 6 }).start()}
       activeOpacity={1}
@@ -643,7 +670,7 @@ function DoseRow({ dose, med, statusColor, statusIcon, delay, onPress }: any) {
       </Animated.View>
     </TouchableOpacity>
   );
-}
+});
 
 function CaregiverDashboard({ topInset }: { topInset: number }) {
   const { user, linkedPatients, isSpeaking, speakingTargetId, speakNeural } = useApp();

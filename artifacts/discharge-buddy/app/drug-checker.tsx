@@ -97,7 +97,7 @@ export default function DrugCheckerScreen() {
         <Text style={styles.headerSub}>Check your medicines for conflicts</Text>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Medicines to check</Text>
           <Text style={styles.cardHint}>Your current medicines are loaded. Add anything else you take.</Text>
@@ -124,13 +124,13 @@ export default function DrugCheckerScreen() {
               onSubmitEditing={addMed}
               returnKeyType="done"
             />
-            <TouchableOpacity style={styles.addBtn} onPress={addMed}>
+            <AnimPressable style={styles.addBtn} onPress={addMed}>
               <Feather name="plus" size={20} color={WHITE} />
-            </TouchableOpacity>
+            </AnimPressable>
           </View>
         </View>
 
-        <TouchableOpacity style={[styles.checkBtn, loading && { opacity: 0.7 }]} onPress={runCheck} disabled={loading} activeOpacity={0.85}>
+        <AnimPressable style={[styles.checkBtn, loading && { opacity: 0.7 }]} onPress={runCheck} disabled={loading}>
           {loading ? (
             <DotLoader color={WHITE} size={6} />
           ) : (
@@ -139,7 +139,7 @@ export default function DrugCheckerScreen() {
               <Text style={styles.checkBtnText}>Check Interactions</Text>
             </>
           )}
-        </TouchableOpacity>
+        </AnimPressable>
 
         {!isOnline && (
           <View style={styles.offlineNote}>

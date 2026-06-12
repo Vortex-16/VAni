@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { Animated, TouchableOpacity, StyleProp, ViewStyle, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { useApp } from "@/context/AppContext";
+import { globalHapticsEnabled } from "@/context/AppContext";
 
 interface AnimPressableProps {
   onPress: () => void;
@@ -52,9 +52,9 @@ function splitStyles(style: any) {
   return { containerStyle, innerStyle };
 }
 
-export function AnimPressable({ onPress, children, style, scaleDownTo = 0.93, disabled = false }: AnimPressableProps) {
+export const AnimPressable = React.memo(function AnimPressable({ onPress, children, style, scaleDownTo = 0.93, disabled = false }: AnimPressableProps) {
   const scale = useRef(new Animated.Value(1)).current;
-  const { hapticsEnabled } = useApp();
+  const lastPressTime = useRef(0);
 
   const handlePressIn = () => {
     if (disabled) return;
@@ -68,10 +68,20 @@ export function AnimPressable({ onPress, children, style, scaleDownTo = 0.93, di
 
   const handlePress = () => {
     if (disabled) return;
-    if (hapticsEnabled) {
+
+    const now = Date.now();
+    if (now - lastPressTime.current < 400) {
+      return; // Ignore rapid double-taps to avoid navigation conflicts
+    }
+    lastPressTime.current = now;
+
+    if (globalHapticsEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    onPress();
+
+    requestAnimationFrame(() => {
+      onPress();
+    });
   };
 
   const { containerStyle, innerStyle } = splitStyles(style);
@@ -90,4 +100,4 @@ export function AnimPressable({ onPress, children, style, scaleDownTo = 0.93, di
       </Animated.View>
     </TouchableOpacity>
   );
-}
+});
