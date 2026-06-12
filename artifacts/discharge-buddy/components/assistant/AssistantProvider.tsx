@@ -556,7 +556,23 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         case 'LANG_BN': {
           const code = target.replace('LANG_', '').toLowerCase() as Language;
           setLanguage(code);
-          reply = LANG_SWITCH_REPLY[code] || 'Okay.';
+          const langNames: Record<Language, string> = {
+            en: 'English',
+            hi: 'Hindi',
+            es: 'Spanish',
+            ur: 'Urdu',
+            bn: 'Bengali',
+            te: 'Telugu',
+            mr: 'Marathi',
+            ta: 'Tamil',
+            gu: 'Gujarati',
+            kn: 'Kannada',
+            ml: 'Malayalam',
+            or: 'Odia',
+            pa: 'Punjabi',
+            as: 'Assamese'
+          };
+          reply = `Language changed to ${langNames[code] || code}.`;
           setLastReply(reply);
           setState('speaking');
           await speak(reply, LOCALE_BY_LANG[code]);
@@ -817,14 +833,17 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       }
 
       // ── Offline Knowledge Base / Guide Mode ──
-      const kbMatch = matchKnowledgeBase(transcript);
-      if (kbMatch) {
-        setLastReply(kbMatch.answer);
-        setState('speaking');
-        if (kbMatch.route) router.push(kbMatch.route as any);
-        await speak(kbMatch.answer, LOCALE_BY_LANG[language as Language || 'en']);
-        finish();
-        return;
+      const isInfoQuery = /(how|where|why|what|explain|guide|help|info|question)/i.test(transcript);
+      if (isInfoQuery) {
+        const kbMatch = matchKnowledgeBase(transcript);
+        if (kbMatch) {
+          setLastReply(kbMatch.answer);
+          setState('speaking');
+          if (kbMatch.route) router.push(kbMatch.route as any);
+          await speak(kbMatch.answer, LOCALE_BY_LANG[language as Language || 'en']);
+          finish();
+          return;
+        }
       }
 
       if (pendingSymptomLogRef.current) {
@@ -861,7 +880,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       const intent = (result?.intent || '').toUpperCase();
       const target = result?.target || '';
 
-      if (intent === 'NAVIGATE' && NAV_ROUTES[target]) {
+      if ((intent === 'NAVIGATE' || intent === 'INFO_INTENT') && NAV_ROUTES[target]) {
         const route = NAV_ROUTES[target];
         const reply = `Opening ${route.label}.`;
         setLastReply(reply);
@@ -872,7 +891,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (intent === 'ACTION' && target) {
+      if ((intent === 'ACTION' || intent === 'ACTION_INTENT') && target) {
         await handleAction(target, transcript, result.metadata);
         return;
       }

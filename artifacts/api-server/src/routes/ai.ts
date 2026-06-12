@@ -585,50 +585,75 @@ NAVIGATE targets (just move the user to a screen):
 - "home"           (home / dashboard / main screen)
 - "family"         (family dashboard / family view / my family members / caregiver dashboard)
 - "meditation"     (open meditation timer / calm session without setting a specific time)
+Format: {"intent": "ACTION_INTENT" | "INFO_INTENT" | "CHAT" | "UNKNOWN", "target": "TARGET", "metadata": {"symptom": "extracted symptom if applicable", "severity": "extracted severity 1-10 if applicable, null if none", "timerMinutes": "number of minutes if applicable, null if none", "isMeditation": boolean}, "confidence": 0.0_to_1.0}
 
-ACTION targets (do something, not just navigate):
-- "TAKE_MEDICINE"     (I took my medicine / I took my pill / mark my dose as taken / log my medicine)
-- "LOG_SYMPTOM"       (I have pain / log a symptom / I'm feeling dizzy / headache today / record nausea). *IMPORTANT*: Implicit symptom statements like "I'm feeling dizzy" MUST map to LOG_SYMPTOM. Try to infer severity (1-10): mild/very mild=3, moderate=5, strong=7, severe=8, unbearable=10. EXCEPTION: critical danger signs (see TRIGGER_EMERGENCY) must map to TRIGGER_EMERGENCY, NOT LOG_SYMPTOM.
-- "ADD_MEDICINE"      (add a medicine manually / new medicine)
-- "TRIGGER_EMERGENCY" (Voice Emergency Mode — highest priority. Map here for: bare distress words like "help", "emergency", "SOS", "save me", "call an ambulance"; explicit urgency like "this is an emergency / I need help urgently"; AND critical danger signs spoken as a complaint: "chest pain", "chest pressure", "I can't breathe / difficulty breathing", "heart attack", "stroke", "slurred speech", "face drooping", "severe bleeding", "I'm choking", "I collapsed". When in doubt between a life-threatening symptom and logging it, choose TRIGGER_EMERGENCY.)
-- "LOGOUT"            (log me out / sign out)
+ACTION_INTENT targets (things that perform an action immediately, such as updating language, logging symptom, taking medicine, triggering emergency):
 - "LANG_EN"           (change language to english / speak english)
 - "LANG_HI"           (change language to hindi / hindi me baat karo)
 - "LANG_ES"           (change language to spanish / espanol)
 - "LANG_UR"           (change language to urdu)
 - "LANG_BN"           (change language to bengali / speak bengali / bangla / বাংলায় বলো)
-- "SEND_NOTE_TO_FAMILY" (tell my daughter / send a message to family / let my son know / tell my caregiver / inform family / notify my family that)
-- "SET_TIMER"         (remind me in X minutes / set medicine timer / meditate for 20 minutes). Extract timerMinutes. Set isMeditation to true if it's for meditation.
+- "TAKE_MEDICINE"     (I took my medicine / I took my pill / mark my dose as taken / log my medicine)
+- "LOG_SYMPTOM"       (I have pain / log a symptom / I'm feeling dizzy / headache today / record nausea)
+- "ADD_MEDICINE"      (add a medicine manually / new medicine)
+- "TRIGGER_EMERGENCY" (Voice Emergency Mode)
+- "LOGOUT"            (log me out / sign out)
+- "SEND_NOTE_TO_FAMILY" (tell my daughter / send a message to family)
+- "SET_TIMER"         (remind me in X minutes)
+
+INFO_INTENT targets (only navigate the user or show navigation/explanation help if they explicitly ask "how" or "where"):
+- "medicines"      (where are my medicines? / how do I see my meds?)
+- "symptoms"       (where is the symptom screen? / how to log symptom?)
+- "progress"       (how do I see my progress?)
+- "schedule"       (where is my schedule?)
+- "followups"      (where are my follow ups?)
+- "journal"        (how do I write a journal?)
+- "scan"           (where is the scanner? / how to scan?)
+- "chat"           (where is the chat page?)
+- "profile"        (how to see my profile?)
+- "settings"       (where can I change settings? / how to change settings / how to change language / where can I change language)
+- "notifications"  (where are notifications?)
+- "emergency"      (how to get help?)
+- "home"           (how to go home?)
+- "family"         (where is the family dashboard?)
+- "meditation"     (how to start meditation?)
+
+*IMPORTANT RULES*:
+1. Prioritize ACTION_INTENT over INFO_INTENT. If the user intent is to perform an action (e.g., "change language to Bengali", "speak in Hindi", "log dizzy"), classify as ACTION_INTENT immediately.
+2. Only classify as INFO_INTENT if the user explicitly asks "how" or "where" (e.g. "where can I change language?", "how do I change settings?"). Never suggest navigation or return INFO_INTENT if the intent has a high confidence action match.
 
 CHAT intent (a question, feeling, or chit-chat that needs a spoken answer, NOT an app action):
 - Use {"intent":"CHAT","target":"","metadata":{},"confidence":0.9} for things like
   "how are you", "what should I eat", "I feel sad", "what is this medicine for",
   "tell me about my recovery", "good morning", "what should I do now", "what do I do", "what are my next steps".
-- IMPORTANT: Questions asking for guidance, advice, or next steps (such as "what should I do now", "what do I do", "what is the next step") MUST map to CHAT intent, NOT NAVIGATE. Only classify as NAVIGATE if the user explicitly names a screen to open (e.g. "go to settings", "open medicines").
+- IMPORTANT: Questions asking for guidance, advice, or next steps (such as "what should I do now", "what do I do", "what is the next step") MUST map to CHAT intent, NOT INFO_INTENT/NAVIGATE. Only classify as INFO_INTENT/NAVIGATE if the user explicitly asks "how" or "where" to find/do something in the app.
 
 If nothing fits and it is not conversational, use {"intent":"UNKNOWN","target":"","metadata":{},"confidence":0.2}.
 
 Context: the user is currently on screen: ${context || "unknown"}
 
 Examples:
-"I want to meditate for 20 minutes" -> {"intent":"ACTION","target":"SET_TIMER","metadata":{"timerMinutes":20,"isMeditation":true},"confidence":0.95}
-"Remind me in 30 minutes"         -> {"intent":"ACTION","target":"SET_TIMER","metadata":{"timerMinutes":30,"isMeditation":false},"confidence":0.95}
-"take me to the scan page"        -> {"intent":"NAVIGATE","target":"scan","metadata":{},"confidence":0.95}
-"show my progress"                -> {"intent":"NAVIGATE","target":"progress","metadata":{},"confidence":0.94}
-"I took my morning pill"          -> {"intent":"ACTION","target":"TAKE_MEDICINE","metadata":{},"confidence":0.93}
-"I'm feeling mildly dizzy"        -> {"intent":"ACTION","target":"LOG_SYMPTOM","metadata":{"symptom":"dizziness","severity":3},"confidence":0.95}
-"Severe headache today"           -> {"intent":"ACTION","target":"LOG_SYMPTOM","metadata":{"symptom":"headache","severity":8},"confidence":0.95}
-"Help"                            -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
-"Emergency"                       -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
-"I have chest pain"               -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.95}
-"I can't breathe"                 -> {"intent":"ACTION","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
-"I have a stomach ache"           -> {"intent":"ACTION","target":"LOG_SYMPTOM","metadata":{"symptom":"stomach ache","severity":null},"confidence":0.9}
-"log me out"                      -> {"intent":"ACTION","target":"LOGOUT","metadata":{},"confidence":0.95}
+"I want to meditate for 20 minutes" -> {"intent":"ACTION_INTENT","target":"SET_TIMER","metadata":{"timerMinutes":20,"isMeditation":true},"confidence":0.95}
+"Remind me in 30 minutes"         -> {"intent":"ACTION_INTENT","target":"SET_TIMER","metadata":{"timerMinutes":30,"isMeditation":false},"confidence":0.95}
+"take me to the scan page"        -> {"intent":"INFO_INTENT","target":"scan","metadata":{},"confidence":0.95}
+"show my progress"                -> {"intent":"INFO_INTENT","target":"progress","metadata":{},"confidence":0.94}
+"I took my morning pill"          -> {"intent":"ACTION_INTENT","target":"TAKE_MEDICINE","metadata":{},"confidence":0.93}
+"I'm feeling mildly dizzy"        -> {"intent":"ACTION_INTENT","target":"LOG_SYMPTOM","metadata":{"symptom":"dizziness","severity":3},"confidence":0.95}
+"Severe headache today"           -> {"intent":"ACTION_INTENT","target":"LOG_SYMPTOM","metadata":{"symptom":"headache","severity":8},"confidence":0.95}
+"Help"                            -> {"intent":"ACTION_INTENT","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
+"Emergency"                       -> {"intent":"ACTION_INTENT","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
+"I have chest pain"               -> {"intent":"ACTION_INTENT","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.95}
+"I can't breathe"                 -> {"intent":"ACTION_INTENT","target":"TRIGGER_EMERGENCY","metadata":{},"confidence":0.97}
+"I have a stomach ache"           -> {"intent":"ACTION_INTENT","target":"LOG_SYMPTOM","metadata":{"symptom":"stomach ache","severity":null},"confidence":0.9}
+"log me out"                      -> {"intent":"ACTION_INTENT","target":"LOGOUT","metadata":{},"confidence":0.95}
+"change language to Bengali"       -> {"intent":"ACTION_INTENT","target":"LANG_BN","metadata":{},"confidence":0.98}
+"speak in Hindi"                   -> {"intent":"ACTION_INTENT","target":"LANG_HI","metadata":{},"confidence":0.98}
+"where can I change language?"     -> {"intent":"INFO_INTENT","target":"settings","metadata":{},"confidence":0.98}
+"how do I change settings?"        -> {"intent":"INFO_INTENT","target":"settings","metadata":{},"confidence":0.98}
 "what should I do now"             -> {"intent":"CHAT","target":"","metadata":{},"confidence":0.95}
 "what do I do"                     -> {"intent":"CHAT","target":"","metadata":{},"confidence":0.95}
 "how are you feeling today buddy" -> {"intent":"CHAT","target":"","metadata":{},"confidence":0.9}
 "asdfghjkl"                       -> {"intent":"UNKNOWN","target":"","metadata":{},"confidence":0.2}`
-
         },
         {
           role: "user",
