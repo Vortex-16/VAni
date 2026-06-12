@@ -83,13 +83,16 @@ export class MedicineService {
   }
 
   static async addMedicine(patientId: string, medicineData: any) {
+    const times = medicineData.times || ["08:00"];
     const [newMedicine] = await db.insert(medicines)
       .values({
         patientId,
         name: medicineData.name,
         dosage: medicineData.dosage,
         frequency: medicineData.frequency,
-        times: medicineData.times || ["08:00"], 
+        times: times, 
+        scheduleTime: medicineData.scheduleTime || (times[0] || "08:00"),
+        isDefaultTime: medicineData.isDefaultTime !== undefined ? medicineData.isDefaultTime : false,
         instructions: medicineData.instructions || medicineData.notes,
         startDate: (medicineData.startDate && typeof medicineData.startDate === 'string') ? new Date(medicineData.startDate) : new Date(),
         endDate: (medicineData.endDate && typeof medicineData.endDate === 'string') ? new Date(medicineData.endDate) : null,
@@ -106,12 +109,15 @@ export class MedicineService {
   }
 
   static async updateMedicine(id: string, updates: any) {
+    const times = updates.times;
     const [updated] = await db.update(medicines)
       .set({
         name: updates.name,
         dosage: updates.dosage,
         frequency: updates.frequency,
-        times: updates.times,
+        times: times,
+        scheduleTime: updates.scheduleTime || (times?.[0] || "08:00"),
+        isDefaultTime: updates.isDefaultTime !== undefined ? updates.isDefaultTime : false,
         instructions: updates.instructions || updates.notes,
         startDate: (updates.startDate && typeof updates.startDate === 'string') ? new Date(updates.startDate) : undefined,
         endDate: (updates.endDate && typeof updates.endDate === 'string') ? new Date(updates.endDate) : null,

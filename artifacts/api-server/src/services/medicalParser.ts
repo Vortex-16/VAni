@@ -24,6 +24,8 @@ export interface ParsedMedicine {
   duration: string;
   timing: string;              // "before food", "after food", etc.
   schedule: ParsedSchedule;
+  times: string[];             // Exact parsed times
+  isDefaultTime: boolean;      // True if falling back to default slot times
   notes: string;
   confidence: number;          // From OCR (0-100 scale)
   low_confidence: boolean;     // True if any component had low OCR confidence
@@ -244,6 +246,42 @@ export function parseRawPrescriptionText(
 }
 
 /**
+ * Extract time strings from text (12h/24h formats).
+ */
+function extractTimesFromText(text: string): string[] {
+  const times: string[] = [];
+  const clean = text.toUpperCase();
+
+  // Match 12-hour format with AM/PM, e.g., 10 AM, 10.30 PM, 2pm, 02:30 PM
+  const regex12 = /\b(1[0-2]|0?[1-9])(?:[:.]([0-5]\d))?\s*(AM|PM)\b/gi;
+  let match;
+  while ((match = regex12.exec(clean)) !== null) {
+    let hour = parseInt(match[1]);
+    const minute = match[2] ? parseInt(match[2]) : 0;
+    const ampm = match[3];
+    if (ampm === "PM" && hour < 12) {
+      hour += 12;
+    } else if (ampm === "AM" && hour === 12) {
+      hour = 0;
+    }
+    times.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+  }
+
+  // Match 24-hour format, e.g., 14:30, 08.00, 22:00
+  const regex24 = /\b([0-1]?\d|2[0-3])[:.]([0-5]\d)\b/g;
+  while ((match = regex24.exec(clean)) !== null) {
+    const hour = parseInt(match[1]);
+    const minute = parseInt(match[2]);
+    const formatted = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    if (!times.includes(formatted)) {
+      times.push(formatted);
+    }
+  }
+
+  return times;
+}
+
+/**
  * Enrich Gemini-parsed medicines with rule-based schedule data.
  *
  * Takes Gemini's structured output and adds/corrects:
@@ -260,6 +298,7 @@ export function enrichWithRuleParsing(
     timing: string;
     notes: string;
     confidence: number;
+    times?: string[];
   }>
 ): ParsedMedicine[] {
   return medicines.map(med => {
@@ -283,6 +322,47 @@ export function enrichWithRuleParsing(
     // Try to match timing
     const timing = matchTiming(med.timing) || matchTiming(med.notes) || med.timing;
 
+    // Extract times from LLM if present
+    let times: string[] = [];
+    if (Array.isArray(med.times) && med.times.length > 0) {
+      times = med.times.map(t => {
+        const match = t.trim().match(/\b([0-1]?\d|2[0-3])[:.]([0-5]\d)\b/);
+        if (match) {
+          return `${String(match[1]).padStart(2, "0")}:${String(match[2]).padStart(2, "0")}`;
+        }
+        const hourOnlyMatch = t.trim().match(/^\b([0-1]?\d|2[0-3])\b$/);
+        if (hourOnlyMatch) {
+          return `${String(hourOnlyMatch[1]).padStart(2, "0")}:00`;
+        }
+        return t;
+      }).filter(t => /^\d{2}:\d{2}$/.test(t));
+    }
+
+    // Fallback: extract times from text fields using regex
+    if (times.length === 0) {
+      const textToScan = `${med.timing || ""} ${med.notes || ""} ${med.frequency || ""}`;
+      times = extractTimesFromText(textToScan);
+    }
+
+    if (times.length > 0) {
+      times.sort();
+    }
+
+    let isDefaultTime = false;
+    if (times.length === 0) {
+      // Check schedule slots to construct fallback times
+      if (schedule.morning) times.push("08:00");
+      if (schedule.afternoon) times.push("14:00");
+      if (schedule.night) times.push("20:00");
+
+      if (times.length === 0) {
+        times.push("08:00");
+        isDefaultTime = true;
+      } else {
+        isDefaultTime = true;
+      }
+    }
+
     return {
       name: med.name,
       dosage: med.dosage,
@@ -291,6 +371,8 @@ export function enrichWithRuleParsing(
       duration: med.duration || "",
       timing,
       schedule,
+      times,
+      isDefaultTime,
       notes: med.notes,
       confidence: med.confidence,
       low_confidence: med.confidence < 70,

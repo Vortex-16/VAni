@@ -89,6 +89,8 @@ export const medicines = pgTable("medicines", {
   dosage: text("dosage").notNull(),
   frequency: text("frequency").notNull(),
   times: text("times").array().notNull(), // Array of strings like ["08:00", "20:00"]
+  scheduleTime: text("schedule_time").default("08:00").notNull(),
+  isDefaultTime: boolean("is_default_time").default(false).notNull(),
   instructions: text("instructions"),
   simplifiedInstructions: text("simplified_instructions"),
   startDate: timestamp("start_date").notNull(),

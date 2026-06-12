@@ -91,6 +91,7 @@ Your job is to fix spelling mistakes and recognize the true medicine names even 
       "frequency": "e.g., twice daily",
       "duration": "e.g., 5 days",
       "timing": "e.g., after food",
+      "times": ["HH:MM"], // Specific scheduled times (24-hour format, e.g. ["10:00", "22:00"]) if explicitly mentioned, otherwise empty array []
       "notes": "any special instructions",
       "confidence": 0, // Your confidence 0-100 in this extraction
       "rule_match": boolean // Set to true if you are 100% sure this is a medicine
@@ -134,6 +135,10 @@ Return in FULL FORM (not abbreviation)
 
 ## Timing
 Extract if mentioned: before food, after food, morning / night
+
+## Times (VERY IMPORTANT)
+* If the text mentions specific times (e.g. "10:00 AM", "10 PM", "9:30", "at 14.30"), extract them exactly as a 24-hour format string array in the "times" field (e.g. "10:00 AM" -> ["10:00"], "10 AM and 10 PM" -> ["10:00", "22:00"]).
+* If no specific times are mentioned, return an empty array [].
 
 ## Notes
 Include: special instructions, conditional usage (e.g., "if fever")

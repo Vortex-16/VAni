@@ -10,7 +10,8 @@ import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Dimensions, Platform, ScrollView, StyleSheet, TouchableOpacity, View, StatusBar, ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView,  } from 'react-native';
+  Dimensions, Platform, ScrollView, StyleSheet, TouchableOpacity, View, StatusBar, Image, Modal, TextInput, KeyboardAvoidingView,  } from 'react-native';
+import { DotLoader } from "@/components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import Animated, { 
   FadeIn, 
@@ -52,6 +53,8 @@ interface ExtractedMed {
     afternoon: boolean;
     night: boolean;
   };
+  times?: string[];
+  isDefaultTime?: boolean;
 }
 
 interface ScanResult {
@@ -77,6 +80,7 @@ export default function ScanScreen() {
   const cameraRef = useRef<CameraView>(null);
   
   const [permission, requestPermission] = useCameraPermissions();
+  const [galleryPermission, requestGalleryPermission] = ImagePicker.useMediaLibraryPermissions();
   const [showResult, setShowResult] = useState(false);
   const [flashMode, setFlashMode] = useState<"on" | "off">("off");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -152,6 +156,44 @@ export default function ScanScreen() {
     return "Low";
   };
 
+  const processPrescriptionImage = async (uri: string, base64: string) => {
+    try {
+      setIsProcessing(true);
+      setCapturedImage(uri);
+      setProcessingStage("🔍 Extracting medicines...");
+      
+      const apiUrl = getApiUrl();
+      const token = await (await import("@react-native-async-storage/async-storage")).default.getItem("discharge_buddy_token");
+      
+      const response = await fetch(`${apiUrl}/api/ocr/scan`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || "Server failed to process scan.");
+      }
+
+      const result = await response.json();
+      setScanResult(result);
+      setShowResult(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      console.error("OCR process failed:", err);
+      alert(err.message || "Failed to scan prescription. Please try again.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setCapturedImage(null);
+    } finally {
+      setIsProcessing(false);
+      setProcessingStage("");
+    }
+  };
+
   const handleCapture = async () => {
     if (!cameraRef.current || isProcessing) return;
     
@@ -167,37 +209,56 @@ export default function ScanScreen() {
 
       if (!photo?.base64) throw new Error("Could not capture image data.");
       
-      setCapturedImage(photo.uri);
-
-      setProcessingStage("🔍 Extracting medicines...");
-      
-      const apiUrl = getApiUrl();
-      const token = await (await import("@react-native-async-storage/async-storage")).default.getItem("discharge_buddy_token");
-      
-      const response = await fetch(`${apiUrl}/api/ocr/scan`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ imageBase64: photo.base64 }),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => null);
-        throw new Error(errData?.error || "Server failed to process scan.");
-      }
-
-      const result = await response.json();
-      setScanResult(result);
-      setShowResult(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await processPrescriptionImage(photo.uri, photo.base64);
     } catch (err: any) {
       console.error("Scan failed:", err);
       alert(err.message || "Failed to scan prescription. Please try again.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setCapturedImage(null);
-    } finally {
+      setIsProcessing(false);
+      setProcessingStage("");
+    }
+  };
+
+  const handleChooseFromGallery = async () => {
+    if (isProcessing) return;
+
+    try {
+      if (!galleryPermission?.granted) {
+        const req = await requestGalleryPermission();
+        if (!req.granted) {
+          alert("Media library permission is required to select photos.");
+          return;
+        }
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (pickerResult.canceled || !pickerResult.assets?.[0]) {
+        return;
+      }
+
+      const asset = pickerResult.assets[0];
+      const uri = asset.uri;
+      let base64 = asset.base64;
+
+      if (!base64) {
+        setIsProcessing(true);
+        setProcessingStage("📂 Reading image...");
+        base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: "base64",
+        });
+      }
+
+      await processPrescriptionImage(uri, base64);
+    } catch (err: any) {
+      console.error("Gallery picker failed:", err);
+      alert(err.message || "Failed to load image from gallery.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setIsProcessing(false);
       setProcessingStage("");
     }
@@ -234,17 +295,32 @@ export default function ScanScreen() {
     setIsConfirming(true);
     try {
       for (const med of scanResult.medicines) {
-        const times = [];
-        if (med.schedule?.morning) times.push("08:00");
-        if (med.schedule?.afternoon) times.push("14:00");
-        if (med.schedule?.night) times.push("20:00");
-        if (times.length === 0) times.push("09:00"); // Default
+        let times: string[] = [];
+        let isDefaultTime = false;
+
+        if (med.times && med.times.length > 0) {
+          times = med.times;
+          isDefaultTime = med.isDefaultTime || false;
+        } else {
+          if (med.schedule?.morning) times.push("08:00");
+          if (med.schedule?.afternoon) times.push("14:00");
+          if (med.schedule?.night) times.push("20:00");
+          
+          if (times.length === 0) {
+            times.push("08:00");
+            isDefaultTime = true;
+          } else {
+            isDefaultTime = true;
+          }
+        }
 
         await addMedicine({
           name: med.name || "Unknown Medicine",
           dosage: med.dosage || "",
           frequency: med.frequency || "Daily",
           times,
+          scheduleTime: times[0] || "08:00",
+          isDefaultTime,
           instructions: med.notes || med.timing || "",
           simplifiedInstructions: med.notes || "",
           startDate: new Date().toISOString(),
@@ -320,20 +396,36 @@ export default function ScanScreen() {
         </View>
       )}
 
-      {/* Capture Button */}
+      {/* Capture Button & Gallery Option */}
       {!showResult && (
         <View style={[styles.footer, { bottom: insets.bottom + 40 }]}>
-          <TouchableOpacity 
-            style={[styles.captureBtn, isProcessing && { opacity: 0.5 }]} 
-            onPress={handleCapture}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="large" color="#fff" />
-            ) : (
-              <View style={styles.captureInner} />
-            )}
-          </TouchableOpacity>
+          <View style={styles.shutterRow}>
+            {/* Gallery Button */}
+            <TouchableOpacity 
+              style={styles.galleryBtn} 
+              onPress={handleChooseFromGallery}
+              disabled={isProcessing}
+            >
+              <Feather name="image" size={22} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Shutter Button */}
+            <TouchableOpacity 
+              style={[styles.captureBtn, isProcessing && { opacity: 0.5 }]} 
+              onPress={handleCapture}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <DotLoader color="#fff" size={10} />
+              ) : (
+                <View style={styles.captureInner} />
+              )}
+            </TouchableOpacity>
+
+            {/* Spacer View to balance gallery button */}
+            <View style={{ width: 48, height: 48 }} />
+          </View>
+
           {isProcessing && (
             <Text style={[styles.scanningText, { marginTop: 12 }]}>
               {processingStage || "ANALYZING..."}
@@ -421,7 +513,7 @@ export default function ScanScreen() {
                   style={styles.btnGradient}
                 >
                   {isConfirming ? (
-                    <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                    <DotLoader color="#fff" size={6} style={{ marginRight: 8 }} />
                   ) : (
                     <Feather name="check-circle" size={20} color="#fff" style={{ marginRight: 8 }} />
                   )}
@@ -574,6 +666,23 @@ const styles = StyleSheet.create({
   },
 
   footer: { position: "absolute", left: 0, right: 0, alignItems: "center" },
+  shutterRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    width: "100%", 
+    paddingHorizontal: 50 
+  },
+  galleryBtn: { 
+    width: 48, 
+    height: 48, 
+    borderRadius: 24, 
+    backgroundColor: "rgba(255,255,255,0.18)", 
+    alignItems: "center", 
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)"
+  },
   captureBtn: { 
     width: 80, height: 80, borderRadius: 40, borderWidth: 4, borderColor: "#fff", 
     padding: 6, alignItems: "center", justifyContent: "center" 

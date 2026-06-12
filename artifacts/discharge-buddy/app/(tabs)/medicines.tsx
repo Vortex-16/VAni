@@ -203,7 +203,13 @@ export default function MedicinesScreen() {
       return;
     }
 
-    await saveMedicine(editingMed);
+    const updatedMed = {
+      ...editingMed,
+      scheduleTime: editingMed.times?.[0] || "08:00",
+      isDefaultTime: false,
+    };
+
+    await saveMedicine(updatedMed);
   };
 
   const handleDelete = (id: string) => {
@@ -391,6 +397,8 @@ export default function MedicinesScreen() {
                 dosage: "",
                 frequency: "Daily",
                 times: ["08:00"],
+                scheduleTime: "08:00",
+                isDefaultTime: false,
                 instructions: "",
                 simplifiedInstructions: "",
                 startDate: new Date().toISOString(),
@@ -412,6 +420,8 @@ export default function MedicinesScreen() {
                 dosage: "",
                 frequency: "Daily",
                 times: ["08:00"],
+                scheduleTime: "08:00",
+                isDefaultTime: false,
                 instructions: "",
                 simplifiedInstructions: "",
                 startDate: new Date().toISOString(),
