@@ -47,10 +47,16 @@ export default function JournalScreen() {
   const [mood, setMood] = useState(3);
   const [energy, setEnergy] = useState(3);
   const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const prompt = PROMPTS[new Date().getDay() % PROMPTS.length];
 
   const handleSave = () => {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      setError("Please write down your thoughts before saving.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+    setError(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const entry: JournalEntry = {
       id: Date.now().toString(),
@@ -130,14 +136,22 @@ export default function JournalScreen() {
             <Text style={styles.label}>Write your thoughts</Text>
             <TextInput
               value={text}
-              onChangeText={setText}
+              onChangeText={(val) => {
+                setText(val);
+                if (error) setError(null);
+              }}
               placeholder={prompt}
               placeholderTextColor="#94a3b8"
               multiline
               numberOfLines={5}
-              style={styles.textArea}
+              style={[styles.textArea, error ? { borderColor: "#ef4444", backgroundColor: "#fff5f5" } : null]}
               textAlignVertical="top"
             />
+            {error && (
+              <Text style={styles.errorText}>
+                ⚠️ {error}
+              </Text>
+            )}
 
             <AnimPressable onPress={handleSave}>
               <LinearGradient
@@ -151,7 +165,16 @@ export default function JournalScreen() {
               </LinearGradient>
             </AnimPressable>
 
-            <AnimPressable onPress={() => setShowForm(false)} style={styles.cancelBtn}>
+            <AnimPressable
+              onPress={() => {
+                setText("");
+                setMood(3);
+                setEnergy(3);
+                setError(null);
+                setShowForm(false);
+              }}
+              style={styles.cancelBtn}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </AnimPressable>
           </View>
@@ -305,6 +328,13 @@ const styles = StyleSheet.create({
   saveBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: WHITE },
   cancelBtn: { alignItems: "center", paddingVertical: 10 },
   cancelText: { fontSize: 16, fontFamily: "Inter_500Medium", color: "#94a3b8" },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: -8,
+    marginBottom: 4,
+  },
 
   listContent: { padding: 16, paddingBottom: 120, gap: 12 },
   ctaCard: {
