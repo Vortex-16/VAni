@@ -47,10 +47,11 @@ export function AssistantOverlay() {
   const insets = useSafeAreaInsets();
   const isActive = isVisible && state !== 'idle';
 
-  // Hide the FAB completely when on chat/scan screens or onboarding/auth screens
+  // Hide the FAB completely when on chat/scan screens, onboarding/auth screens, or emergency/CPR/SOS screens
   const isChatScreen = activeModule === 'chatbot' || pathname?.includes('/scan');
   const isAuthScreen = !user;
-  const shouldHideFab = isChatScreen || isAuthScreen;
+  const isEmergencyOrCpr = pathname?.includes('/cpr') || pathname?.includes('/emergency') || pathname?.includes('/smart-sos');
+  const shouldHideFab = isChatScreen || isAuthScreen || isEmergencyOrCpr;
 
   // Drag logic
   const translateX = useSharedValue(0);

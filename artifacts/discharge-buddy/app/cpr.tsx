@@ -389,8 +389,8 @@ function CprGuide({
 
         <View style={styles.toggleRow}>
           <AnimPressable onPress={reset} style={[styles.secondaryCtrl, { backgroundColor: "#F3F0FF" }]}>
-            <Feather name="rotate-ccw" size={10} color={PURPLE} />
-            <Text style={[styles.toggleText, { color: PURPLE }]}>Reset</Text>
+            <Feather name="rotate-ccw" size={12} color={PURPLE} />
+            <Text style={[styles.toggleText, { color: PURPLE }]} numberOfLines={1} adjustsFontSizeToFit>Reset</Text>
           </AnimPressable>
 
           <AnimPressable
@@ -400,16 +400,16 @@ function CprGuide({
             }}
             style={[styles.secondaryCtrl, { backgroundColor: voiceOn ? `${PURPLE}15` : "#F3F0FF" }]}
           >
-            <Feather name={voiceOn ? "volume-2" : "volume-x"} size={10} color={voiceOn ? PURPLE : MUTED} />
-            <Text style={[styles.toggleText, { color: voiceOn ? PURPLE : MUTED }]}>Voice</Text>
+            <Feather name={voiceOn ? "volume-2" : "volume-x"} size={12} color={voiceOn ? PURPLE : MUTED} />
+            <Text style={[styles.toggleText, { color: voiceOn ? PURPLE : MUTED }]} numberOfLines={1} adjustsFontSizeToFit>Voice</Text>
           </AnimPressable>
 
           <AnimPressable
             onPress={() => setSoundOn((s) => !s)}
             style={[styles.secondaryCtrl, { backgroundColor: soundOn ? `${PURPLE}15` : "#F3F0FF" }]}
           >
-            <Feather name={soundOn ? "music" : "bell-off"} size={10} color={soundOn ? PURPLE : MUTED} />
-            <Text style={[styles.toggleText, { color: soundOn ? PURPLE : MUTED }]}>Beep</Text>
+            <Feather name={soundOn ? "music" : "bell-off"} size={12} color={soundOn ? PURPLE : MUTED} />
+            <Text style={[styles.toggleText, { color: soundOn ? PURPLE : MUTED }]} numberOfLines={1} adjustsFontSizeToFit>Beep</Text>
           </AnimPressable>
         </View>
       </View>
@@ -547,12 +547,12 @@ const styles = StyleSheet.create({
     minHeight: 68, borderRadius: 22, width: "100%",
   },
   primaryCtrlText: { color: WHITE, fontSize: 17, fontFamily: "Inter_700Bold" },
-  toggleRow: { flexDirection: "row", width: "100%", justifyContent: "center", alignItems: "center", textAlign: "center", marginTop: 4, gap: 12 },
+  toggleRow: { flexDirection: "row", width: "100%", justifyContent: "center", alignItems: "center", textAlign: "center", marginTop: 4, gap: 8 },
   secondaryCtrl: {
-    flex: 1, minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingHorizontal: 14, borderRadius: 18, gap: 8,
+    flex: 1, minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingHorizontal: 8, borderRadius: 12, gap: 4,
   },
-  toggleText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  toggleText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   factsCard: { padding: 16, borderRadius: 18, borderWidth: 1.5, marginBottom: 16, gap: 12 },
   factRow: { flexDirection: "row", alignItems: "center", gap: 10 },
