@@ -27,6 +27,8 @@ export interface Medicine {
   dosage: string;
   frequency: string;
   times: string[];
+  scheduleTime?: string;
+  isDefaultTime?: boolean;
   instructions: string;
   simplifiedInstructions: string;
   startDate: string;
@@ -535,8 +537,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const token = await AsyncStorage.getItem("discharge_buddy_token");
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       
-      if (dataProvider instanceof MockProvider) {
-          setDataProvider(new ApiProvider());
+      const isDemo = token === "demo_token_123" || (token && token.startsWith("demo_"));
+      if (isDemo) {
+        setDataProvider(new MockProvider());
+      } else if (dataProvider instanceof MockProvider) {
+        setDataProvider(new ApiProvider());
       }
 
       // Request notification permission on native (local notifications work in Expo Go, remote push does not)
@@ -1103,12 +1108,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const login = async (userData: AppUser, token: string, method: AuthMethod = "password") => {
     await AsyncStorage.setItem("discharge_buddy_token", token);
 
+    const isDemo = token === "demo_token_123" || (token && token.startsWith("demo_"));
+
     // Batch updates to state and storage to prevent race conditions
     setUserState(userData);
     setAuthMethodState(method);
     setRoleState(userData.role);
     setIsOnboardedState(true);
-    setDataProvider(new ApiProvider());
+    if (isDemo) {
+      setDataProvider(new MockProvider());
+    } else {
+      setDataProvider(new ApiProvider());
+    }
 
     await saveData({
       user: userData,
@@ -1144,13 +1155,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Wipe conversation memory for this user (privacy — voice transcripts).
     clearConversationHistory(user?.email || "guest").catch(() => {});
     AsyncStorage.removeItem("discharge_buddy_token");
-    AsyncStorage.removeItem(STORAGE_KEY);
     setUserState(null);
     setAuthMethodState(null);
     setRoleState(null);
-    setIsOnboardedState(false);
     setDataProvider(new MockProvider());
-    router.replace("/");
+    saveData({
+      user: null,
+      authMethod: null,
+      role: null
+    });
+    router.replace("/login");
   };
 
   const updateProfile = async (updates: Partial<AppUser>) => {

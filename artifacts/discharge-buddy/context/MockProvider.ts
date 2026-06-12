@@ -246,6 +246,18 @@ export class MockProvider implements IDataProvider {
     console.log("Mock emergency triggered");
   }
 
+  async sendEmergencyReport(report: any): Promise<any> {
+    console.log("Mock emergency report sent:", report);
+    await new Promise(r => setTimeout(r, 600));
+    return {
+      success: true,
+      message: "Ambulance dispatched (Mock).",
+      dispatchId: `AMB-${Math.floor(1000 + Math.random() * 9000)}`,
+      etaMinutes: 7,
+      timestamp: new Date().toISOString()
+    };
+  }
+
   async registerPushToken(token: string): Promise<void> {
     console.log("Mock push token registered:", token);
   }

@@ -8,9 +8,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  ActivityIndicator,
   Alert,
 } from "react-native";
+import { DotLoader } from "@/components/DotLoader";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -209,7 +209,7 @@ export default function VerifyEmailScreen() {
             style={styles.primaryBtnGrad}
           >
             {isVerifying ? (
-              <ActivityIndicator color={WHITE} size="small" />
+              <DotLoader color={WHITE} size={6} />
             ) : (
               <>
                 <Text style={styles.primaryBtnText}>VERIFY ACCOUNT</Text>

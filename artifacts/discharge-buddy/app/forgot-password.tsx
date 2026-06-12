@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, StatusBar, Alert,
 } from "react-native";
+import { DotLoader } from "@/components/DotLoader";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -180,10 +181,11 @@ export default function ForgotPasswordScreen() {
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={styles.primaryBtnGrad}
               >
-                {loading
-                  ? <ActivityIndicator color={WHITE} size="small" />
-                  : <><Text style={styles.primaryBtnText}>SEND RESET CODE</Text><Feather name="send" size={18} color={WHITE} /></>
-                }
+                {loading ? (
+                  <DotLoader color={WHITE} size={6} />
+                ) : (
+                  <><Text style={styles.primaryBtnText}>SEND RESET CODE</Text><Feather name="send" size={18} color={WHITE} /></>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </>
@@ -245,10 +247,11 @@ export default function ForgotPasswordScreen() {
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={styles.primaryBtnGrad}
               >
-                {loading
-                  ? <ActivityIndicator color={WHITE} size="small" />
-                  : <><Text style={styles.primaryBtnText}>RESET PASSWORD</Text><Feather name="check" size={18} color={WHITE} /></>
-                }
+                {loading ? (
+                  <DotLoader color={WHITE} size={6} />
+                ) : (
+                  <><Text style={styles.primaryBtnText}>RESET PASSWORD</Text><Feather name="check" size={18} color={WHITE} /></>
+                )}
               </LinearGradient>
             </TouchableOpacity>
 

@@ -401,12 +401,13 @@ export default function LoginScreen() {
 
   const runDemo = async (role: AppRole) => {
     setIsLoggingIn(true); setShowDemoModal(false);
+    setLoginProgress(0.5);
     setTimeout(async () => {
       const mockUser = { id: `demo-${role}-1`, name: `Demo ${role}`, email: `demo@${role}.com`, role, isEmailVerified: true };
       await login(mockUser as any, 'demo_token_123');
       setOnboarded(true);
       switchProvider(new MockProvider());
-      setIsLoggingIn(false);
+      setLoginProgress(1);
       handleTransitionToSuccess(role);
     }, 1500);
   };

@@ -20,6 +20,7 @@ export interface IDataProvider {
   getRecoveryTrends(): Promise<any>;
 
   triggerEmergency(): Promise<void>;
+  sendEmergencyReport(report: any): Promise<any>;
   registerPushToken(token: string): Promise<void>;
   getLinkedPatients(): Promise<Patient[]>;
   getFamilyMembers(): Promise<Patient[]>;

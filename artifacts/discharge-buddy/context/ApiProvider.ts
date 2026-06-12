@@ -105,6 +105,13 @@ export class ApiProvider implements IDataProvider {
     });
   }
 
+  async sendEmergencyReport(report: any): Promise<any> {
+    return await customFetch("/api/emergency/report", {
+      method: "POST",
+      body: JSON.stringify(report)
+    });
+  }
+
   async registerPushToken(token: string): Promise<void> {
     await customFetch("/api/auth/update-token", {
       method: "POST",

@@ -1,24 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { DotLoader } from '@/components/DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
-import { getApiUrl } from '@/utils/apiUrl';
-import { useApp } from '@/context/AppContext';
+import { customFetch } from '@workspace/api-client-react';
 
 export function PendingFamilyRequests() {
-  const { token } = useApp();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch(`${getApiUrl()}/api/links/pending`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setRequests(data.requests || []);
-      }
+      const data = await customFetch<{ requests: any[] }>("/api/links/pending");
+      setRequests(data.requests || []);
     } catch (e) {
       console.warn("Failed to fetch pending requests", e);
     } finally {
@@ -27,44 +21,34 @@ export function PendingFamilyRequests() {
   };
 
   useEffect(() => {
-    if (token) fetchRequests();
-  }, [token]);
+    fetchRequests();
+  }, []);
 
   const handleApprove = async (managerId: string) => {
     try {
-      const res = await fetch(`${getApiUrl()}/api/links/${managerId}/approve`, {
+      await customFetch(`/api/links/${managerId}/approve`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) {
-        Alert.alert("Success", "Family member approved successfully.");
-        fetchRequests();
-      } else {
-        Alert.alert("Error", "Failed to approve request.");
-      }
+      Alert.alert("Success", "Family member approved successfully.");
+      fetchRequests();
     } catch (e) {
-      Alert.alert("Error", "Network error.");
+      Alert.alert("Error", "Failed to approve request.");
     }
   };
 
   const handleReject = async (managerId: string) => {
     try {
-      const res = await fetch(`${getApiUrl()}/api/links/${managerId}/reject`, {
+      await customFetch(`/api/links/${managerId}/reject`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) {
-        Alert.alert("Declined", "Connection request declined.");
-        fetchRequests();
-      } else {
-        Alert.alert("Error", "Failed to decline request.");
-      }
+      Alert.alert("Declined", "Connection request declined.");
+      fetchRequests();
     } catch (e) {
-      Alert.alert("Error", "Network error.");
+      Alert.alert("Error", "Failed to decline request.");
     }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 20 }} />;
+  if (loading) return <DotLoader style={{ marginTop: 20 }} />;
   if (requests.length === 0) return null;
 
   return (
