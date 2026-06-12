@@ -7,7 +7,7 @@
 [![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-> **📚 New here?** This README is the front door. For deep implementation notes and the full change-log, see **[doc.md](./doc.md)** and **[DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)**.
+> **📚 New here?** This README is the front door. For deep implementation notes and the full change-log, see **[doc.md](./documents/readmes/doc.md)** and **[DOCUMENTATION_INDEX.md](./documents/readmes/DOCUMENTATION_INDEX.md)**.
 
 ---
 
@@ -40,7 +40,7 @@
 | 📱 **UX fixes** | Scrollable auth screens, keyboard-aware chat input, smoother Google sign-in with a loading state, decluttered sidebar. |
 | ☁️ **Deployment** | Hardened Google Cloud Run deploy (env-vars file, startup schema guard, fixed false-success reporting). |
 
-Full details live in **[doc.md → SECTIONS 13–15](./doc.md)**.
+Full details live in **[doc.md → SECTIONS 13–15](./documents/readmes/doc.md)**.
 
 </details>
 
@@ -268,7 +268,7 @@ cd artifacts/api-server && pnpm run dev
 cd artifacts/discharge-buddy && npx expo start
 ```
 
-> **Note:** Edge TTS needs **no key**. Push notifications & native Google OAuth require a **dev/standalone build** (Expo Go can't obtain push tokens). See [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md).
+> **Note:** Edge TTS needs **no key**. Push notifications & native Google OAuth require a **dev/standalone build** (Expo Go can't obtain push tokens). See [GOOGLE_OAUTH_SETUP.md](./documents/readmes/GOOGLE_OAUTH_SETUP.md).
 
 </details>
 
