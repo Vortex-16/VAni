@@ -6,7 +6,7 @@ export function getFriendlyErrorMessage(error: any, context: 'scan' | 'import' |
   if (!error) return "Something went wrong. Please try again.";
 
   const message = typeof error === 'string' ? error : (error.message || "");
-  
+
   // 1. Database/Technical Errors (e.g., from your screenshot)
   if (message.includes("500") || message.includes("Failed query") || message.includes("params:")) {
     switch (context) {
@@ -34,9 +34,9 @@ export function getFriendlyErrorMessage(error: any, context: 'scan' | 'import' |
   if (context === 'import' && message.includes("already been imported")) {
     return "This plan has already been added to your account.";
   }
-  
+
   if (context === 'scan' && message.includes("Invalid QR")) {
-    return "This doesn't look like a valid Discharge Buddy QR code.";
+    return "This doesn't look like a valid VAni QR code.";
   }
 
   // 4. Cleanup raw "Error:" prefix if still present

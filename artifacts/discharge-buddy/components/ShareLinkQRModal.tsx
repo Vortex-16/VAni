@@ -49,7 +49,7 @@ export function ShareLinkQRModal({ visible, onClose }: Props) {
 
   const handleShare = async () => {
     if (!linkCode) return;
-    const message = `Scan this Discharge Buddy QR code or use code ${linkCode} to link to my care.`;
+    const message = `Scan this VAni QR code or use code ${linkCode} to link to my care.`;
 
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       try {
@@ -63,7 +63,7 @@ export function ShareLinkQRModal({ visible, onClose }: Props) {
     }
 
     try {
-      await Share.share({ title: 'Discharge Buddy Link Code', message });
+      await Share.share({ title: 'VAni Link Code', message });
     } catch {
       Alert.alert('Share', message);
     }
@@ -84,7 +84,7 @@ export function ShareLinkQRModal({ visible, onClose }: Props) {
     }
 
     try {
-      await Share.share({ title: 'Discharge Buddy Link Code', message: linkCode });
+      await Share.share({ title: 'VAni Link Code', message: linkCode });
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {

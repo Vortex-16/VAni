@@ -53,13 +53,13 @@ async function verifyPassword(plain: string, stored: string, userId: string): Pr
 router.post("/oauth", async (req, res) => {
   try {
     const { provider, idToken, accessToken, role, confirmRole, familyMember, professionalDetails, phone, relationshipPreference, hospital, designation, department, registrationNumber, specialization } = req.body;
-    
+
     if (provider !== "google") {
       return res.status(400).json({ error: "Unsupported provider" });
     }
 
     let email = "";
-    let name  = "";
+    let name = "";
 
     if (accessToken) {
       // ── Web flow: expo-auth-session returns an accessToken ──────────────────
@@ -75,14 +75,14 @@ router.post("/oauth", async (req, res) => {
         return res.status(400).json({ error: "Could not retrieve email from Google" });
       }
       email = userInfo.email;
-      name  = userInfo.name || "User";
+      name = userInfo.name || "User";
 
     } else if (idToken) {
       // ── Native flow: verifies Google ID token directly ──────────────────────
       if (process.env.GOOGLE_CLIENT_ID === "PLACEHOLDER_GOOGLE_CLIENT_ID" || process.env.NODE_ENV === "test") {
         const decodedPayload = jwt.decode(idToken) as any;
         email = decodedPayload?.email || "test@example.com";
-        name  = decodedPayload?.name  || "Test User";
+        name = decodedPayload?.name || "Test User";
       } else {
         const ticket = await client.verifyIdToken({
           idToken,
@@ -93,7 +93,7 @@ router.post("/oauth", async (req, res) => {
           return res.status(400).json({ error: "Invalid Google token payload" });
         }
         email = payload.email;
-        name  = payload.name || "User";
+        name = payload.name || "User";
       }
     } else {
       return res.status(400).json({ error: "Either accessToken or idToken is required" });
@@ -201,8 +201,8 @@ router.post("/oauth", async (req, res) => {
 
     // Generate our JWT Session Token
     const token = jwt.sign(
-      { sub: user.id }, 
-      process.env.JWT_SECRET!, 
+      { sub: user.id },
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
 
@@ -370,8 +370,8 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { sub: user.id }, 
-      process.env.JWT_SECRET!, 
+      { sub: user.id },
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
 
@@ -399,8 +399,8 @@ router.post("/verify-email", async (req, res) => {
 
     if (user.isEmailVerified) {
       const token = jwt.sign(
-        { sub: user.id }, 
-        process.env.JWT_SECRET!, 
+        { sub: user.id },
+        process.env.JWT_SECRET!,
         { expiresIn: "7d" }
       );
       return res.json({ token, user });
@@ -425,8 +425,8 @@ router.post("/verify-email", async (req, res) => {
       .returning();
 
     const token = jwt.sign(
-      { sub: updatedUser.id }, 
-      process.env.JWT_SECRET!, 
+      { sub: updatedUser.id },
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
 
@@ -483,7 +483,7 @@ router.get("/dev-session", async (req, res) => {
 
     // 1. Upsert User
     let [user] = await db.select().from(users).where(eq(users.email, email));
-    
+
     if (!user) {
       const [newPatient] = await db.insert(patients).values({
         name,
@@ -509,7 +509,7 @@ router.get("/dev-session", async (req, res) => {
 
     // 2. Seed Medicines if empty
     const existingMeds = await db.select().from(medicines).where(eq(medicines.patientId, user.linkedPatientId!));
-    
+
     if (existingMeds.length === 0) {
       const insertedMeds = await db.insert(medicines).values([
         {
@@ -556,8 +556,8 @@ router.get("/dev-session", async (req, res) => {
 
     // 3. Generate token
     const token = jwt.sign(
-      { sub: user.id }, 
-      process.env.JWT_SECRET!, 
+      { sub: user.id },
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
 
@@ -580,7 +580,7 @@ router.post("/dev-login", async (req, res) => {
     }
     const devEmail = process.env.DEV_USER_EMAIL || "dev@example.com";
     const devPassword = process.env.DEV_USER_PASSWORD || "devpassword123";
-    
+
     // Also allow a hardcoded caregiver dev account
     const isCaregiverReq = email.toLowerCase() === "caregiver@example.com" && password === "caregiver123";
 
@@ -589,7 +589,7 @@ router.post("/dev-login", async (req, res) => {
     }
 
     const targetEmail = isCaregiverReq ? "caregiver@example.com" : devEmail.toLowerCase();
-    
+
     // Find or create the dev user in DB
     let [user] = await db.select().from(users).where(eq(users.email, targetEmail));
     if (!user) {
@@ -654,12 +654,12 @@ router.post("/push-token", requireAuth, async (req: AuthRequest, res) => {
 router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { name, email, phone, avatar, bloodType, allergies, emergencyContactName, emergencyContactPhone } = req.body;
-    
+
     const [updatedUser] = await db.update(users)
-      .set({ 
-        name: name || undefined, 
-        email: email?.toLowerCase() || undefined, 
-        phone: phone || undefined, 
+      .set({
+        name: name || undefined,
+        email: email?.toLowerCase() || undefined,
+        phone: phone || undefined,
         avatar: avatar || undefined,
         bloodType: bloodType || undefined,
         allergies: allergies || undefined,
@@ -728,7 +728,7 @@ router.post("/forgot-password", async (req, res) => {
       .where(eq(users.id, user.id));
 
     // Reuse email infrastructure with a reset-specific message
-    const subject = "Reset your password - Discharge Buddy";
+    const subject = "Reset your password - VAni";
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
         <h2 style="color: #7C3AED; text-align: center;">Password Reset</h2>
@@ -741,7 +741,7 @@ router.post("/forgot-password", async (req, res) => {
         </div>
         <p style="color: #64748b; font-size: 14px;">This code expires in 15 minutes. If you did not request this, please ignore this email — your account is safe.</p>
         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Discharge Buddy Team</p>
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">VAni Team</p>
       </div>
     `;
     try {
@@ -755,7 +755,7 @@ router.post("/forgot-password", async (req, res) => {
       const sep = "=".repeat(60);
       console.log(`\n${sep}\n🔑 PASSWORD RESET CODE FOR: ${email}\n${sep}\n👉 CODE: ${resetCode}\n👉 EXPIRES IN: 15 minutes\n${sep}\n`);
       // Also try via sendVerificationEmail which has its own fallback
-      await sendVerificationEmail(email, resetCode, user.name).catch(() => {});
+      await sendVerificationEmail(email, resetCode, user.name).catch(() => { });
     }
 
     return res.json({ success: true, message: "If that email exists, a reset code has been sent." });
@@ -833,14 +833,14 @@ router.post("/sos-notify-family", requireAuth, async (req: AuthRequest, res) => 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #EF4444; border-radius: 8px; background: #FFF5F5;">
         <h1 style="color: #EF4444; text-align: center;">🚨 Emergency SOS Alert</h1>
-        <p style="font-size: 16px;"><strong>${user.name}</strong> has triggered an emergency SOS through the Discharge Buddy app and may need immediate assistance.</p>
+        <p style="font-size: 16px;"><strong>${user.name}</strong> has triggered an emergency SOS through the VAni app and may need immediate assistance.</p>
         <div style="background: #FEE2E2; border-radius: 8px; padding: 16px; margin: 20px 0;">
           <p style="margin: 0; color: #7F1D1D;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
           ${location ? `<p style="margin: 8px 0 0; color: #7F1D1D;">${locationStr.replace(/\n/g, '<br/>')}</p>` : ''}
         </div>
         <p>Please try to contact ${user.name} immediately or call emergency services (112) if you cannot reach them.</p>
         <hr style="border: 0; border-top: 1px solid #FECACA; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">This is an automated alert from Discharge Buddy. Do not reply to this email.</p>
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">This is an automated alert from VAni. Do not reply to this email.</p>
       </div>
     `;
 
@@ -871,11 +871,11 @@ router.post("/update-token", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { pushToken } = req.body;
     if (!pushToken) return res.status(400).json({ error: "Push token required" });
-    
+
     await db.update(users)
       .set({ pushToken })
       .where(eq(users.id, req.user!.id));
-      
+
     logger.info({ userId: req.user!.id }, "Push token updated");
     res.json({ success: true });
   } catch (error) {

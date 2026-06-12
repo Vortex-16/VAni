@@ -1,9 +1,9 @@
-# Discharge Buddy Documentation
+# VAni Documentation
 
 ## SECTION 1 — Repository Analysis
 
 ### Architecture Summary
-Discharge Buddy follows a modern React Native (Expo) frontend with an Express/Node.js backend, and a Python-based OCR service. The application uses context-based state management with separate providers for Authentication, Localization, and Voice functionalities. The architecture is designed to support patient-caregiver linked roles, enabling seamless information sharing.
+VAni follows a modern React Native (Expo) frontend with an Express/Node.js backend, and a Python-based OCR service. The application uses context-based state management with separate providers for Authentication, Localization, and Voice functionalities. The architecture is designed to support patient-caregiver linked roles, enabling seamless information sharing.
 
 ### Dependency Map
 - **Frontend**: React Native (Expo), React Navigation (for routing), Context API (State Management)
@@ -480,7 +480,7 @@ It demonstrates a complete paradigm shift. The application stops being a digital
 ## SECTION 8 — Output Format Notes
 
 *Note to contributors:*
-This document acts as the definitive roadmap for Discharge Buddy. When adding new features, always ask: **"How does this work with voice?"**
+This document acts as the definitive roadmap for VAni. When adding new features, always ask: **"How does this work with voice?"**
 Do not build features that can only be accessed via deep, nested UI menus. Ensure all core actions are exposed via the Intent Router.
 
 ---

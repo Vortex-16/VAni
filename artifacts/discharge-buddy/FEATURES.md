@@ -1,12 +1,12 @@
 # 📘 FEATURES.md
 
 ## 🧠 Overview
-**Discharge Buddy** is a high-fidelity recovery companion designed to bridge the "Care Gap" between hospital discharge and home recovery. It synchronizes medical staff (Caregivers), patients, and family members through an AI-powered ecosystem that handles prescription digitization, automated scheduling, and predictive risk monitoring.
+**VAni** is a high-fidelity recovery companion designed to bridge the "Care Gap" between hospital discharge and home recovery. It synchronizes medical staff (Caregivers), patients, and family members through an AI-powered ecosystem that handles prescription digitization, automated scheduling, and predictive risk monitoring.
 
 ## 🏗 Architecture
 The system follows a distributed **Tri-Layer Architecture**:
 
-1.  **Frontend (Discharge Buddy App)**: An Expo-based mobile application utilizing `react-native-reanimated` for fluid UI, `AppContext` for state management, and an `ApiProvider` abstraction for backend communication.
+1.  **Frontend (VAni App)**: An Expo-based mobile application utilizing `react-native-reanimated` for fluid UI, `AppContext` for state management, and an `ApiProvider` abstraction for backend communication.
 2.  **Core Backend (API Server)**: A Node.js Express server using **Drizzle ORM** and **PostgreSQL**. It serves as the source of truth for medication schedules, dose logs, and user roles.
 3.  **Intelligence Layer (OCR Service & Gemini)**: 
     *   **OCR Ensemble**: A Python service utilizing **DocTR** and **Tesseract** to extract text from prescription images.
@@ -118,7 +118,7 @@ Uses an XP (Experience Point) and Achievement system (`AppContext.ts`) to reward
 ---
 
 ## 🔄 System Lifecycle Map
-The following sequence represents the end-to-end operational flow of the Discharge Buddy platform:
+The following sequence represents the end-to-end operational flow of the VAni platform:
 
 ```mermaid
 graph TD

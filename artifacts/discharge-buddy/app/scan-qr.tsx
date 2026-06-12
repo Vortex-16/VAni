@@ -102,7 +102,7 @@ export default function ScanQR() {
           throw new Error('Invalid format.');
         }
       } else {
-        throw new Error('Invalid QR code. Please scan a Discharge Buddy QR.');
+        throw new Error('Invalid QR code. Please scan a VAni QR.');
       }
     } catch (err: any) {
       console.error('[ScanQR] Fetch Error:', err);
@@ -130,7 +130,7 @@ export default function ScanQR() {
       } else {
         // Legacy mock flow
         const freqToTimes: Record<string, string[]> = {
-          OD:  ["08:00"], BD:  ["08:00", "20:00"], TID: ["08:00", "14:00", "20:00"], QID: ["08:00", "12:00", "18:00", "22:00"],
+          OD: ["08:00"], BD: ["08:00", "20:00"], TID: ["08:00", "14:00", "20:00"], QID: ["08:00", "12:00", "18:00", "22:00"],
         };
         await Promise.all(meds.map((med: any) => addMedicine({
           name: med.name, dosage: med.dosage || '—', frequency: med.frequency || 'OD',
@@ -157,10 +157,10 @@ export default function ScanQR() {
         style={StyleSheet.absoluteFillObject}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         barcodeScannerSettings={{
-            barcodeTypes: ["qr"],
+          barcodeTypes: ["qr"],
         }}
       />
-      
+
       {/* Overlay UI */}
       <View style={styles.overlay}>
         {/* Only show close button when modal is NOT open */}
@@ -171,14 +171,14 @@ export default function ScanQR() {
         )}
 
         <View style={styles.scanFrameWrap}>
-           <View style={styles.scanFrame} />
-           <Text style={styles.scanText}>Point camera at QR code</Text>
+          <View style={styles.scanFrame} />
+          <Text style={styles.scanText}>Point camera at QR code</Text>
         </View>
 
         {loading && (
           <View style={styles.loadingOverlay}>
-             <ActivityIndicator size="large" color={PURPLE} />
-             <Text style={styles.loadingText}>Reading Plan...</Text>
+            <ActivityIndicator size="large" color={PURPLE} />
+            <Text style={styles.loadingText}>Reading Plan...</Text>
           </View>
         )}
       </View>
@@ -196,113 +196,113 @@ export default function ScanQR() {
             </TouchableOpacity>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-               <Text style={styles.modalTitle}>Recovery Plan Summary</Text>
-               <Text style={styles.patientName}>{plan?.patientName}{plan?.age ? `, ${plan.age}` : ''}</Text>
-               {plan?.hospitalName ? <Text style={styles.subInfo}>🏥 {plan.hospitalName}{plan?.doctorName ? `  ·  Dr. ${plan.doctorName}` : ''}</Text> : null}
-               {plan?.diagnosis ? <Text style={styles.subInfo}>🩺 {plan.diagnosis}</Text> : null}
+              <Text style={styles.modalTitle}>Recovery Plan Summary</Text>
+              <Text style={styles.patientName}>{plan?.patientName}{plan?.age ? `, ${plan.age}` : ''}</Text>
+              {plan?.hospitalName ? <Text style={styles.subInfo}>🏥 {plan.hospitalName}{plan?.doctorName ? `  ·  Dr. ${plan.doctorName}` : ''}</Text> : null}
+              {plan?.diagnosis ? <Text style={styles.subInfo}>🩺 {plan.diagnosis}</Text> : null}
 
-               {/* Allergy Warning — show prominently if present */}
-               {plan?.allergies ? (
-                 <View style={styles.allergyWarn}>
-                   <Feather name="alert-triangle" size={14} color="#ef4444" />
-                   <Text style={styles.allergyWarnText}>⚠️ Allergy: {plan.allergies}</Text>
-                 </View>
-               ) : null}
+              {/* Allergy Warning — show prominently if present */}
+              {plan?.allergies ? (
+                <View style={styles.allergyWarn}>
+                  <Feather name="alert-triangle" size={14} color="#ef4444" />
+                  <Text style={styles.allergyWarnText}>⚠️ Allergy: {plan.allergies}</Text>
+                </View>
+              ) : null}
 
-               {/* Stats row */}
-               <View style={styles.statsRow}>
-                 <View style={styles.statItem}>
-                   <Text style={styles.statVal}>{plan?.medicines?.length || 0}</Text>
-                   <Text style={styles.statLab}>Medicines</Text>
-                 </View>
-                 <View style={styles.divider} />
-                 <View style={styles.statItem}>
-                   <Text style={styles.statVal}>
-                     {plan?.medicines?.reduce((acc: number, m: any) => {
-                       const map: any = { OD: 1, BD: 2, TID: 3, QID: 4 };
-                       return acc + (map[m.frequency] || 1);
-                     }, 0) || 0}
-                   </Text>
-                   <Text style={styles.statLab}>Doses/Day</Text>
-                 </View>
-                 {plan?.bloodGroup ? (
-                   <>
-                     <View style={styles.divider} />
-                     <View style={styles.statItem}>
-                       <Text style={[styles.statVal, { color: '#ef4444' }]}>{plan.bloodGroup}</Text>
-                       <Text style={styles.statLab}>Blood Group</Text>
-                     </View>
-                   </>
-                 ) : null}
-               </View>
+              {/* Stats row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statVal}>{plan?.medicines?.length || 0}</Text>
+                  <Text style={styles.statLab}>Medicines</Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statVal}>
+                    {plan?.medicines?.reduce((acc: number, m: any) => {
+                      const map: any = { OD: 1, BD: 2, TID: 3, QID: 4 };
+                      return acc + (map[m.frequency] || 1);
+                    }, 0) || 0}
+                  </Text>
+                  <Text style={styles.statLab}>Doses/Day</Text>
+                </View>
+                {plan?.bloodGroup ? (
+                  <>
+                    <View style={styles.divider} />
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statVal, { color: '#ef4444' }]}>{plan.bloodGroup}</Text>
+                      <Text style={styles.statLab}>Blood Group</Text>
+                    </View>
+                  </>
+                ) : null}
+              </View>
 
-               {/* Follow-up date */}
-               {plan?.followUpDate ? (
-                 <View style={styles.followUpCard}>
-                   <Feather name="calendar" size={14} color={PURPLE} />
-                   <Text style={styles.followUpText}>Follow-up: {plan.followUpDate}</Text>
-                 </View>
-               ) : null}
+              {/* Follow-up date */}
+              {plan?.followUpDate ? (
+                <View style={styles.followUpCard}>
+                  <Feather name="calendar" size={14} color={PURPLE} />
+                  <Text style={styles.followUpText}>Follow-up: {plan.followUpDate}</Text>
+                </View>
+              ) : null}
 
-               {/* Medicine list */}
-               <View style={styles.medList}>
-                 {plan?.medicines?.map((med: any, idx: number) => (
-                   <View key={idx} style={styles.medItem}>
-                     <View style={[styles.colorDot, { backgroundColor: '#6C47FF' }]} />
-                     <View style={{ flex: 1 }}>
-                       <Text style={styles.medName}>{med.name}{med.dosage ? ` (${med.dosage})` : ''}</Text>
-                       <Text style={styles.medFreq}>{med.frequency} · {med.duration} days{med.instructions ? `  —  ${med.instructions}` : ''}</Text>
-                     </View>
-                   </View>
-                 ))}
-               </View>
+              {/* Medicine list */}
+              <View style={styles.medList}>
+                {plan?.medicines?.map((med: any, idx: number) => (
+                  <View key={idx} style={styles.medItem}>
+                    <View style={[styles.colorDot, { backgroundColor: '#6C47FF' }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.medName}>{med.name}{med.dosage ? ` (${med.dosage})` : ''}</Text>
+                      <Text style={styles.medFreq}>{med.frequency} · {med.duration} days{med.instructions ? `  —  ${med.instructions}` : ''}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
 
-               {/* Recovery notes */}
-               {plan?.diet ? <Text style={styles.noteChip}>🥗 Diet: {plan.diet}</Text> : null}
-               {plan?.activityLevel ? <Text style={styles.noteChip}>🏃 Activity: {plan.activityLevel}</Text> : null}
-               {plan?.warningSigns ? (
-                 <View style={styles.warnCard}>
-                   <Text style={styles.warnTitle}>⚠️ Warning Signs</Text>
-                   <Text style={styles.warnText}>{plan.warningSigns}</Text>
-                 </View>
-               ) : null}
+              {/* Recovery notes */}
+              {plan?.diet ? <Text style={styles.noteChip}>🥗 Diet: {plan.diet}</Text> : null}
+              {plan?.activityLevel ? <Text style={styles.noteChip}>🏃 Activity: {plan.activityLevel}</Text> : null}
+              {plan?.warningSigns ? (
+                <View style={styles.warnCard}>
+                  <Text style={styles.warnTitle}>⚠️ Warning Signs</Text>
+                  <Text style={styles.warnText}>{plan.warningSigns}</Text>
+                </View>
+              ) : null}
 
-               <Text style={styles.sectionTitle}>Your Existing Medicines</Text>
-               <Text style={styles.sectionSub}>What should happen to medicines you already have?</Text>
-               <View style={styles.optionsRow}>
-                  <TouchableOpacity 
-                    style={[styles.optBtn, importMode === 'merge' && styles.optBtnActive]} 
-                    onPress={() => setImportMode('merge')}
-                  >
-                    <Feather name="plus" size={14} color={importMode === 'merge' ? '#fff' : '#64748b'} />
-                    <Text style={[styles.optText, importMode === 'merge' && styles.optTextActive]}>Keep & Add</Text>
-                    <Text style={[styles.optSubText, importMode === 'merge' && { color: 'rgba(255,255,255,0.8)' }]}>Add new to existing</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.optBtn, importMode === 'replace' && { backgroundColor: '#fef2f2', borderColor: '#ef4444' }]} 
-                    onPress={() => setImportMode('replace')}
-                  >
-                    <Feather name="refresh-cw" size={14} color={importMode === 'replace' ? '#ef4444' : '#64748b'} />
-                    <Text style={[styles.optText, importMode === 'replace' && { color: '#ef4444' }]}>Start Fresh</Text>
-                    <Text style={[styles.optSubText, importMode === 'replace' && { color: '#ef4444' }]}>Archive old, use new</Text>
-                  </TouchableOpacity>
-               </View>
+              <Text style={styles.sectionTitle}>Your Existing Medicines</Text>
+              <Text style={styles.sectionSub}>What should happen to medicines you already have?</Text>
+              <View style={styles.optionsRow}>
+                <TouchableOpacity
+                  style={[styles.optBtn, importMode === 'merge' && styles.optBtnActive]}
+                  onPress={() => setImportMode('merge')}
+                >
+                  <Feather name="plus" size={14} color={importMode === 'merge' ? '#fff' : '#64748b'} />
+                  <Text style={[styles.optText, importMode === 'merge' && styles.optTextActive]}>Keep & Add</Text>
+                  <Text style={[styles.optSubText, importMode === 'merge' && { color: 'rgba(255,255,255,0.8)' }]}>Add new to existing</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.optBtn, importMode === 'replace' && { backgroundColor: '#fef2f2', borderColor: '#ef4444' }]}
+                  onPress={() => setImportMode('replace')}
+                >
+                  <Feather name="refresh-cw" size={14} color={importMode === 'replace' ? '#ef4444' : '#64748b'} />
+                  <Text style={[styles.optText, importMode === 'replace' && { color: '#ef4444' }]}>Start Fresh</Text>
+                  <Text style={[styles.optSubText, importMode === 'replace' && { color: '#ef4444' }]}>Archive old, use new</Text>
+                </TouchableOpacity>
+              </View>
 
-               {importMode === 'replace' && (
-                 <Text style={styles.warningText}>⚠️ Old medicines are safely archived, not deleted.</Text>
-               )}
+              {importMode === 'replace' && (
+                <Text style={styles.warningText}>⚠️ Old medicines are safely archived, not deleted.</Text>
+              )}
 
-               <TouchableOpacity 
-                 style={[styles.importBtn, loading && { opacity: 0.7 }]} 
-                 onPress={handleImport}
-                 disabled={loading}
-               >
-                  <Text style={styles.importBtnText}>{loading ? "Importing..." : "Confirm Import"}</Text>
-               </TouchableOpacity>
-               
-               <TouchableOpacity style={styles.cancelBtn} onPress={() => { setPlan(null); setScanned(false); }}>
-                  <Text style={styles.cancelText}>Cancel — Scan Again</Text>
-               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.importBtn, loading && { opacity: 0.7 }]}
+                onPress={handleImport}
+                disabled={loading}
+              >
+                <Text style={styles.importBtnText}>{loading ? "Importing..." : "Confirm Import"}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setPlan(null); setScanned(false); }}>
+                <Text style={styles.cancelText}>Cancel — Scan Again</Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>

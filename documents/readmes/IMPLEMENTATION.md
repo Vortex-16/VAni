@@ -1,4 +1,4 @@
-# 🏥 IMPLEMENTATION.md — Discharge Buddy
+# 🏥 IMPLEMENTATION.md — VAni
 
 > **Revision**: June 2026  
 > **Purpose**: Complete reverse-engineered technical documentation for developers, AI assistants, judges, and future contributors.
@@ -7,9 +7,9 @@
 
 # 1. Executive Summary
 
-## What Is Discharge Buddy?
+## What Is VAni?
 
-**Discharge Buddy** is a full-stack, AI-powered post-hospital recovery platform built for the **Google Solution Challenge 2026**. It bridges the critical "last mile" gap between hospital discharge and full patient recovery — a period responsible for millions of preventable readmissions annually.
+**VAni** is a full-stack, AI-powered post-hospital recovery platform built for the **Google Solution Challenge 2026**. It bridges the critical "last mile" gap between hospital discharge and full patient recovery — a period responsible for millions of preventable readmissions annually.
 
 ## The Real-World Problem
 
@@ -21,7 +21,7 @@ When patients leave a hospital, they receive handwritten prescriptions, complex 
 
 ## The Solution
 
-Discharge Buddy transforms this chaotic handoff into a structured, gamified, and AI-monitored recovery journey:
+VAni transforms this chaotic handoff into a structured, gamified, and AI-monitored recovery journey:
 
 1. **Digitizes prescriptions** using a multi-model OCR + LLM ensemble (NVIDIA Nemotron, docTR, TrOCR, Groq Llama 3.3).
 2. **Automates medication scheduling** with morning/afternoon/night dose tracking.
@@ -1444,7 +1444,7 @@ sequenceDiagram
 
 ## Project Purpose
 
-Discharge Buddy is a healthcare recovery app that digitizes prescriptions (OCR + LLM), schedules medications, tracks adherence, and enables caregiver monitoring — all gamified with a mascot companion.
+VAni is a healthcare recovery app that digitizes prescriptions (OCR + LLM), schedules medications, tracks adherence, and enables caregiver monitoring — all gamified with a mascot companion.
 
 ## Core Architecture (5-Second Summary)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Discharge Buddy - Setup Verification Script
+# VAni - Setup Verification Script
 # Checks if environment is properly configured for OAuth and app startup
 
 set -e
@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  Discharge Buddy - Setup Verification Script             ║${NC}"
+echo -e "${BLUE}║  VAni - Setup Verification Script             ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo
 

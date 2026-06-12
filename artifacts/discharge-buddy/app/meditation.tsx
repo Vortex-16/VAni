@@ -4,11 +4,11 @@ import { TranslateText as Text } from '@/components/TranslateText';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withRepeat, 
-  withTiming, 
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
   withSequence,
   Easing,
   interpolate
@@ -39,9 +39,9 @@ export default function MeditationTimerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  
+
   const initialDuration = params.duration ? parseInt(params.duration as string, 10) * 60 : 300;
-  const [timeLeft, setTimeLeft] = useState(initialDuration); 
+  const [timeLeft, setTimeLeft] = useState(initialDuration);
   const [isActive, setIsActive] = useState(!!params.duration);
   const [customMin, setCustomMin] = useState(params.duration ? (params.duration as string) : '5');
   const [customSec, setCustomSec] = useState('0');
@@ -131,8 +131,8 @@ export default function MeditationTimerScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      
-      <KeyboardAvoidingView 
+
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
@@ -144,7 +144,7 @@ export default function MeditationTimerScreen() {
             </TouchableOpacity>
             <View style={styles.titleContainer}>
               <Text style={styles.title}>MEDITATION TIMER</Text>
-              <Text style={styles.subtitle}>BY DISCHARGE BUDDY</Text>
+              <Text style={styles.subtitle}>BY VAni</Text>
             </View>
             <View style={{ width: 44 }} />
           </View>
@@ -164,8 +164,8 @@ export default function MeditationTimerScreen() {
           {/* Presets */}
           <View style={styles.presetsContainer}>
             {[5, 10, 15, 20, 30].map((mins) => (
-              <TouchableOpacity 
-                key={mins} 
+              <TouchableOpacity
+                key={mins}
                 style={styles.presetBtn}
                 onPress={() => setPreset(mins)}
               >
@@ -206,14 +206,14 @@ export default function MeditationTimerScreen() {
 
           {/* Main Controls */}
           <View style={styles.controlsContainer}>
-            <TouchableOpacity 
-              style={[styles.mainBtn, { backgroundColor: PURPLE }]} 
+            <TouchableOpacity
+              style={[styles.mainBtn, { backgroundColor: PURPLE }]}
               onPress={handleStartPause}
             >
               <Text style={styles.mainBtnText}>{isActive ? 'Pause' : 'Start'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.mainBtn, { backgroundColor: '#A21CAF' }]} 
+            <TouchableOpacity
+              style={[styles.mainBtn, { backgroundColor: '#A21CAF' }]}
               onPress={handleReset}
             >
               <Text style={styles.mainBtnText}>Reset</Text>

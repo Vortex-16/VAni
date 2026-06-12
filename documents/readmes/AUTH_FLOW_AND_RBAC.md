@@ -1,4 +1,4 @@
-# Discharge Buddy - Authentication Flow & RBAC Guide
+# VAni - Authentication Flow & RBAC Guide
 
 This document details the complete authentication flow and RBAC implementation.
 

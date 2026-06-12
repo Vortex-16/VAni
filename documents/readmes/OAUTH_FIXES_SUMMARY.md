@@ -1,4 +1,4 @@
-# Discharge Buddy - OAuth & Typecheck Fixes Summary
+# VAni - OAuth & Typecheck Fixes Summary
 
 **Date**: June 6, 2026  
 **Status**: ✅ Complete and Verified

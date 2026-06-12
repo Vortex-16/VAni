@@ -5,7 +5,7 @@
   1. Go to https://myaccount.google.com/security and make sure 2-Step Verification is ON (App Passwords don't
   exist without it).
   2. Go to https://myaccount.google.com/apppasswords
-  3. Name it anything (e.g. "Discharge Buddy") → Create.
+  3. Name it anything (e.g. "VAni") → Create.
   4. Copy the 16-character password it shows (looks like abcd efgh ijkl mnop). Remove the spaces when you
   paste it.
 

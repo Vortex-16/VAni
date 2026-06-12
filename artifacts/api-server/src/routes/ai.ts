@@ -487,7 +487,7 @@ router.post("/test-push", requireAuth, async (req: any, res: any) => {
   try {
     const result = await sendPushNotification(user.pushToken, {
       title: title || "Test Notification 🔔",
-      body: body || "This is a test notification from Discharge Buddy!",
+      body: body || "This is a test notification from VAni!",
     });
 
     if (result) {
@@ -541,7 +541,7 @@ router.post("/intent", optionalAuth, async (req: any, res: any) => {
       messages: [
         {
           role: "system",
-          content: `You are the command router for "Buddy", the voice assistant inside a medical recovery app called Discharge Buddy.
+          content: `You are the command router for "Buddy", the voice assistant inside a medical recovery app called VAni.
 Map the user's natural-language speech to ONE app action.
 Return ONLY valid JSON. No prose, no markdown.
 Format: {"intent": "NAVIGATE" | "ACTION" | "CHAT" | "UNKNOWN", "target": "TARGET", "metadata": {"symptom": "extracted symptom if applicable", "severity": "extracted severity 1-10 if applicable, null if none", "timerMinutes": "number of minutes if applicable, null if none", "isMeditation": boolean}, "confidence": 0.0_to_1.0}

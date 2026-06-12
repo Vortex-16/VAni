@@ -6,13 +6,13 @@ export interface KBEntry {
 export const KNOWLEDGE_BASE: Record<string, KBEntry> = {
   // Navigation & Features
   "guide me": {
-    answer: "Welcome to Discharge Buddy! I can help you with your medications, track your symptoms, record a journal, or call for help. What would you like to explore?",
+    answer: "Welcome to VAni! I can help you with your medications, track your symptoms, record a journal, or call for help. What would you like to explore?",
   },
   "how to use app": {
     answer: "You can use the tabs at the bottom to navigate. The Home tab shows your daily tasks. Use the plus button to scan documents or log symptoms. You can always ask me for help!",
   },
   "features": {
-    answer: "Discharge Buddy offers medication reminders, symptom tracking, emergency alerts, caregiver linking, a recovery journal, and a voice assistant like me.",
+    answer: "VAni offers medication reminders, symptom tracking, emergency alerts, caregiver linking, a recovery journal, and a voice assistant like me.",
   },
   "caregiver setup": {
     answer: "To set up a caregiver, go to your Profile and share your unique Care Code. They can enter this code in their app to link with your account.",
@@ -85,7 +85,7 @@ export const KNOWLEDGE_BASE: Record<string, KBEntry> = {
 
 export function matchKnowledgeBase(transcript: string): KBEntry | null {
   const normalized = transcript.toLowerCase().trim();
-  
+
   // Exact match
   if (KNOWLEDGE_BASE[normalized]) {
     return KNOWLEDGE_BASE[normalized];

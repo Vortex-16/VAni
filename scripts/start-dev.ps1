@@ -1,4 +1,4 @@
-# Discharge Buddy - Developer Services Starter (PowerShell)
+# VAni - Developer Services Starter (PowerShell)
 # Automates port cleanup (3000, 8001, 8100, 8081) and launches all three local services.
 
 $ErrorActionPreference = "Stop"

@@ -1,4 +1,4 @@
-# Discharge Buddy - Setup Verification Script (PowerShell)
+# VAni - Setup Verification Script (PowerShell)
 # Checks if environment is properly configured for OAuth and app startup
 
 $ErrorActionPreference = "Continue"
@@ -11,7 +11,7 @@ $Blue = @{ ForegroundColor = "Cyan" }
 
 Write-Host ""
 Write-Host "╔═══════════════════════════════════════════════════════════╗" @Blue
-Write-Host "║  Discharge Buddy - Setup Verification Script             ║" @Blue
+Write-Host "║  VAni - Setup Verification Script             ║" @Blue
 Write-Host "╚═══════════════════════════════════════════════════════════╝" @Blue
 Write-Host ""
 

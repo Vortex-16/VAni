@@ -21,10 +21,10 @@ const TEXT_MUTED = '#64748B';
 
 // ── Quick Action icons ──────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-  { icon: 'file-text', label: 'Upload\nPrescription', color: PURPLE,    bg: '#F5F3FF', route: '/scan' },
-  { icon: 'shopping-bag',label: 'Order\nMedicines',   color: '#3B82F6', bg: '#EFF6FF', route: 'https://pharmacy.amazon.com' },
-  { icon: 'calendar',  label: 'Book\nFollow-up',      color: '#8B5CF6', bg: '#F5F3FF', route: '/family/book-appointment' },
-  { icon: 'activity',  label: 'Health\nRecords',      color: '#EC4899', bg: '#FDF2F8', route: '/(tabs)' },
+  { icon: 'file-text', label: 'Upload\nPrescription', color: PURPLE, bg: '#F5F3FF', route: '/scan' },
+  { icon: 'shopping-bag', label: 'Order\nMedicines', color: '#3B82F6', bg: '#EFF6FF', route: 'https://pharmacy.amazon.com' },
+  { icon: 'calendar', label: 'Book\nFollow-up', color: '#8B5CF6', bg: '#F5F3FF', route: '/family/book-appointment' },
+  { icon: 'activity', label: 'Health\nRecords', color: '#EC4899', bg: '#FDF2F8', route: '/(tabs)' },
 ];
 
 // ── Add Member Modal ─────────────────────────────────────────────────────────
@@ -79,8 +79,8 @@ function AddMemberModal({
 
           <View style={styles.tabRow}>
             {([
-              { key: 'code',   icon: 'hash',      label: 'By Code' },
-              { key: 'link',   icon: 'mail',      label: 'By Email' },
+              { key: 'code', icon: 'hash', label: 'By Code' },
+              { key: 'link', icon: 'mail', label: 'By Email' },
               { key: 'manual', icon: 'user-plus', label: 'Create' },
             ] as const).map(t => (
               <TouchableOpacity
@@ -124,7 +124,7 @@ function AddMemberModal({
               <View style={styles.linkNote}>
                 <Feather name="info" size={13} color={PURPLE} />
                 <Text style={styles.linkNoteText}>
-                  Enter the email address the family member used to register on Discharge Buddy.
+                  Enter the email address the family member used to register on VAni.
                 </Text>
               </View>
               <Text style={styles.fieldLabel}>Patient's Email *</Text>
@@ -290,8 +290,8 @@ export default function FamilyDashboard() {
         <View style={styles.greetingHeader}>
           <Text style={styles.greetingText}>{greeting}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-             <Text style={styles.userName}>{user?.name ?? 'Anjali Sharma'}</Text>
-             <Text style={{ fontSize: 24 }}> 👋</Text>
+            <Text style={styles.userName}>{user?.name ?? 'Anjali Sharma'}</Text>
+            <Text style={{ fontSize: 24 }}> 👋</Text>
           </View>
           <Text style={styles.subtitle}>Take care of your family's health 💜</Text>
         </View>
@@ -306,70 +306,70 @@ export default function FamilyDashboard() {
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.familyScroll}>
           {familyMembers.map((m, i) => (
-             <TouchableOpacity key={m.id} style={styles.familyItem} onPress={() => handleSelectMember(m)}>
-                <View style={styles.familyAvatarContainer}>
-                   <View style={[styles.familyAvatar, { backgroundColor: ['#E0E7FF', '#FCE7F3', '#FEF3C7', '#D1FAE5'][i % 4] }]}>
-                      {m.avatar ? (
-                        <Image source={{ uri: m.avatar }} style={styles.familyAvatarImg} />
-                      ) : (
-                        <RNText style={styles.familyInitials} numberOfLines={1} adjustsFontSizeToFit>{m.name.substring(0,2).toUpperCase()}</RNText>
-                      )}
-                   </View>
+            <TouchableOpacity key={m.id} style={styles.familyItem} onPress={() => handleSelectMember(m)}>
+              <View style={styles.familyAvatarContainer}>
+                <View style={[styles.familyAvatar, { backgroundColor: ['#E0E7FF', '#FCE7F3', '#FEF3C7', '#D1FAE5'][i % 4] }]}>
+                  {m.avatar ? (
+                    <Image source={{ uri: m.avatar }} style={styles.familyAvatarImg} />
+                  ) : (
+                    <RNText style={styles.familyInitials} numberOfLines={1} adjustsFontSizeToFit>{m.name.substring(0, 2).toUpperCase()}</RNText>
+                  )}
                 </View>
-                <Text style={styles.familyItemName} numberOfLines={1}>{m.name.split(' ')[0]}</Text>
-                <Text style={styles.familyItemRelation}>{m.relation || 'Member'}</Text>
-             </TouchableOpacity>
-          ))}
-          
-          <TouchableOpacity style={styles.familyItem} onPress={() => handleSelectMember(null)}>
-               <View style={styles.familyAvatarContainer}>
-                 <View style={[styles.familyAvatar, { backgroundColor: '#F3F4F6' }]}>
-                    <RNText style={[styles.familyInitials, { color: TEXT_MUTED }]} numberOfLines={1} adjustsFontSizeToFit>YOU</RNText>
-                 </View>
               </View>
-              <Text style={styles.familyItemName}>You</Text>
-              <Text style={styles.familyItemRelation}>Self</Text>
+              <Text style={styles.familyItemName} numberOfLines={1}>{m.name.split(' ')[0]}</Text>
+              <Text style={styles.familyItemRelation}>{m.relation || 'Member'}</Text>
+            </TouchableOpacity>
+          ))}
+
+          <TouchableOpacity style={styles.familyItem} onPress={() => handleSelectMember(null)}>
+            <View style={styles.familyAvatarContainer}>
+              <View style={[styles.familyAvatar, { backgroundColor: '#F3F4F6' }]}>
+                <RNText style={[styles.familyInitials, { color: TEXT_MUTED }]} numberOfLines={1} adjustsFontSizeToFit>YOU</RNText>
+              </View>
+            </View>
+            <Text style={styles.familyItemName}>You</Text>
+            <Text style={styles.familyItemRelation}>Self</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.familyItem} onPress={() => setModalVisible(true)}>
-              <View style={[styles.familyAvatarContainer, { borderWidth: 1, borderColor: '#CBD5E1', borderStyle: 'dashed' }]}>
-                 <View style={[styles.familyAvatar, { backgroundColor: '#F8FAFC' }]}>
-                    <Feather name="plus" size={24} color={PURPLE} />
-                 </View>
+            <View style={[styles.familyAvatarContainer, { borderWidth: 1, borderColor: '#CBD5E1', borderStyle: 'dashed' }]}>
+              <View style={[styles.familyAvatar, { backgroundColor: '#F8FAFC' }]}>
+                <Feather name="plus" size={24} color={PURPLE} />
               </View>
-              <Text style={[styles.familyItemName, { color: PURPLE }]}>Add</Text>
+            </View>
+            <Text style={[styles.familyItemName, { color: PURPLE }]}>Add</Text>
           </TouchableOpacity>
         </ScrollView>
 
         {/* ── Today's Medication Summary ── */}
         <LinearGradient colors={['#7E57C2', '#5E35B1']} style={styles.summaryCard}>
-            <View style={styles.summaryTop}>
-               <View>
-                  <Text style={styles.summaryTitle}>Today's Medication Summary</Text>
-                  <Text style={styles.summaryCount}>{completedDoses} of {totalDoses} Completed</Text>
-               </View>
-               {/* Decorative pill icons would go here, omitting for pure RN components */}
+          <View style={styles.summaryTop}>
+            <View>
+              <Text style={styles.summaryTitle}>Today's Medication Summary</Text>
+              <Text style={styles.summaryCount}>{completedDoses} of {totalDoses} Completed</Text>
             </View>
-            <View style={styles.progressBarBg}>
-               <View style={[styles.progressBarFill, { width: `${progressPct}%` }]} />
+            {/* Decorative pill icons would go here, omitting for pure RN components */}
+          </View>
+          <View style={styles.progressBarBg}>
+            <View style={[styles.progressBarFill, { width: `${progressPct}%` }]} />
+          </View>
+          <View style={styles.summaryStatsRow}>
+            <View style={styles.summaryStatItem}>
+              <Feather name="clock" size={14} color="#F59E0B" />
+              <Text style={[styles.summaryStatNum, { color: '#F59E0B' }]}>{pendingDoses}</Text>
+              <Text style={styles.summaryStatLabel}>Pending</Text>
             </View>
-            <View style={styles.summaryStatsRow}>
-                <View style={styles.summaryStatItem}>
-                   <Feather name="clock" size={14} color="#F59E0B" />
-                   <Text style={[styles.summaryStatNum, { color: '#F59E0B' }]}>{pendingDoses}</Text>
-                   <Text style={styles.summaryStatLabel}>Pending</Text>
-                </View>
-                <View style={styles.summaryStatItem}>
-                   <Feather name="check-circle" size={14} color="#10B981" />
-                   <Text style={[styles.summaryStatNum, { color: '#10B981' }]}>{completedDoses}</Text>
-                   <Text style={styles.summaryStatLabel}>Completed</Text>
-                </View>
-                <View style={styles.summaryStatItem}>
-                   <Feather name="calendar" size={14} color="#8B5CF6" />
-                   <Text style={[styles.summaryStatNum, { color: '#8B5CF6' }]}>{upcomingDoses}</Text>
-                   <Text style={styles.summaryStatLabel}>Upcoming</Text>
-                </View>
+            <View style={styles.summaryStatItem}>
+              <Feather name="check-circle" size={14} color="#10B981" />
+              <Text style={[styles.summaryStatNum, { color: '#10B981' }]}>{completedDoses}</Text>
+              <Text style={styles.summaryStatLabel}>Completed</Text>
             </View>
+            <View style={styles.summaryStatItem}>
+              <Feather name="calendar" size={14} color="#8B5CF6" />
+              <Text style={[styles.summaryStatNum, { color: '#8B5CF6' }]}>{upcomingDoses}</Text>
+              <Text style={styles.summaryStatLabel}>Upcoming</Text>
+            </View>
+          </View>
         </LinearGradient>
 
         {/* ── Quick Actions ── */}
@@ -412,39 +412,39 @@ export default function FamilyDashboard() {
         </View>
 
         <View style={styles.alertsContainer}>
-            {familyMembers.length === 0 ? (
-              <View style={styles.emptyAlerts}>
-                <Feather name="bell-off" size={28} color={TEXT_MUTED} />
-                <Text style={styles.emptyAlertsText}>No alerts yet. Add a family member to get started.</Text>
-              </View>
-            ) : (
-              familyMembers.flatMap((m, i) =>
-                (m.doseLogs || [])
-                  .filter(d => d.status === 'pending' || d.status === 'missed')
-                  .slice(0, 2)
-                  .map((d, j) => (
-                    <View key={`${m.id}-${d.id}`} style={styles.alertCard}>
-                      <View style={styles.alertLeft}>
-                        <View style={[styles.alertAvatar, { backgroundColor: ['#E0E7FF','#FCE7F3','#FEF3C7','#D1FAE5'][i % 4] }]}>
-                          <RNText style={[styles.familyInitials, { fontSize: 14 }]} numberOfLines={1} adjustsFontSizeToFit>
-                            {m.name.substring(0, 2).toUpperCase()}
-                          </RNText>
-                        </View>
-                        <View style={styles.alertInfo}>
-                          <Text style={styles.alertName}>{m.name}</Text>
-                          <Text style={[styles.alertDesc, d.status === 'missed' ? { color: '#D97706' } : {}]}>
-                            {d.status === 'missed' ? `${d.medicineName} is overdue` : `Take ${d.medicineName}`}
-                          </Text>
-                        </View>
+          {familyMembers.length === 0 ? (
+            <View style={styles.emptyAlerts}>
+              <Feather name="bell-off" size={28} color={TEXT_MUTED} />
+              <Text style={styles.emptyAlertsText}>No alerts yet. Add a family member to get started.</Text>
+            </View>
+          ) : (
+            familyMembers.flatMap((m, i) =>
+              (m.doseLogs || [])
+                .filter(d => d.status === 'pending' || d.status === 'missed')
+                .slice(0, 2)
+                .map((d, j) => (
+                  <View key={`${m.id}-${d.id}`} style={styles.alertCard}>
+                    <View style={styles.alertLeft}>
+                      <View style={[styles.alertAvatar, { backgroundColor: ['#E0E7FF', '#FCE7F3', '#FEF3C7', '#D1FAE5'][i % 4] }]}>
+                        <RNText style={[styles.familyInitials, { fontSize: 14 }]} numberOfLines={1} adjustsFontSizeToFit>
+                          {m.name.substring(0, 2).toUpperCase()}
+                        </RNText>
                       </View>
-                      <View style={styles.alertRight}>
-                        <Text style={styles.alertTime}>{d.scheduledTime}</Text>
-                        <Feather name="bell" size={16} color={d.status === 'missed' ? '#D97706' : TEXT_MUTED} style={{ marginLeft: 8 }} />
+                      <View style={styles.alertInfo}>
+                        <Text style={styles.alertName}>{m.name}</Text>
+                        <Text style={[styles.alertDesc, d.status === 'missed' ? { color: '#D97706' } : {}]}>
+                          {d.status === 'missed' ? `${d.medicineName} is overdue` : `Take ${d.medicineName}`}
+                        </Text>
                       </View>
                     </View>
-                  ))
-              ).filter((_, idx) => idx < 5) // cap at 5 total alerts
-            )}
+                    <View style={styles.alertRight}>
+                      <Text style={styles.alertTime}>{d.scheduledTime}</Text>
+                      <Feather name="bell" size={16} color={d.status === 'missed' ? '#D97706' : TEXT_MUTED} style={{ marginLeft: 8 }} />
+                    </View>
+                  </View>
+                ))
+            ).filter((_, idx) => idx < 5) // cap at 5 total alerts
+          )}
         </View>
 
       </ScrollView>
@@ -476,15 +476,15 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 8 },
   appBarRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   badge: {
-     position: 'absolute', top: 6, right: 8,
-     backgroundColor: '#EF4444', width: 14, height: 14, borderRadius: 7,
-     alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BG
+    position: 'absolute', top: 6, right: 8,
+    backgroundColor: '#EF4444', width: 14, height: 14, borderRadius: 7,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BG
   },
   badgeText: { color: '#fff', fontSize: 8, fontWeight: 'bold' },
   avatarBtn: { padding: 2 },
   avatarSmall: {
-     width: 36, height: 36, borderRadius: 18, backgroundColor: '#E2E8F0',
-     alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#E2E8F0',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
   },
   avatarSmallText: { fontSize: 16, color: TEXT_DARK, fontWeight: 'bold' },
 
@@ -503,14 +503,14 @@ const styles = StyleSheet.create({
   familyScroll: { paddingRight: 20, gap: 16 },
   familyItem: { alignItems: 'center', width: 70 },
   familyAvatarContainer: {
-     width: 64, height: 64, borderRadius: 32, padding: 3,
-     backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
-     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
-     marginBottom: 8
+    width: 64, height: 64, borderRadius: 32, padding: 3,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    marginBottom: 8
   },
   familyAvatar: {
-     width: 58, height: 58, borderRadius: 29,
-     alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+    width: 58, height: 58, borderRadius: 29,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
   },
   familyAvatarImg: { width: 58, height: 58, borderRadius: 29 },
   familyInitials: { fontSize: 20, color: '#475569', fontFamily: 'Inter_700Bold' },
@@ -519,8 +519,8 @@ const styles = StyleSheet.create({
 
   // Summary Card
   summaryCard: {
-     marginTop: 24, borderRadius: 24, padding: 20,
-     shadowColor: '#5E35B1', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6,
+    marginTop: 24, borderRadius: 24, padding: 20,
+    shadowColor: '#5E35B1', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6,
   },
   summaryTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   summaryTitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter_600SemiBold' },
@@ -538,10 +538,10 @@ const styles = StyleSheet.create({
     width: (width - 40 - 36) / 4, // 4 items in a row
     backgroundColor: 'transparent', alignItems: 'center', gap: 8,
   },
-  quickIconWrap: { 
-     width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-     backgroundColor: CARD_BG, borderWidth: 1, borderColor: '#F1F5F9',
-     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1
+  quickIconWrap: {
+    width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: CARD_BG, borderWidth: 1, borderColor: '#F1F5F9',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1
   },
   quickLabel: { fontSize: 11, color: TEXT_DARK, fontFamily: 'Inter_600SemiBold', textAlign: 'center', lineHeight: 16 },
 
@@ -554,9 +554,9 @@ const styles = StyleSheet.create({
   },
   emptyAlertsText: { fontSize: 13, color: TEXT_MUTED, fontFamily: 'Inter_500Medium', textAlign: 'center', maxWidth: '80%' },
   alertCard: {
-     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-     backgroundColor: CARD_BG, padding: 16, borderRadius: 20,
-     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: CARD_BG, padding: 16, borderRadius: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
   },
   alertLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   alertAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

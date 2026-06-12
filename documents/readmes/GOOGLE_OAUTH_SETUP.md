@@ -1,6 +1,6 @@
-# Google OAuth Setup Guide for Discharge Buddy
+# Google OAuth Setup Guide for VAni
 
-This guide walks you through setting up Google OAuth for the Discharge Buddy mobile app with proper RBAC (Role-Based Access Control) integration.
+This guide walks you through setting up Google OAuth for the VAni mobile app with proper RBAC (Role-Based Access Control) integration.
 
 ---
 
@@ -29,7 +29,7 @@ The app supports three authentication flows:
 1. Navigate to **APIs & Services** → **OAuth consent screen**
 2. Select **External** user type
 3. Fill in the app information:
-   - **App name**: `Discharge Buddy`
+   - **App name**: `VAni`
    - **User support email**: Your email
    - **App logo**: (Optional) Upload an icon
    - **Developer contact**: Your email

@@ -1,4 +1,4 @@
-# AUTH_UX_REFACTOR.md - Discharge Buddy Auth UX Refactor (Phase 1)
+# AUTH_UX_REFACTOR.md - VAni Auth UX Refactor (Phase 1)
 
 This document serves as the architectural blueprint and refactoring plan to overhaul the authentication and onboarding experience.
 

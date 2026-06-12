@@ -1,4 +1,4 @@
-# Discharge Buddy - Deployment & Build Orchestrator (PowerShell)
+# VAni - Deployment & Build Orchestrator (PowerShell)
 # Automates backend deployment and Expo mobile app APK generation.
 
 $ErrorActionPreference = "Stop"
@@ -200,7 +200,7 @@ function Build-Expo-Apk-Local {
 function Show-Menu {
     Clear-Host
     Write-Host "+-----------------------------------------------------------+" -ForegroundColor Cyan
-    Write-Host "|             Discharge Buddy - Deployment Suite            |" -ForegroundColor Cyan
+    Write-Host "|             VAni - Deployment Suite            |" -ForegroundColor Cyan
     Write-Host "+-----------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "  --- Backend Deploy Options ---" -ForegroundColor White

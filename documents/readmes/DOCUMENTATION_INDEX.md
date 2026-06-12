@@ -1,4 +1,4 @@
-# 📚 Discharge Buddy - Complete Documentation Index
+# 📚 VAni - Complete Documentation Index
 
 **Last Updated**: June 6, 2026  
 **Status**: ✅ All Fixes Complete & Documented

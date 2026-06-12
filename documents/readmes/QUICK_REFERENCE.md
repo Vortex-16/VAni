@@ -1,4 +1,4 @@
-# Discharge Buddy - Quick Reference Card
+# VAni - Quick Reference Card
 
 **Last Updated**: June 6, 2026  
 **Version**: 1.0.0
@@ -382,4 +382,4 @@ bash verify-setup.sh
 **Questions?** Check the documentation index or run `./verify-setup.ps1` to diagnose issues.
 
 **Last Updated**: June 6, 2026  
-**Maintained By**: Discharge Buddy Team
+**Maintained By**: VAni Team

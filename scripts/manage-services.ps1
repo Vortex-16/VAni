@@ -1,4 +1,4 @@
-# Discharge Buddy - Services Management Script (PowerShell)
+# VAni - Services Management Script (PowerShell)
 # Automates killing active ports, updating/building, and starting Backend, OCR, and Expo services.
 
 param (
@@ -165,7 +165,7 @@ function Start-Services {
 function Show-Menu {
     Clear-Host
     Write-Host "+-----------------------------------------------------------+" -ForegroundColor Cyan
-    Write-Host "|             Discharge Buddy - Service Manager             |" -ForegroundColor Cyan
+    Write-Host "|             VAni - Service Manager             |" -ForegroundColor Cyan
     Write-Host "+-----------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "  1. Start All Services (Fresh Launch - Port cleanup + Dev start)" -ForegroundColor White

@@ -1,4 +1,4 @@
-# ✅ Discharge Buddy - Complete Debug & OAuth Setup Summary
+# ✅ VAni - Complete Debug & OAuth Setup Summary
 
 **Date**: June 6, 2026  
 **Status**: ✅ All Issues Fixed & Documented  
@@ -8,7 +8,7 @@
 
 ## 🎯 Executive Summary
 
-Your Discharge Buddy mobile app had **3 critical runtime errors** that prevented it from starting in Expo Go:
+Your VAni mobile app had **3 critical runtime errors** that prevented it from starting in Expo Go:
 
 1. ❌ **Google OAuth Crash**: `androidClientId must be defined`
 2. ❌ **Push Notifications Crash**: Removed from Expo Go SDK 53+

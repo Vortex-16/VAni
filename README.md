@@ -1,4 +1,4 @@
-# 🏥 Discharge Buddy
+# 🏥 VAni
 ### *Your AI-Powered, Voice-First Companion for Seamless Post-Hospital Recovery*
 
 [![Google Solution Challenge](https://img.shields.io/badge/Google_Solution_Challenge-2026-4285F4?style=for-the-badge&logo=google)](https://developers.google.com/community/gdsc-solution-challenge)
@@ -13,7 +13,7 @@
 
 ## 📖 Overview
 
-**Discharge Buddy** bridges the dangerous "last mile" between hospital discharge and full recovery. Patients leave with complex prescriptions, confusing instructions, and a daunting follow-up schedule — exactly when they're most vulnerable. Discharge Buddy turns that chaos into a **structured, voice-first, AI-monitored journey** that keeps patients on track and caregivers informed in real time.
+**VAni** bridges the dangerous "last mile" between hospital discharge and full recovery. Patients leave with complex prescriptions, confusing instructions, and a daunting follow-up schedule — exactly when they're most vulnerable. VAni turns that chaos into a **structured, voice-first, AI-monitored journey** that keeps patients on track and caregivers informed in real time.
 
 > 🎙️ **Talk to your app, don't navigate it.** Buddy, the built-in voice assistant, lets patients operate the entire app hands-free in **14 languages** — including Hindi, Bengali, Tamil, Telugu, Marathi and more.
 
@@ -331,6 +331,6 @@ Distributed under the MIT License. See `LICENSE` for details.
 ---
 
 <p align="center">
-  <b>Built with ❤️ by the Discharge Buddy Team</b><br/>
+  <b>Built with ❤️ by the VAni Team</b><br/>
   <i>For the Google Solution Challenge 2026</i>
 </p>
