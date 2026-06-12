@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View, Animated, Dimensions, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, View, Animated, Dimensions, Text, PanResponder } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { soundHelper } from '@/utils/SoundHelper';
@@ -20,12 +20,14 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
   onHide 
 }) => {
   const translateY = React.useRef(new Animated.Value(-100)).current;
+  const translateX = React.useRef(new Animated.Value(0)).current;
   const opacity = React.useRef(new Animated.Value(0)).current;
   const [shouldRender, setShouldRender] = React.useState(visible);
 
   useEffect(() => {
     if (visible) {
       setShouldRender(true);
+      translateX.setValue(0);
       soundHelper.playTing();
       Animated.parallel([
         Animated.spring(translateY, {
@@ -67,14 +69,84 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     });
   };
 
+  const hideUp = () => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -150,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setShouldRender(false);
+      onHide();
+    });
+  };
+
+  const hideRight = () => {
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: width,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setShouldRender(false);
+      onHide();
+    });
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (e, gestureState) => {
+        if (gestureState.dy < 0) {
+          translateY.setValue(20 + gestureState.dy);
+        }
+        if (gestureState.dx > 0) {
+          translateX.setValue(gestureState.dx);
+        }
+      },
+      onPanResponderRelease: (e, gestureState) => {
+        if (gestureState.dy < -30) {
+          hideUp();
+        } else if (gestureState.dx > 80) {
+          hideRight();
+        } else {
+          Animated.parallel([
+            Animated.spring(translateY, {
+              toValue: 20,
+              useNativeDriver: true,
+            }),
+            Animated.spring(translateX, {
+              toValue: 0,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
+      },
+    })
+  ).current;
+
   if (!shouldRender) return null;
 
   return (
     <Animated.View 
+      {...panResponder.panHandlers}
       style={[
         styles.container, 
         { 
-          transform: [{ translateY }],
+          transform: [{ translateY }, { translateX }],
           opacity 
         }
       ]}

@@ -2,7 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { DotLoader } from "@/components/DotLoader";
 import { TranslateText as Text } from "@/components/TranslateText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -131,7 +132,7 @@ export default function DrugCheckerScreen() {
 
         <TouchableOpacity style={[styles.checkBtn, loading && { opacity: 0.7 }]} onPress={runCheck} disabled={loading} activeOpacity={0.85}>
           {loading ? (
-            <ActivityIndicator color={WHITE} />
+            <DotLoader color={WHITE} size={6} />
           ) : (
             <>
               <Feather name="shield" size={18} color={WHITE} />

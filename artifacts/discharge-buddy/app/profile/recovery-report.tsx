@@ -2,8 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  ScrollView, StyleSheet, TouchableOpacity, View, Alert, ActivityIndicator,
+  ScrollView, StyleSheet, TouchableOpacity, View, Alert,
 } from 'react-native';
+import { DotLoader } from "@/components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
@@ -172,7 +173,7 @@ export default function RecoveryReportScreen() {
               style={styles.gradient}
             >
               {generating ? (
-                <ActivityIndicator color={WHITE} />
+                <DotLoader color={WHITE} size={6} />
               ) : (
                 <>
                   <Feather name="share" size={20} color={WHITE} />

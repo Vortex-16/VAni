@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Image, Modal,  } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Image, Modal,  } from 'react-native';
+import { DotLoader } from '@/components/DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -299,13 +300,14 @@ export default function CreatePlan() {
             disabled={loading}
             activeOpacity={0.85}
           >
-            {loading
-              ? <ActivityIndicator color={WHITE} />
-              : <>
+            {loading ? (
+              <DotLoader color={WHITE} size={6} />
+            ) : (
+              <>
                 <Feather name="maximize" size={18} color={WHITE} />
                 <Text style={styles.genBtnText}>Confirm & Generate QR</Text>
               </>
-            }
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.editBtn} onPress={() => setShowConfirmation(false)}>
             <Text style={styles.editBtnText}>← Edit Plan</Text>
@@ -366,7 +368,7 @@ export default function CreatePlan() {
           <Text style={styles.camText}>Point at the prescription</Text>
           {scanning ? (
             <View style={styles.scanningPill}>
-              <ActivityIndicator size="small" color={WHITE} />
+              <DotLoader color={WHITE} size={6} style={{ marginRight: 6 }} />
               <Text style={styles.scanningText}>{scanStage}</Text>
             </View>
           ) : (
@@ -424,7 +426,7 @@ export default function CreatePlan() {
 
         {scanning && (
           <View style={styles.scanningCard}>
-            <ActivityIndicator color={PURPLE} />
+            <DotLoader color={PURPLE} size={8} />
             <Text style={styles.scanningCardText}>{scanStage || 'Analyzing prescription...'}</Text>
           </View>
         )}
@@ -567,13 +569,14 @@ export default function CreatePlan() {
 
         {/* ── Generate Button ── */}
         <TouchableOpacity style={styles.genBtn} onPress={handleGenerate} disabled={loading}>
-          {loading
-            ? <ActivityIndicator color={WHITE} />
-            : <>
+          {loading ? (
+            <DotLoader color={WHITE} size={6} />
+          ) : (
+            <>
               <Feather name="maximize" size={18} color={WHITE} />
               <Text style={styles.genBtnText}>Generate Discharge QR</Text>
             </>
-          }
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>

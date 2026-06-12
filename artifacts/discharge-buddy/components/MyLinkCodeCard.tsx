@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Share, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, Share, Alert } from 'react-native';
+import { DotLoader } from './DotLoader';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -72,7 +73,7 @@ export function MyLinkCodeCard() {
   if (loading) {
     return (
       <View style={[styles.card, styles.centered]}>
-        <ActivityIndicator color={PRIMARY} />
+        <DotLoader color={PRIMARY} />
       </View>
     );
   }

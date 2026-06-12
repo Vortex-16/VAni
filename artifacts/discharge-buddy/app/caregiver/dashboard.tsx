@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { useApp } from '@/context/AppContext';
 import { useSidebar } from '@/context/SidebarContext';
 import { Sidebar } from '@/components/Sidebar';
@@ -214,6 +215,9 @@ export default function CaregiverDashboard() {
             <Feather name="menu" size={22} color={WHITE} />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/help'); }} style={[styles.headerIconBtn, { marginRight: 10 }]}>
+            <Feather name="help-circle" size={20} color={WHITE} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowLinkModal(true)} style={[styles.headerIconBtn, { marginRight: 10 }]}>
             <Feather name="user-plus" size={20} color={WHITE} />
           </TouchableOpacity>

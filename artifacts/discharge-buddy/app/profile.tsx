@@ -2,8 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Platform, ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator,
+  Platform, ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert,
 } from 'react-native';
+import { DotLoader } from "@/components/DotLoader";
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
@@ -155,7 +156,7 @@ export default function ProfileScreen() {
       {isGenerating && (
         <View style={styles.overlay}>
           <View style={styles.loaderCard}>
-            <ActivityIndicator size="large" color={TEAL} />
+            <DotLoader color={TEAL} size={12} />
             <Text style={styles.loaderText}>Generating Medical Report...</Text>
           </View>
         </View>

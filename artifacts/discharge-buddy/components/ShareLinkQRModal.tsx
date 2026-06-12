@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, Share, StyleSheet, TouchableOpacity, View, ActivityIndicator, Platform } from 'react-native';
+import { Alert, Modal, Share, StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
+import { DotLoader } from './DotLoader';
 import QRCode from 'react-native-qrcode-svg';
 import { Feather } from '@expo/vector-icons';
 import { TranslateText as Text } from '@/components/TranslateText';
@@ -135,7 +136,7 @@ export function ShareLinkQRModal({ visible, onClose }: Props) {
 
           {loading ? (
             <View style={styles.centered}>
-              <ActivityIndicator color={PRIMARY} size="large" />
+              <DotLoader color={PRIMARY} size={12} />
             </View>
           ) : (
             <>

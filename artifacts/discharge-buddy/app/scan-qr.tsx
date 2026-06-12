@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert } from 'react-native';
+import { DotLoader } from '@/components/DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Feather } from '@expo/vector-icons';
@@ -177,7 +178,7 @@ export default function ScanQR() {
 
         {loading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={PURPLE} />
+            <DotLoader color={PURPLE} size={12} />
             <Text style={styles.loadingText}>Reading Plan...</Text>
           </View>
         )}

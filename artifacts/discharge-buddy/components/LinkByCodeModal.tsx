@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, View, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
+import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { DotLoader } from './DotLoader';
 import { Feather } from '@expo/vector-icons';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { useApp } from '@/context/AppContext';
@@ -76,7 +77,7 @@ export function LinkByCodeModal({ visible, onClose, onLinked }: Props) {
           />
 
           <TouchableOpacity style={[styles.submit, loading && { opacity: 0.7 }]} onPress={submit} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Link Patient</Text>}
+            {loading ? <DotLoader color="#fff" size={6} /> : <Text style={styles.submitText}>Link Patient</Text>}
           </TouchableOpacity>
         </View>
       </View>

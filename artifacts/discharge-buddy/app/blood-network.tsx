@@ -3,7 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from "react-native";
+import { DotLoader } from "@/components/DotLoader";
 import { TranslateText as Text } from "@/components/TranslateText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -225,7 +226,7 @@ export default function BloodNetworkScreen() {
             </TouchableOpacity>
 
             {loading ? (
-              <ActivityIndicator color={RED} style={{ marginTop: 40 }} />
+              <DotLoader color={RED} style={{ marginTop: 40 }} />
             ) : requests.length === 0 ? (
               <EmptyState icon="droplet" title="No active requests" sub="There are no open blood requests near you right now." />
             ) : (
@@ -269,7 +270,7 @@ export default function BloodNetworkScreen() {
             </ScrollView>
 
             {loading ? (
-              <ActivityIndicator color={RED} style={{ marginTop: 40 }} />
+              <DotLoader color={RED} style={{ marginTop: 40 }} />
             ) : donors.length === 0 ? (
               <EmptyState icon="users" title="No donors found" sub="No available donors match this filter near you." />
             ) : (
@@ -324,7 +325,7 @@ export default function BloodNetworkScreen() {
             </View>
 
             <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={saveProfile} disabled={saving} activeOpacity={0.85}>
-              {saving ? <ActivityIndicator color={WHITE} /> : <Text style={styles.saveText}>{profile ? "Update Profile" : "Join Community"}</Text>}
+              {saving ? <DotLoader color={WHITE} size={6} /> : <Text style={styles.saveText}>{profile ? "Update Profile" : "Join Community"}</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -388,7 +389,7 @@ export default function BloodNetworkScreen() {
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalSave, saving && { opacity: 0.7 }]} onPress={submitRequest} disabled={saving}>
-                {saving ? <ActivityIndicator color={WHITE} /> : <Text style={styles.modalSaveText}>Post Request</Text>}
+                {saving ? <DotLoader color={WHITE} size={6} /> : <Text style={styles.modalSaveText}>Post Request</Text>}
               </TouchableOpacity>
             </View>
           </View>

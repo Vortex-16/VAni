@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Modal, TextInput, Dimensions, ActivityIndicator, Alert, StatusBar, Platform, Image, Linking, Text as RNText } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Modal, TextInput, Dimensions, Alert, StatusBar, Platform, Image, Linking, Text as RNText } from 'react-native';
+import { DotLoader } from '@/components/DotLoader';
 import { TranslateText as Text } from '@/components/TranslateText';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { useApp } from '@/context/AppContext';
 import type { Patient } from '@/context/AppContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -154,7 +156,9 @@ function AddMemberModal({
           )}
 
           <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={handleSubmit} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : (
+            {loading ? (
+              <DotLoader color="#fff" size={6} />
+            ) : (
               <Text style={styles.submitBtnText}>
                 {tab === 'manual' ? '+ Add Member' : tab === 'link' ? 'Link Account' : 'Link Patient'}
               </Text>
@@ -263,6 +267,9 @@ export default function FamilyDashboard() {
           <Feather name="menu" size={24} color={TEXT_DARK} />
         </TouchableOpacity>
         <View style={styles.appBarRight}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/help'); }}>
+            <Feather name="help-circle" size={22} color={TEXT_DARK} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Feather name="bell" size={22} color={TEXT_DARK} />
             <View style={styles.badge}>

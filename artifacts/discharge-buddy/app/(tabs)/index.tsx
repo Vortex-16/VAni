@@ -58,8 +58,7 @@ function CircularProgress({ pct, size = 96 }: { pct: number; size?: number }) {
         strokeDasharray={`${circumference} ${circumference}`}
         strokeDashoffset={offset}
         strokeLinecap="round"
-        rotation="-90"
-        origin={`${cx},${cy}`}
+        transform={`rotate(-90, ${cx}, ${cy})`}
       />
       <SvgText
         x={cx} y={cy - 5}
@@ -408,7 +407,13 @@ function PatientDashboard({ topInset }: { topInset: number }) {
                 </View>
               </TouchableOpacity>
             </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+             <View style={{ flexDirection: 'row', gap: 8 }}>
+              <AnimPressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/help'); }}
+                style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.22)' }]}
+              >
+                <Feather name="help-circle" size={18} color="#fff" />
+              </AnimPressable>
               <AnimPressable
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/scan-qr' as any); }}
                 style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.22)' }]}
