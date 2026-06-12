@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Animated, TouchableOpacity, StyleProp, ViewStyle } from "react-native";
+import { Animated, TouchableOpacity, StyleProp, ViewStyle, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/context/AppContext";
 
@@ -9,6 +9,47 @@ interface AnimPressableProps {
   style?: StyleProp<ViewStyle>;
   scaleDownTo?: number;
   disabled?: boolean;
+}
+
+const LAYOUT_PROPERTIES = new Set([
+  "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
+  "flex", "flexGrow", "flexShrink", "flexBasis",
+  "margin", "marginTop", "marginBottom", "marginLeft", "marginRight",
+  "marginHorizontal", "marginVertical", "marginStart", "marginEnd",
+  "position", "top", "bottom", "left", "right", "start", "end",
+  "alignSelf", "zIndex", "aspectRatio"
+]);
+
+function splitStyles(style: any) {
+  const containerStyle: any = {};
+  const innerStyle: any = {};
+
+  if (!style) return { containerStyle, innerStyle };
+
+  const flatStyle = StyleSheet.flatten(style);
+
+  for (const key in flatStyle) {
+    if (LAYOUT_PROPERTIES.has(key)) {
+      containerStyle[key] = flatStyle[key];
+      
+      // Mirror width/height dimensions on the inner view to ensure it matches the container bounds
+      if (["width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight"].includes(key)) {
+        innerStyle[key] = flatStyle[key];
+      }
+    } else {
+      innerStyle[key] = flatStyle[key];
+    }
+  }
+
+  // Ensure inner style fills container if layout dictates it
+  if (containerStyle.width && !innerStyle.width) {
+    innerStyle.width = "100%";
+  }
+  if (containerStyle.height && !innerStyle.height) {
+    innerStyle.height = "100%";
+  }
+
+  return { containerStyle, innerStyle };
 }
 
 export function AnimPressable({ onPress, children, style, scaleDownTo = 0.93, disabled = false }: AnimPressableProps) {
@@ -33,6 +74,8 @@ export function AnimPressable({ onPress, children, style, scaleDownTo = 0.93, di
     onPress();
   };
 
+  const { containerStyle, innerStyle } = splitStyles(style);
+
   return (
     <TouchableOpacity
       onPress={handlePress}
@@ -40,8 +83,9 @@ export function AnimPressable({ onPress, children, style, scaleDownTo = 0.93, di
       onPressOut={handlePressOut}
       activeOpacity={1}
       disabled={disabled}
+      style={containerStyle}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
+      <Animated.View style={[innerStyle, { transform: [{ scale }] }]}>
         {children}
       </Animated.View>
     </TouchableOpacity>
