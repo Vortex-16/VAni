@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, useMemo } from "react";
 import { Platform } from "react-native";
 import { Language, LOCALE_BY_LANG } from "@/constants/translations";
 import { MockProvider } from "./MockProvider";
@@ -77,6 +77,10 @@ export interface Patient {
   symptomLogs?: SymptomLog[];
   followUps?: FollowUp[];
   emergencyContact: string;
+  bloodType?: string;
+  allergies?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
   riskScore?: number;
   riskLevel?: "Low" | "Moderate" | "High";
   caregiverId?: string;
@@ -433,7 +437,7 @@ interface AppContextType {
   addJournalEntry: (entry: JournalEntry) => void;
   awardXP: (amount: number) => void;
   unlockAchievement: (id: string) => void;
-  updateProfile: (updates: Partial<AppUser>) => Promise<void>;
+  updateProfile: (updates: Partial<AppUser & { patientId?: string; age?: number; condition?: string }>) => Promise<void>;
   changePassword: (old: string, newP: string) => Promise<void>;
   clearAllNotifications: () => void;
   markNotificationRead: (id: string) => void;
@@ -505,6 +509,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [familyMembers, setFamilyMembers] = useState<Patient[]>([]);
   const [activePatientId, setActivePatientIdState] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotifGroup[]>([]);
+  const patient = useMemo(() => {
+    if (role === 'patient') {
+      return linkedPatients[0] || null;
+    }
+    if (role === 'caregiver' || role === 'family') {
+      return linkedPatients.find(p => p.id === activePatientId) || linkedPatients[0] || null;
+    }
+    return null;
+  }, [role, linkedPatients, activePatientId]);
   const [toast, setToast] = useState<{ visible: boolean; title: string; body: string }>({
     visible: false,
     title: "",
@@ -1173,10 +1186,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   };
 
-  const updateProfile = async (updates: Partial<AppUser>) => {
+  const updateProfile = async (updates: Partial<AppUser & { patientId?: string; age?: number; condition?: string }>) => {
     const updatedUser = await dataProvider.updateProfile(updates);
     setUserState(updatedUser);
     saveData({ user: updatedUser });
+    await loadData();
   };
 
   const changePassword = async (old: string, newP: string) => {
@@ -1301,7 +1315,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        user, authMethod, role, patient: null, medicines, todayDoses, symptomLogs, followUps,
+        user, authMethod, role, patient, medicines, todayDoses, symptomLogs, followUps,
         isOnboarded, language, linkedPatients, familyMembers, activePatientId, isProcessingPrescription,
         hapticsEnabled,
         streak, xp, achievements, doseHistory, lastXPGain, journalEntries,

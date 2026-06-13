@@ -131,6 +131,36 @@ export default function CaregiverChatPage() {
             if (!peerIdRef.current && msg.senderId !== user.id) peerIdRef.current = msg.senderId;
             setMessages((prev) => {
               if (prev.find((m) => m.id === msg.id)) return prev;
+              
+              // If it's our own message, check if there's an optimistic message with the same text
+              if (msg.senderId === user.id) {
+                const tempIndex = prev.findIndex(
+                  (m) => m.id.startsWith('temp-') && (m.text === msg.text || m.text.trim() === msg.text.trim())
+                );
+                if (tempIndex !== -1) {
+                  const next = [...prev];
+                  next[tempIndex] = msg;
+                  return next;
+                }
+              }
+              
+              // Time-based fallback deduplication (within 5 seconds)
+              const isDuplicate = prev.some(
+                (m) =>
+                  m.senderId === msg.senderId &&
+                  m.text === msg.text &&
+                  Math.abs(new Date(m.createdAt).getTime() - new Date(msg.createdAt).getTime()) < 5000
+              );
+              if (isDuplicate) {
+                const tempIndex = prev.findIndex((m) => m.id.startsWith('temp-'));
+                if (tempIndex !== -1) {
+                  const next = [...prev];
+                  next[tempIndex] = msg;
+                  return next;
+                }
+                return prev;
+              }
+              
               return [...prev, msg];
             });
             requestAnimationFrame(() => scrollViewRef.current?.scrollToEnd({ animated: true }));
@@ -196,7 +226,18 @@ export default function CaregiverChatPage() {
       if (res.ok) {
         const savedMsg: Message = await res.json();
         if (!peerIdRef.current) peerIdRef.current = savedMsg.receiverId;
-        setMessages((prev) => prev.map((m) => (m.id === tempId ? savedMsg : m)));
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === savedMsg.id)) {
+            return prev.filter((m) => m.id !== tempId);
+          }
+          const tempIndex = prev.findIndex((m) => m.id === tempId);
+          if (tempIndex !== -1) {
+            const next = [...prev];
+            next[tempIndex] = savedMsg;
+            return next;
+          }
+          return [...prev, savedMsg];
+        });
       } else {
         // Roll back the optimistic bubble and tell the user WHY (so a failed
         // send no longer silently vanishes).

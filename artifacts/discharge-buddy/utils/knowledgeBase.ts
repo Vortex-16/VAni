@@ -6,7 +6,7 @@ export interface KBEntry {
 export const KNOWLEDGE_BASE: Record<string, KBEntry> = {
   // Navigation & Features
   "guide me": {
-    answer: "Welcome to Discharge Buddy! I am Buddy, your personal health assistant. I can help you track your medicines and remind you when to take them, log your symptoms and pain levels, keep a daily recovery journal, connect with your caregiver or family, handle emergencies with one tap, and answer any health questions. Just speak to me or tap a quick action below. What would you like to do first?",
+    answer: "Welcome to VAni! I am Buddy, your personal health assistant. I can help you track your medicines and remind you when to take them, log your symptoms and pain levels, keep a daily recovery journal, connect with your caregiver or family, handle emergencies with one tap, and answer any health questions. Just speak to me or tap a quick action below. What would you like to do first?",
   },
   "how to use app": {
     answer: "This app has five main tabs at the bottom. Home shows your daily medicine doses and recovery score. Medicines lets you add or edit your medication schedule. Activity tracks your symptom history and recovery trends. Progress shows your adherence stats and lets you generate reports. The Plus button in the center lets you scan prescriptions or log symptoms quickly. You can also just talk to me anytime for help!",

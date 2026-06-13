@@ -50,17 +50,17 @@ function Kill-Ports {
         if ($connections) {
             Write-Host " Active!" -ForegroundColor Yellow
             $pids = $connections | Select-Object -ExpandProperty OwningProcess | Unique
-            foreach ($pid in $pids) {
+            foreach ($targetPid in $pids) {
                 try {
-                    $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                    $proc = Get-Process -Id $targetPid -ErrorAction SilentlyContinue
                     if ($proc) {
-                        Write-Host "  Killing process '$($proc.Name)' (PID: $($pid))..." -ForegroundColor Gray
-                        Stop-Process -Id $pid -Force -ErrorAction Stop
+                        Write-Host "  Killing process '$($proc.Name)' (PID: $($targetPid))..." -ForegroundColor Gray
+                        Stop-Process -Id $targetPid -Force -ErrorAction Stop
                         $anyKilled = $true
                     }
                 }
                 catch {
-                    Write-ErrorMsg "  Failed to kill PID $($pid): $($_.Exception.Message)"
+                    Write-ErrorMsg "  Failed to kill PID $($targetPid): $($_.Exception.Message)"
                 }
             }
         } else {

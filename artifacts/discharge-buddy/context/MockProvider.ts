@@ -263,7 +263,8 @@ export class MockProvider implements IDataProvider {
   }
 
   async getLinkedPatients(): Promise<Patient[]> {
-    return DEMO_PATIENTS;
+    const data = await this.getData();
+    return data.patients || DEMO_PATIENTS;
   }
 
   async getFamilyMembers(): Promise<Patient[]> {
@@ -389,14 +390,76 @@ export class MockProvider implements IDataProvider {
     await this.saveData({ medicines: meds.filter(m => m.id !== id) });
   }
 
-  async updateProfile(updates: Partial<AppUser>): Promise<AppUser> {
+  async updateProfile(updates: Partial<AppUser & { patientId?: string; age?: number; condition?: string }>): Promise<AppUser> {
     const data = await this.getData();
     const currentUser = data.user || { id: "u1", name: "User", email: "user@example.com", role: "patient" };
+    
+    const { age, condition, patientId, bloodType, allergies, emergencyContactName, emergencyContactPhone, ...userUpdates } = updates as any;
+    
+    // Only update caregiver's own profile fields, unless they are a patient
     const updatedUser = { 
       ...currentUser, 
-      ...updates 
+      ...userUpdates 
     };
-    await this.saveData({ user: updatedUser });
+
+    if (currentUser.role === "patient") {
+      if (bloodType !== undefined) updatedUser.bloodType = bloodType;
+      if (allergies !== undefined) updatedUser.allergies = allergies;
+      if (emergencyContactName !== undefined) updatedUser.emergencyContactName = emergencyContactName;
+      if (emergencyContactPhone !== undefined) updatedUser.emergencyContactPhone = emergencyContactPhone;
+    }
+    
+    const saveDataPayload: any = { user: updatedUser };
+
+    // Update patient record
+    const targetId = patientId || updatedUser.linkedPatientId || "p1";
+    const patientsList = data.patients || DEMO_PATIENTS;
+    const updatedPatientsList = patientsList.map((p: Patient) => {
+      if (p.id === targetId) {
+        const updatedPatient = { ...p };
+        if (age !== undefined) updatedPatient.age = Number(age);
+        if (condition !== undefined) updatedPatient.condition = condition;
+        if (bloodType !== undefined) {
+          updatedPatient.bloodType = bloodType;
+          updatedPatient.bloodGroup = bloodType; // sync both fields
+        }
+        if (allergies !== undefined) updatedPatient.allergies = allergies;
+        if (emergencyContactName !== undefined) updatedPatient.emergencyContactName = emergencyContactName;
+        if (emergencyContactPhone !== undefined) {
+          updatedPatient.emergencyContactPhone = emergencyContactPhone;
+          updatedPatient.emergencyContact = emergencyContactPhone; // legacy sync
+        }
+        return updatedPatient;
+      }
+      return p;
+    });
+    saveDataPayload.patients = updatedPatientsList;
+
+    // For family/caregivers, also update familyMembers/linkedPatients list in storage
+    const familyMembersList = data.familyMembers || [];
+    if (familyMembersList.length > 0) {
+      saveDataPayload.familyMembers = familyMembersList.map((p: Patient) => {
+        if (p.id === targetId) {
+          const updatedPatient = { ...p };
+          if (age !== undefined) updatedPatient.age = Number(age);
+          if (condition !== undefined) updatedPatient.condition = condition;
+          if (bloodType !== undefined) {
+            updatedPatient.bloodType = bloodType;
+            updatedPatient.bloodGroup = bloodType;
+          }
+          if (allergies !== undefined) updatedPatient.allergies = allergies;
+          if (emergencyContactName !== undefined) updatedPatient.emergencyContactName = emergencyContactName;
+          if (emergencyContactPhone !== undefined) {
+            updatedPatient.emergencyContactPhone = emergencyContactPhone;
+            updatedPatient.emergencyContact = emergencyContactPhone;
+          }
+          return updatedPatient;
+        }
+        return p;
+      });
+    }
+    
+    await this.saveData(saveDataPayload);
     return updatedUser;
   }
 

@@ -15,25 +15,62 @@ const WHITE = "#ffffff";
 
 export default function EmergencyCardScreen() {
   const insets = useSafeAreaInsets();
-  const { user, medicines, patient, setUser } = useApp();
+  const { user, role, medicines, patient, updateProfile } = useApp();
   const topInset = Platform.OS === "web" ? 0 : insets.top;
   const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [bloodType, setBloodType] = useState(user?.bloodType ?? "");
-  const [allergies, setAllergies] = useState(user?.allergies ?? "");
-  const [ecName, setEcName] = useState(user?.emergencyContactName ?? "");
-  const [ecPhone, setEcPhone] = useState(user?.emergencyContactPhone ?? patient?.emergencyContact ?? "");
+  const [bloodType, setBloodType] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [ecName, setEcName] = useState("");
+  const [ecPhone, setEcPhone] = useState("");
+  const [age, setAge] = useState("");
+  const [condition, setCondition] = useState("");
+
+  React.useEffect(() => {
+    // If the role is patient, get details from user profile.
+    // If the role is caregiver or family, get details from the active patient object.
+    const isPatientRole = role === "patient";
+    const source = isPatientRole ? user : patient;
+
+    if (source) {
+      setBloodType(source.bloodType || (source as any).bloodGroup || "");
+      setAllergies(source.allergies ?? "");
+      setEcName(source.emergencyContactName ?? "");
+      setEcPhone(source.emergencyContactPhone ?? (source as any).emergencyContact ?? "");
+    }
+  }, [user, patient, role]);
+
+  React.useEffect(() => {
+    if (patient) {
+      setAge(patient.age ? String(patient.age) : "");
+      setCondition(patient.condition ?? "");
+    }
+  }, [patient]);
 
   const handleCall = () => {
     const num = (ecPhone || patient?.emergencyContact || "").replace(/[^+\d]/g, "");
     if (num) Linking.openURL(`tel:${num}`);
   };
 
-  const handleSave = () => {
-    if (user) {
-      setUser({ ...user, bloodType, allergies, emergencyContactName: ecName, emergencyContactPhone: ecPhone });
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      await updateProfile({
+        patientId: patient?.id,
+        bloodType,
+        allergies,
+        emergencyContactName: ecName,
+        emergencyContactPhone: ecPhone,
+        age: age ? parseInt(age) : undefined,
+        condition: condition || undefined
+      });
+      setEditing(false);
+    } catch (e) {
+      console.warn("Failed to save emergency card:", e);
+    } finally {
+      setLoading(false);
     }
-    setEditing(false);
   };
 
   return (
@@ -56,8 +93,19 @@ export default function EmergencyCardScreen() {
             <Text style={styles.headerEmoji}></Text>
             <Text style={styles.headerTitle}>Emergency Card</Text>
           </View>
-          <AnimPressable onPress={() => editing ? handleSave() : setEditing(true)} style={styles.editBtn}>
-            <Feather name={editing ? "save" : "edit-2"} size={16} color={PURPLE} />
+          <AnimPressable 
+            onPress={() => {
+              if (loading) return;
+              if (editing) {
+                handleSave();
+              } else {
+                setEditing(true);
+              }
+            }} 
+            style={[styles.editBtn, loading && { opacity: 0.5 }]}
+            disabled={loading}
+          >
+            <Feather name={editing ? (loading ? "loader" : "save") : "edit-2"} size={16} color={PURPLE} />
           </AnimPressable>
         </View>
         <Text style={styles.headerSub}>Show this to emergency responders</Text>
@@ -75,16 +123,18 @@ export default function EmergencyCardScreen() {
             </View>
             <Text style={styles.cardTitle}>Patient Information</Text>
           </View>
-          <Row label="Name" value={user?.name ?? patient?.name ?? ""} placeholder="Not set" />
-          <Row label="Age" value={patient?.age ? `${patient.age} years` : ""} placeholder="Not set" />
-          <Row label="Condition" value={patient?.condition ?? ""} placeholder="Not set" />
+          <Row label="Name" value={role === "patient" ? (user?.name ?? patient?.name ?? "") : (patient?.name ?? "")} placeholder="Not set" />
           {editing ? (
             <>
+              <EditRow label="Age" value={age} onChange={setAge} keyboardType="numeric" />
+              <EditRow label="Condition" value={condition} onChange={setCondition} />
               <EditRow label="Blood Type" value={bloodType} onChange={setBloodType} />
               <EditRow label="Known Allergies" value={allergies} onChange={setAllergies} />
             </>
           ) : (
             <>
+              <Row label="Age" value={patient?.age ? `${patient.age} years` : ""} placeholder="Not set" />
+              <Row label="Condition" value={patient?.condition ?? ""} placeholder="Not set" />
               <Row label="Blood Type" value={bloodType} placeholder="Not set" highlight />
               <Row label="Known Allergies" value={allergies} placeholder="None recorded" danger />
             </>
@@ -183,7 +233,7 @@ function Row({ label, value, highlight, danger, placeholder }: { label: string; 
   );
 }
 
-function EditRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function EditRow({ label, value, onChange, keyboardType }: { label: string; value: string; onChange: (v: string) => void; keyboardType?: any }) {
   return (
     <View style={rowStyles.editRow}>
       <Text style={rowStyles.label}>{label}</Text>
@@ -191,6 +241,7 @@ function EditRow({ label, value, onChange }: { label: string; value: string; onC
         value={value}
         onChangeText={onChange}
         style={rowStyles.input}
+        keyboardType={keyboardType}
         placeholderTextColor="#94a3b8"
       />
     </View>

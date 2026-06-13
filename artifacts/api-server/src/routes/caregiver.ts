@@ -21,10 +21,16 @@ router.get("/patients", requireAuth, async (req: any, res) => {
     const userId = req.user.id;
     const isStaff = req.user.role === "caregiver";
     
-    // 1. Fetch patients (Staff see all, Family see only linked)
-    let linkedPatients;
+    // 1. Fetch patients (Staff see all, Patient see self, Family see only linked)
+    let linkedPatients: (typeof patients.$inferSelect)[];
     if (isStaff) {
       linkedPatients = await db.select().from(patients);
+    } else if (req.user.role === "patient") {
+      if (req.user.linkedPatientId) {
+        linkedPatients = await db.select().from(patients).where(eq(patients.id, req.user.linkedPatientId));
+      } else {
+        linkedPatients = [];
+      }
     } else {
       linkedPatients = await getManagedPatients(userId);
     }

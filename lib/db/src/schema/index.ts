@@ -3,7 +3,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["patient", "caregiver", "family", "doctor"]);
-export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
+export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high", "critical"]);
 export const doseStatusEnum = pgEnum("dose_status", ["taken", "missed", "pending", "snoozed"]);
 export const linkRelationshipEnum = pgEnum("link_relationship", ["family", "caregiver"]);
 export const linkStatusEnum = pgEnum("link_status", ["active", "revoked", "pending", "rejected"]);
@@ -51,6 +51,10 @@ export const patients = pgTable("patients", {
   condition: text("condition").notNull(),
   dischargeDate: timestamp("discharge_date").notNull(),
   emergencyContact: text("emergency_contact").notNull(),
+  bloodType: text("blood_type"),
+  allergies: text("allergies"),
+  emergencyContactName: text("emergency_contact_name"),
+  emergencyContactPhone: text("emergency_contact_phone"),
   linkCode: varchar("link_code", { length: 12 }).unique(), // Shareable code (e.g. DB-7G4K2P)
   linkCodeIssuedAt: timestamp("link_code_issued_at"),
   createdAt: timestamp("created_at").defaultNow(),

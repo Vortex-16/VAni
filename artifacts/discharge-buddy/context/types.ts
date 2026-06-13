@@ -34,7 +34,7 @@ export interface IDataProvider {
   updateMedicine(id: string, updates: Partial<Medicine>): Promise<void>;
   deleteMedicine(id: string): Promise<void>;
   
-  updateProfile(updates: Partial<AppUser>): Promise<AppUser>;
+  updateProfile(updates: Partial<AppUser & { patientId?: string; age?: number; condition?: string }>): Promise<AppUser>;
   changePassword(old: string, newP: string): Promise<void>;
   submitFeedback(type: string, message: string): Promise<void>;
   getDischargePlan(id: string, devData?: any): Promise<any>;

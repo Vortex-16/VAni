@@ -9,6 +9,7 @@ import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { sendVerificationEmail, transporter as emailTransporter } from "../lib/email";
 import { generateUniqueLinkCode } from "../lib/linkCode";
+import { getManagedPatients } from "../lib/managedPatients";
 
 const router = Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -653,24 +654,96 @@ router.post("/push-token", requireAuth, async (req: AuthRequest, res) => {
 
 router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { name, email, phone, avatar, bloodType, allergies, emergencyContactName, emergencyContactPhone } = req.body;
+    const { name, email, phone, avatar, bloodType, allergies, emergencyContactName, emergencyContactPhone, age, condition, patientId } = req.body;
+
+    const userUpdates: any = {
+      name: name || undefined,
+      email: email?.toLowerCase() || undefined,
+      phone: phone || undefined,
+      avatar: avatar || undefined
+    };
+
+    if (req.user!.role === "patient") {
+      if (bloodType !== undefined) userUpdates.bloodType = bloodType;
+      if (allergies !== undefined) userUpdates.allergies = allergies;
+      if (emergencyContactName !== undefined) userUpdates.emergencyContactName = emergencyContactName;
+      if (emergencyContactPhone !== undefined) userUpdates.emergencyContactPhone = emergencyContactPhone;
+    }
 
     const [updatedUser] = await db.update(users)
-      .set({
-        name: name || undefined,
-        email: email?.toLowerCase() || undefined,
-        phone: phone || undefined,
-        avatar: avatar || undefined,
-        bloodType: bloodType || undefined,
-        allergies: allergies || undefined,
-        emergencyContactName: emergencyContactName || undefined,
-        emergencyContactPhone: emergencyContactPhone || undefined
-      })
+      .set(userUpdates)
       .where(eq(users.id, req.user!.id))
       .returning();
 
+    console.log("[AuthProfile] Request body:", req.body);
+    console.log("[AuthProfile] Request user:", { id: req.user?.id, role: req.user?.role, linkedPatientId: req.user?.linkedPatientId });
+
+    const targetPatientId = req.user!.linkedPatientId || patientId;
+    console.log("[AuthProfile] resolved targetPatientId:", targetPatientId);
+    if (targetPatientId) {
+      let isAuthorized = req.user!.linkedPatientId === targetPatientId;
+      console.log("[AuthProfile] initial authorization check (is self patient):", isAuthorized);
+      if (!isAuthorized && (req.user!.role === "caregiver" || req.user!.role === "family")) {
+        const managed = await getManagedPatients(req.user!.id);
+        console.log("[AuthProfile] managed patients IDs:", managed.map(p => p.id));
+        isAuthorized = managed.some(p => p.id === targetPatientId);
+        console.log("[AuthProfile] caregiver/family authorization check:", isAuthorized);
+      }
+
+      if (isAuthorized) {
+        const patientUpdates: any = {};
+        if (age !== undefined) {
+          patientUpdates.age = isNaN(parseInt(age)) ? 0 : parseInt(age);
+        }
+        if (condition !== undefined) {
+          patientUpdates.condition = condition;
+        }
+        if (bloodType !== undefined) {
+          patientUpdates.bloodType = bloodType;
+        }
+        if (allergies !== undefined) {
+          patientUpdates.allergies = allergies;
+        }
+        if (emergencyContactName !== undefined) {
+          patientUpdates.emergencyContactName = emergencyContactName;
+        }
+        if (emergencyContactPhone !== undefined) {
+          patientUpdates.emergencyContactPhone = emergencyContactPhone;
+          patientUpdates.emergencyContact = emergencyContactPhone; // legacy fallback
+        }
+
+        console.log("[AuthProfile] patientUpdates to apply:", patientUpdates);
+        if (Object.keys(patientUpdates).length > 0) {
+          await db.update(patients)
+            .set(patientUpdates)
+            .where(eq(patients.id, targetPatientId));
+          console.log("[AuthProfile] patients database update executed successfully");
+        }
+
+        // Keep the patient user record synchronized (if it exists)
+        const [patientUser] = await db.select().from(users).where(eq(users.linkedPatientId, targetPatientId));
+        if (patientUser && patientUser.id !== req.user!.id) {
+          const patientUserUpdates: any = {};
+          if (bloodType !== undefined) patientUserUpdates.bloodType = bloodType;
+          if (allergies !== undefined) patientUserUpdates.allergies = allergies;
+          if (emergencyContactName !== undefined) patientUserUpdates.emergencyContactName = emergencyContactName;
+          if (emergencyContactPhone !== undefined) patientUserUpdates.emergencyContactPhone = emergencyContactPhone;
+
+          if (Object.keys(patientUserUpdates).length > 0) {
+            await db.update(users)
+              .set(patientUserUpdates)
+              .where(eq(users.id, patientUser.id));
+            console.log("[AuthProfile] synced patient user profile in users table");
+          }
+        }
+      } else {
+        console.warn("[AuthProfile] User is NOT authorized to update patient:", targetPatientId);
+      }
+    }
+
     return res.json({ user: updatedUser });
   } catch (error) {
+    console.error("[AuthProfile] Profile Update Error:", error);
     logger.error({ err: error }, "Profile Update Error");
     return res.status(500).json({ error: "Failed to update profile" });
   }

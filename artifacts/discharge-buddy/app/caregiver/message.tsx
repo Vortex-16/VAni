@@ -64,14 +64,40 @@ export default function MessagePage() {
         es.addEventListener("message", (event: any) => {
           if (event.data) {
             const data = JSON.parse(event.data);
-            if (data.type === "message") {
-              setMessages(prev => {
-                // Prevent duplicate appending if we just sent it
-                if (prev.find(m => m.id === data.data.id)) return prev;
-                return [...prev, data.data];
-              });
-              scrollViewRef.current?.scrollToEnd({ animated: true });
-            }
+            const msg = data.data;
+            setMessages(prev => {
+              if (prev.find(m => m.id === msg.id)) return prev;
+              
+              // If it's our own message, check if there's an optimistic message with the same text
+              if (msg.senderId === user.id) {
+                const tempIndex = prev.findIndex(m => (m.text === msg.text || m.text.trim() === msg.text.trim()) && m.senderId === msg.senderId && (m.id.startsWith('temp') || /^\d+$/.test(m.id)));
+                if (tempIndex !== -1) {
+                  const next = [...prev];
+                  next[tempIndex] = msg;
+                  return next;
+                }
+              }
+              
+              // Time-based fallback deduplication (within 5 seconds)
+              const isDuplicate = prev.some(
+                (m) =>
+                  m.senderId === msg.senderId &&
+                  m.text === msg.text &&
+                  Math.abs(new Date(m.createdAt).getTime() - new Date(msg.createdAt).getTime()) < 5000
+              );
+              if (isDuplicate) {
+                const tempIndex = prev.findIndex(m => m.id.startsWith('temp') || /^\d+$/.test(m.id));
+                if (tempIndex !== -1) {
+                  const next = [...prev];
+                  next[tempIndex] = msg;
+                  return next;
+                }
+                return prev;
+              }
+              
+              return [...prev, msg];
+            });
+            scrollViewRef.current?.scrollToEnd({ animated: true });
           }
         });
         
@@ -133,7 +159,18 @@ export default function MessagePage() {
       
       if (res.ok) {
         const savedMsg = await res.json();
-        setMessages(prev => prev.map(m => m.id === tempId ? savedMsg : m));
+        setMessages(prev => {
+          if (prev.find(m => m.id === savedMsg.id)) {
+            return prev.filter(m => m.id !== tempId);
+          }
+          const tempIndex = prev.findIndex(m => m.id === tempId);
+          if (tempIndex !== -1) {
+            const next = [...prev];
+            next[tempIndex] = savedMsg;
+            return next;
+          }
+          return [...prev, savedMsg];
+        });
       } else {
         console.error("Failed to send message");
       }

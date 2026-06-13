@@ -199,7 +199,7 @@ export class ApiProvider implements IDataProvider {
     });
   }
 
-  async updateProfile(updates: Partial<AppUser>): Promise<AppUser> {
+  async updateProfile(updates: Partial<AppUser & { patientId?: string; age?: number; condition?: string }>): Promise<AppUser> {
     const res = await customFetch<{ user: AppUser }>("/api/auth/profile", {
       method: "PUT",
       body: JSON.stringify(updates)
