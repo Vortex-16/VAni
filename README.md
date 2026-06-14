@@ -24,6 +24,47 @@
 
 ---
 
+## 📸 App Walkthrough & Screenshots
+
+Below is a detailed visual tour of **VAni**'s core features, structured to demonstrate the complete patient, family, and caregiver journey.
+
+### 🔐 1. Onboarding & Account Security
+| 📧 Two-Step OTP Verification | 👤 Patient Profile | 👨‍👩‍👧 Family Portal Onboarding |
+| :-: | :-: | :-: |
+| <img src="./documents/Assets/TwoStepEmailOTPBasedSetup.jpeg" width="250" alt="Two-Step OTP Setup" /> | <img src="./documents/Assets/ProfilPagePatient.jpeg" width="250" alt="Patient Profile" /> | <img src="./documents/Assets/DemoOFFamilyPAge.jpeg" width="250" alt="Family Demo Page" /> |
+
+### 📸 2. Smart OCR Prescription Scanner
+| 📷 Scanning Prescription | 🔍 Extraction Results | 💊 Generated Schedule |
+| :-: | :-: | :-: |
+| <img src="./documents/Assets/PresCription%20Scannig.jpeg" width="250" alt="Prescription Scanner" /> | <img src="./documents/Assets/ResultOfPrescriptionScan.jpeg" width="250" alt="Extraction Results" /> | <img src="./documents/Assets/MedicienPageOfPAtient.jpeg" width="250" alt="Patient Medicine Page" /> |
+
+### 🚨 3. Emergency SOS & First Aid Support
+| ⚡ Emergency Panel | ❤️ CPR & Choking Coach | 🩸 Emergency Blood Network |
+| :-: | :-: | :-: |
+| <img src="./documents/Assets/EmergencyPage.jpeg" width="250" alt="Emergency Page" /> | <img src="./documents/Assets/CPR.jpeg" width="250" alt="CPR Guide" /> | <img src="./documents/Assets/BloodDonationPAnnel.jpeg" width="250" alt="Blood Donation Panel" /> |
+
+### 📊 4. Caregiver Dashboard & Patient Monitoring
+| 📈 Caregiver Dashboard | 📋 Patient Profile Details | 👁️ Family Monitoring View |
+| :-: | :-: | :-: |
+| <img src="./documents/Assets/CareControlDashboard.jpeg" width="250" alt="Caregiver Dashboard" /> | <img src="./documents/Assets/CareControlPatientProfileDEatils.jpeg" width="250" alt="Caregiver View of Patient" /> | <img src="./documents/Assets/FamilyViewingPAitnet.jpeg" width="250" alt="Family Viewing Patient Details" /> |
+
+### 💬 5. Real-Time Chat & Care Messaging
+| 💬 Care Team Live Chat | 💬 Chat Conversation Flow | ⚡ Real-Time Low Latency Chat |
+| :-: | :-: | :-: |
+| <img src="./documents/Assets/liveChat.jpeg" width="250" alt="Live Chat" /> | <img src="./documents/Assets/liveChat2.jpeg" width="250" alt="Live Chat Flow" /> | <img src="./documents/Assets/LowLatcnyChat.jpeg" width="250" alt="Low Latency Chat" /> |
+
+### 🩺 6. Consultations & Safety Utilities
+| 📅 Appointment Booking | 🩺 Doctor Follow-Up | 🛡️ Drug Interaction Checker |
+| :-: | :-: | :-: |
+| <img src="./documents/Assets/APponitneBookUpDOcotr.jpeg" width="250" alt="Appointment Booking" /> | <img src="./documents/Assets/DoctorFollowUpPAtinet.jpeg" width="250" alt="Doctor Followup" /> | <img src="./documents/Assets/DrugIntractctionChecker.jpeg" width="250" alt="Drug Interaction Checker" /> |
+
+### 🌐 7. System Capabilities
+| 🗣️ Multilingual (14+ Languages) | 🔔 Push Notifications | 🤒 Symptom Tracking |
+| :-: | :-: | :-: |
+| <img src="./documents/Assets/MultiLinugual.jpeg" width="250" alt="Multilingual Support" /> | <img src="./documents/Assets/Notification.jpeg" width="250" alt="Notifications" /> | <img src="./documents/Assets/PatientSymtompList.jpeg" width="250" alt="Patient Symptoms" /> |
+
+---
+
 ## ✨ What's New (Latest Updates)
 
 <details>

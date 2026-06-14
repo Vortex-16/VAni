@@ -142,6 +142,7 @@ export default function LoginScreen() {
   const [passwordInput, setPasswordInput] = useState('');
   const [nameInput, setNameInput] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const [signupRole, setSignupRole] = useState<AppRole>('patient');
 
   // ── Gesture / Animation ──
   // translateY: SNAP_COLLAPSED = sheet at 42% height, SNAP_EXPANDED = sheet at 80%
@@ -332,7 +333,7 @@ export default function LoginScreen() {
     try {
       const apiUrl = getApiUrl();
       if (isSignUp) {
-        const userRole = emailInput.trim().toLowerCase().endsWith('@doc.in') ? 'caregiver' : 'patient';
+        const userRole = signupRole;
         // Registration flow
         const res = await fetch(`${apiUrl}/api/auth/register`, {
           method: 'POST',
@@ -548,17 +549,43 @@ export default function LoginScreen() {
                 <>
                   {/* ── Email / Name fields ── */}
                   {isSignUp && (
-                    <View style={styles.inputWrap}>
-                      <Feather name="user" size={18} color={MUTED} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="Full Name"
-                        placeholderTextColor={MUTED}
-                        value={nameInput}
-                        onChangeText={setNameInput}
-                        autoCapitalize="words"
-                      />
-                    </View>
+                    <>
+                      <View style={styles.inputWrap}>
+                        <Feather name="user" size={18} color={MUTED} style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Full Name"
+                          placeholderTextColor={MUTED}
+                          value={nameInput}
+                          onChangeText={setNameInput}
+                          autoCapitalize="words"
+                        />
+                      </View>
+
+                      {/* Role selection for email sign up */}
+                      <Text style={styles.roleLabel}>I am signing up as:</Text>
+                      <View style={styles.roleRow}>
+                        {([
+                          { role: 'patient', icon: 'user', label: 'Patient' },
+                          { role: 'family', icon: 'heart', label: 'Family' },
+                          { role: 'caregiver', icon: 'users', label: 'Caregiver' },
+                          { role: 'doctor', icon: 'activity', label: 'Doctor' },
+                        ] as const).map((opt) => {
+                          const active = signupRole === opt.role;
+                          return (
+                            <TouchableOpacity
+                              key={opt.role}
+                              onPress={() => setSignupRole(opt.role)}
+                              style={[styles.roleOpt, active && styles.roleOptActive]}
+                              activeOpacity={0.8}
+                            >
+                              <Feather name={opt.icon} size={15} color={active ? WHITE : MUTED} />
+                              <Text style={[styles.roleOptText, active && styles.roleOptTextActive]}>{opt.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
                   )}
 
                   <View style={styles.inputWrap}>
@@ -823,4 +850,43 @@ const styles = StyleSheet.create({
   demoOptSub: { fontSize: 12, color: MUTED, fontFamily: 'Inter_400Regular' },
   modalCancelBtn: { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
   modalCancelText: { color: MUTED, fontSize: 14, fontFamily: 'Inter_500Medium' },
+  roleLabel: {
+    alignSelf: 'flex-start',
+    fontSize: 14,
+    color: TEXT_DARK,
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 16,
+    gap: 6,
+  },
+  roleOpt: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  roleOptActive: {
+    borderColor: PRIMARY_COLOR,
+    backgroundColor: PRIMARY_COLOR,
+  },
+  roleOptText: {
+    fontSize: 12,
+    color: MUTED,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  roleOptTextActive: {
+    color: WHITE,
+  },
 });

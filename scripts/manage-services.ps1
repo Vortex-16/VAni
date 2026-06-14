@@ -105,7 +105,7 @@ function Update-Build-Services {
     Write-Host ""
     Write-Host "Building Expo App static assets..." -ForegroundColor Blue
     try {
-        pnpm --filter @workspace/discharge-buddy run build
+        pnpm --filter VAni run build
         Write-Success "Expo app build completed successfully."
     } catch {
         Write-ErrorMsg "Expo app build failed: $($_.Exception.Message)"
@@ -151,7 +151,7 @@ function Start-Services {
 
     # 4. Start Expo Mobile App
     Write-Host "Launching Expo Dev Server in a new window..." -ForegroundColor Blue
-    $expoCmd = "pnpm --filter @workspace/discharge-buddy run dev"
+    $expoCmd = "pnpm --filter VAni run dev"
     $expoArgs = '/k title Expo Metro Bundler (Port 8081) && cd /d "{0}" && {1}' -f $WorkspaceRoot, $expoCmd
     Start-Process cmd -ArgumentList $expoArgs
     Write-Success "Expo Metro Bundler launch command sent (Port 8081)."

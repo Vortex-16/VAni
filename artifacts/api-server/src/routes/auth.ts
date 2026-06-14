@@ -115,10 +115,7 @@ router.post("/oauth", async (req, res) => {
 
     if (!user) {
       const selectedRole = role || "patient";
-
-      if ((selectedRole === "caregiver" || selectedRole === "doctor") && !email.toLowerCase().endsWith("@doc.in")) {
-        return res.status(400).json({ error: "Caregiver and Doctor accounts require an @doc.in email address." });
-      }
+      // Caregiver and Doctor accounts can use any email address.
 
       if (selectedRole === "family") {
         // Family users manage others — they do NOT get their own patient profile.
@@ -226,10 +223,7 @@ router.post("/register", async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ error: "User already exists" });
     }
-
-    if ((role === "caregiver" || role === "doctor") && !email.toLowerCase().endsWith("@doc.in")) {
-      return res.status(400).json({ error: "Caregiver and Doctor accounts require an @doc.in email address." });
-    }
+    // Caregiver and Doctor accounts can use any email address.
 
     const verificationCode = generateOTPCode();
     const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins

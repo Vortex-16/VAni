@@ -56,11 +56,7 @@ export function RoleSelectModal({ visible, email, suggestedRole, onConfirm, onCa
   }, [visible, suggestedRole]);
 
   const validateEmailForClinical = () => {
-    if ((selected === 'caregiver' || selected === 'doctor') && email && !email.toLowerCase().endsWith('@doc.in')) {
-      setError('Caregiver and Doctor accounts require an @doc.in email address.');
-      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return false;
-    }
+    // Caregiver and Doctor accounts can use any email address.
     setError('');
     return true;
   };

@@ -61,10 +61,10 @@ try {
 
     if ($expoChoice -eq "2") {
         $expoTarget = "Web"
-        $expoCmd = "pnpm --filter @workspace/discharge-buddy run dev"
+        $expoCmd = "pnpm --filter VAni run dev"
     } else {
         $expoTarget = "Mobile"
-        $expoCmd = "pnpm --filter @workspace/discharge-buddy exec expo start -c"
+        $expoCmd = "pnpm --filter VAni exec expo start -c"
     }
 
     # ==============================================================================

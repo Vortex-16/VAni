@@ -42,6 +42,9 @@ process.env.EXPO_ROUTER_IMPORT_MODE = 'lazy';
 export default ({ config }) => {
   return {
     ...config,
-    // Add dynamic config here if needed
+    android: {
+      ...config.android,
+      package: "com.dischargebuddy2.app",
+    },
   };
 };

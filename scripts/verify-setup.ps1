@@ -128,7 +128,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "✓ TypeScript compilation successful (no errors)" @Green
 } else {
     Write-Host "✗ TypeScript compilation failed" @Red
-    Write-Host "   Run: pnpm --filter @workspace/discharge-buddy typecheck" @Yellow
+    Write-Host "   Run: pnpm --filter VAni typecheck" @Yellow
 }
 Pop-Location
 Write-Host ""
@@ -176,7 +176,7 @@ Write-Host "Next steps:"
 Write-Host "1. Review GOOGLE_OAUTH_SETUP.md for OAuth configuration"
 Write-Host "2. Configure Google Cloud OAuth credentials if needed"
 Write-Host "3. Start backend:  pnpm --filter api-server dev" @Yellow
-Write-Host "4. Start app:      pnpm --filter @workspace/discharge-buddy exec expo start" @Yellow
+Write-Host "4. Start app:      pnpm --filter VAni exec expo start" @Yellow
 Write-Host "5. Test in Expo Go by scanning the QR code"
 Write-Host ""
 Write-Host "For more details, see:" @Blue

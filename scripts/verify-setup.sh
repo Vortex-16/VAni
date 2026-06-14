@@ -125,7 +125,7 @@ if pnpm typecheck > /dev/null 2>&1; then
     echo -e "${GREEN}✓ TypeScript compilation successful (no errors)${NC}"
 else
     echo -e "${RED}✗ TypeScript compilation failed${NC}"
-    echo -e "   Run: ${YELLOW}pnpm --filter @workspace/discharge-buddy typecheck${NC}"
+    echo -e "   Run: ${YELLOW}pnpm --filter VAni typecheck${NC}"
 fi
 cd - > /dev/null
 echo
@@ -173,7 +173,7 @@ echo "Next steps:"
 echo "1. Review GOOGLE_OAUTH_SETUP.md for OAuth configuration"
 echo "2. Configure Google Cloud OAuth credentials if needed"
 echo "3. Start backend:  ${YELLOW}pnpm --filter api-server dev${NC}"
-echo "4. Start app:      ${YELLOW}pnpm --filter @workspace/discharge-buddy exec expo start${NC}"
+echo "4. Start app:      ${YELLOW}pnpm --filter VAni exec expo start${NC}"
 echo "5. Test in Expo Go by scanning the QR code"
 echo
 echo -e "${BLUE}For more details, see:${NC}"
