@@ -10,7 +10,7 @@
 ---
 
 <p align="center">
-  <video src="./documents/Assets/VAni__The_Frictionless_Guardian%20(1).mp4" width="100%" controls autoplay loop></video>
+  <video src="https://github.com/SrinjoyeeDey/VAni/raw/main/documents/Assets/VAni__The_Frictionless_Guardian%20(1).mp4" width="100%" controls autoplay loop></video>
 </p>
 
 ---
