@@ -10,8 +10,14 @@
 ---
 
 <p align="center">
-  <a href="https://github.com/SrinjoyeeDey/VAni/blob/main/documents/Assets/VAni__The_Frictionless_Guardian%20(1).mp4">
-    <img src="./documents/Assets/VAni_Thumbnail.png" alt="Watch VAni Demo Video" width="100%" />
+  <a href="https://youtu.be/1iP6P5tSprs" target="_blank">
+    <img src="./documents/Assets/VAni_Thumbnail.png" alt="Watch VAni About Video" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/1iP6P5tSprs" target="_blank">
+    <img src="https://img.shields.io/badge/🎥_Watch_Demo_Video-YouTube-red?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Video on YouTube" height="40" />
   </a>
 </p>
 
