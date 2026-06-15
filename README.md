@@ -7,6 +7,14 @@
 [![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
+---
+
+<p align="center">
+  <video src="./documents/Assets/VAni__The_Frictionless_Guardian%20(1).mp4" width="100%" controls autoplay loop></video>
+</p>
+
+---
+
 > **📚 New here?** This README is the front door. For deep implementation notes and the full change-log, see **[doc.md](./documents/readmes/doc.md)** and **[DOCUMENTATION_INDEX.md](./documents/readmes/DOCUMENTATION_INDEX.md)**.
 
 ---
