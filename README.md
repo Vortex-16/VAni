@@ -23,7 +23,7 @@
 
 ---
 
-> **📚 New here?** This README is the front door. For deep implementation notes and the full change-log, see **[doc.md](./documents/readmes/doc.md)** and **[DOCUMENTATION_INDEX.md](./documents/readmes/DOCUMENTATION_INDEX.md)**.
+> **📚 New here?** This README is the front door. For deep implementation notes and the full change-log, see **[DOCUMENTATION_INDEX.md](./documents/readmes/DOCUMENTATION_INDEX.md)**.
 
 ---
 
