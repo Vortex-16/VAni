@@ -150,13 +150,14 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<your-web-client-id>
 EXPO_PUBLIC_API_URL=http://192.168.0.101:3000
 ```
 
-### Optional (for AI Features)
+### Required for AI & Voice Features
 ```env
-GEMINI_API_KEY=...          # Google Gemini
-ANTHROPIC_API_KEY=...       # Claude
-GROQ_API_KEY=...            # Groq (Llama)
-NVIDIA_API_KEY=...          # NVIDIA
-ELEVENLABS_API_KEY=...      # Text-to-speech
+GROQ_API_KEY=...            # Groq (Whisper-large STT, Llama-3.3 intent/chat)
+GEMINI_API_KEY=...          # Google Gemini (OCR entity extraction)
+NVIDIA_API_KEY=...          # NVIDIA (Nemotron-Parse OCR ensemble)
+ANTHROPIC_API_KEY=...       # Claude (Jargon Simplifier)
+
+# Note: No API key is needed for Text-to-Speech since VAni uses Microsoft Edge TTS.
 ```
 
 ---
@@ -203,29 +204,55 @@ pnpm --filter @workspace/discharge-buddy exec expo start -c
 
 ## 📊 API Endpoints
 
-### Authentication
+### Authentication & Profiles
 ```http
-POST /api/auth/oauth
-POST /api/auth/login
-POST /api/auth/register
-POST /api/auth/verify-email
+POST   /api/auth/oauth                  # Google OAuth login/registration
+POST   /api/auth/login                  # Email/Password login
+POST   /api/auth/register               # Email/Password registration
+POST   /api/auth/verify-email           # OTP email verification
+GET    /api/auth/profile                # Fetch current profile & relationship context
 ```
 
-### Patient Data
+### Patient & Caregiver Data
 ```http
-GET    /api/patient/profile
-GET    /api/patient/:id
-PATCH  /api/patient/:id
-GET    /api/patient/:id/medicines
-GET    /api/patient/:id/doses
-POST   /api/patient/:id/symptom-logs
+GET    /api/patient/profile             # Get patient profile details
+GET    /api/patient/:id                 # Get specific patient profile
+PATCH  /api/patient/:id                 # Update demographics/profile details
+GET    /api/patient/:id/medicines       # Get medicines for the patient
+GET    /api/patient/:id/doses           # Get patient medication doses
+POST   /api/patient/:id/symptom-logs    # Log symptoms (voice or manual)
+GET    /api/caregiver/patients          # List all patients linked to caregiver
 ```
 
-### Caregiver Operations
+### AI & Speech Services
 ```http
-GET    /api/caregiver/patients
-GET    /api/caregiver/patient/:id
-PATCH  /api/caregiver/patient/:id/risk-score
+POST   /api/ai/stt                      # Speech-To-Text via Groq Whisper
+POST   /api/ai/intent                   # Voice intent classifier
+POST   /api/ai/tts                      # Text-To-Speech via Microsoft Edge TTS
+POST   /api/ai/chat                     # Mr. Meddy conversational chat
+POST   /api/ai/drug-check               # Drug interaction checker (Llama-3.3)
+```
+
+### Real-time Chat
+```http
+GET    /api/chat/stream                 # Real-time SSE channel
+POST   /api/chat/send                   # Send message (with push notifications fallback)
+GET    /api/chat/history/:patientId     # Retrieve message history for context
+GET    /api/chat/conversations          # List active patient-caregiver chat links
+```
+
+### Emergency Blood Network
+```http
+POST   /api/blood/donors                # Join emergency blood network
+GET    /api/blood/donors/me             # View own blood donor profile
+GET    /api/blood/donors/nearby         # Query compatible nearby donors (Haversine)
+POST   /api/blood/requests              # Broadcast blood donation request
+GET    /api/blood/requests/nearby       # View active nearby blood requests
+```
+
+### Voice Notes
+```http
+POST   /api/voice-notes                 # Send voice notes to caregiver/family
 ```
 
 **Auth**: All endpoints require `Authorization: Bearer <token>` header

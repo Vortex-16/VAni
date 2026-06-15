@@ -253,7 +253,7 @@ OR
 
 Patient:
 
-"Bora, tell my daughter I had lunch."
+"Buddy, tell my daughter I had lunch."
 
 Flow:
 
@@ -287,7 +287,7 @@ Include:
 
 ## ARCHITECTURE OVERVIEW
 
-Below is a high‑level diagram of the **Bora** voice‑first care ecosystem, showing the main modules and their interactions.
+Below is a high‑level diagram of the **VAni** voice‑first care ecosystem, showing the main modules and their interactions.
 
 ```mermaid
 graph LR
@@ -373,7 +373,7 @@ Support:
 
 We are building:
 
-**Bora**
+**VAni**
 
 A voice-first care companion connecting:
 

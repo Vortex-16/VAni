@@ -237,7 +237,7 @@ graph LR
 
 ### Text-to-Speech (TTS)
 - **Purpose**: Reads AI briefings aloud for busy caregivers.
-- **Backend**: `POST /api/ai/tts` → ElevenLabs API (multilingual v2 model).
+- **Backend**: `POST /api/ai/tts` → Microsoft Edge TTS API (`@andresaya/edge-tts` integration).
 - **Fallback**: Frontend uses `expo-speech` as a client-side fallback.
 
 ---
@@ -329,7 +329,7 @@ graph TD
         Groq["Groq Llama 3.3 70B (Structuring + Chat)"]
         Gemini["Gemini 1.5 Flash (Briefings + Entity Extraction)"]
         Claude["Anthropic Claude 3.5 (Jargon Simplification)"]
-        ElevenLabs["ElevenLabs (TTS)"]
+        EdgeTTS["Microsoft Edge TTS (Voice Synthesis)"]
     end
 
     subgraph "Python OCR Microservice"
@@ -356,7 +356,7 @@ graph TD
     Services --> Groq
     Services --> Gemini
     Services --> Claude
-    Services --> ElevenLabs
+    Services --> EdgeTTS
     Services --> FCM
     Services -->|"HTTP"| FastAPI
     FastAPI --> docTR --> TrOCR
@@ -761,7 +761,7 @@ Express v5 App
 | Method | Route | Auth | Purpose | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/ai/chat` | Optional | AI chatbot with patient context | `{ userQuery }` | `{ message, actions[] }` |
-| `POST` | `/ai/tts` | None | Text-to-speech via ElevenLabs | `{ text }` | `{ audioContent, format, voiceId }` |
+| `POST` | `/ai/tts` | None | Text-to-speech via Microsoft Edge TTS | `{ text, language?, voice? }` | `{ audioContent, format, voiceId }` |
 | `POST` | `/ai/test-push` | Required | Test push notification | `{ title?, body? }` | `{ success, response }` |
 
 ### Caregiver (`/api/caregiver`)
@@ -1082,7 +1082,7 @@ graph TD
     end
 
     subgraph "TTS"
-        W[Text] --> X[ElevenLabs v2]
+        W[Text] -- `@andresaya/edge-tts` --> X[Microsoft Edge TTS]
         X --> Y[MP3 Audio]
     end
 ```
@@ -1095,7 +1095,7 @@ graph TD
 | **llama-3.3-70b-versatile** | Groq | Medical text structuring + chatbot | `PrescriptionService.structureWithGroq()`, `routes/ai.ts` | Free tier available |
 | **gemini-1.5-flash** | Google | Clinical briefing generation, entity extraction | `routes/caregiver.ts`, `ocr-service/main.py` | Free tier available |
 | **claude-3-5-sonnet-20240620** | Anthropic | Medical jargon simplification | `LanguageSimplifierService.simplifyWithAI()` | Paid API |
-| **eleven_multilingual_v2** | ElevenLabs | Text-to-speech for briefings | `routes/ai.ts` (`/tts` endpoint) | Paid API |
+| **Edge TTS Engine** | Microsoft Edge | Neural text-to-speech voices | `routes/ai.ts` (`/tts` endpoint) | Free (no API key) |
 | **db_resnet50 + crnn_vgg16_bn** | docTR (open-source) | Document detection + text recognition | `ocr-service/ocr_engine.py` | Free (local) |
 | **microsoft/trocr-base-handwritten** | HuggingFace | Handwriting refinement for low-confidence OCR words | `ocr-service/ocr_engine.py` | Free (local) |
 
@@ -1154,7 +1154,7 @@ sequenceDiagram
 | NVIDIA API failure | Error thrown (no secondary cloud OCR) |
 | Groq API failure | Error thrown to user |
 | Claude API unavailable | Dictionary-only simplification (no AI) |
-| ElevenLabs unavailable | Client-side `expo-speech` |
+| Edge TTS unavailable | Client-side `expo-speech` |
 | Gemini API failure | Pre-canned fallback text for briefings/reports |
 | TrOCR refinement fails | Keeps original docTR result |
 | docTR fails entirely | Tesseract-only fallback |
@@ -1171,7 +1171,7 @@ sequenceDiagram
 | **Google Gemini** | 1.5 Flash model | Caregiver briefings, OCR entity extraction | 🟡 High | No AI briefings, local OCR partially broken |
 | **Anthropic Claude** | Claude 3.5 Sonnet | Medical jargon simplification | 🟢 Medium | Falls back to dictionary-only |
 | **Firebase (FCM)** | Push notifications | Dose alerts, caregiver notifications | 🟡 High | No push notifications (local notifs still work) |
-| **ElevenLabs** | Text-to-speech | Audio briefings | 🟢 Low | Falls back to `expo-speech` |
+| **Microsoft Edge TTS** | Text-to-speech | Audio briefings & Voice replies | 🟢 Low | Falls back to `expo-speech` |
 | **Google OAuth** | Authentication provider | Google sign-in | 🟢 Medium | Email/password auth still works |
 | **Render.com** | Backend hosting | API server deployment | 🔴 Critical | Backend unavailable |
 | **Vercel** | Frontend hosting | Mobile web build | 🟢 Low | Mobile app works via Expo Go |
@@ -1263,9 +1263,9 @@ sequenceDiagram
 | Groq Llama 3.3 | Free tier / ~$0.002/call | 5-10 chats + 1 scan | ~$200-400 |
 | Gemini 1.5 Flash | Free tier / ~$0.001/call | 1-2 briefings/day | ~$30-60 |
 | Claude 3.5 Sonnet | ~$0.015/call | 2-5 simplifications/day | ~$900-2250 |
-| ElevenLabs TTS | ~$0.01/call | 1-2/day | ~$300-600 |
+| Edge TTS | Free (no API key) | 1-2/day | $0 |
 
-**Total Estimated**: ~$1,500-3,400/month for 1,000 active users. **Claude is the most expensive** integration.
+**Total Estimated**: ~$1,200-2,800/month for 1,000 active users. **Claude is the most expensive** integration.
 
 ---
 
@@ -1451,7 +1451,7 @@ VAni is a healthcare recovery app that digitizes prescriptions (OCR + LLM), sche
 ```
 Expo Mobile App ←→ Express.js API ←→ PostgreSQL (Neon)
                          ↕
-              NVIDIA / Groq / Gemini / Claude / ElevenLabs
+              NVIDIA / Groq / Gemini / Claude / Edge TTS
                          ↕
               Python OCR Microservice (FastAPI)
 ```
@@ -1493,7 +1493,7 @@ Expo Mobile App ←→ Express.js API ←→ PostgreSQL (Neon)
 
 - **Backend**: Express v5, TypeScript, Drizzle ORM, Pino logger, async/await throughout.
 - **Frontend**: React Native 0.81, Expo SDK 54, Expo Router v6, React Context, TypeScript.
-- **AI Calls**: Direct `fetch()` to provider APIs (NVIDIA, Groq, Anthropic, ElevenLabs). Groq also used via `groq-sdk` npm package.
+- **AI Calls**: Direct `fetch()` to provider APIs (NVIDIA, Groq, Anthropic, Microsoft Edge TTS). Groq also used via `groq-sdk` npm package.
 - **Error Handling**: Backend wraps in try/catch → `logger.error()` → `res.status(5xx).json({error})`. Frontend uses `ErrorBoundary` + `ErrorFallback`.
 - **Database**: All queries via Drizzle ORM (`db.select()`, `db.insert()`, `db.update()`, `db.delete()`). No raw SQL except one `sql` template in `RecoveryService`.
 
