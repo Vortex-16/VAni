@@ -418,7 +418,12 @@ The server runs an **idempotent startup schema guard** that creates the chat `me
 
 ## 📜 License
 
-Distributed under the MIT License. See `LICENSE` for details.
+Copyright © 2026 VAni Team.
+
+All Rights Reserved.
+
+This repository is provided for viewing and evaluation purposes only.
+No part of this project may be copied, modified, redistributed, or used in other projects without prior written permission from the authors.
 
 ---
 
